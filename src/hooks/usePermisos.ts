@@ -68,10 +68,10 @@ export const MENU_POR_ROL: Record<Rol, string[]> = {
     'dashboard', 'personal', 'fichajes', 'ausencias'
   ],
   TRABAJADOR_CAMPO: [
-    'fichajes', 'ausencias', 'mis-datos'
+    'portal', 'fichajes', 'ausencias', 'mis-datos'
   ],
   TRABAJADOR_LECTURA: [
-    'fichajes', 'mis-datos'
+    'portal', 'fichajes', 'mis-datos'
   ],
 }
 

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Link, useLocation, useNavigate, Outlet } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { usePermisos, MENU_POR_ROL } from '../hooks/usePermisos'
@@ -16,7 +16,7 @@ const RUTA_A_CLAVE: Record<string, string> = {
   '/convenios': 'convenios', '/documentos': 'documentos', '/personal': 'personal',
   '/subrogacion': 'subrogacion', '/fichajes': 'fichajes', '/ausencias': 'ausencias',
   '/prl': 'prl', '/rgpd': 'rgpd', '/territorio': 'territorio',
-  '/configuracion': 'configuracion', '/usuarios': 'usuarios', '/plantillas': 'plantillas',
+  '/configuracion': 'configuracion', '/usuarios': 'usuarios', '/plantillas': 'plantillas', '/portal': 'portal',
 }
 
 const NAV = [
@@ -178,7 +178,21 @@ export default function Layout() {
   const [collapsed, setCollapsed] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
   const { rol } = usePermisos()
+  const navigate = useNavigate()
+  const location = useLocation()
   const rolInfo = ROL_BADGE[rol || ''] || { label: '', color: '' }
+
+  // Redirigir TRABAJADOR_CAMPO al portal si no está ya ahí
+  useEffect(() => {
+    if ((rol === 'TRABAJADOR_CAMPO' || rol === 'TRABAJADOR_LECTURA') && location.pathname !== '/portal') {
+      navigate('/portal', { replace: true })
+    }
+  }, [rol, location.pathname])
+
+  // Portal sin sidebar para trabajadores
+  if (rol === 'TRABAJADOR_CAMPO' || rol === 'TRABAJADOR_LECTURA') {
+    return <Outlet />
+  }
 
   return (
     <div className="flex h-screen overflow-hidden bg-slate-50">
