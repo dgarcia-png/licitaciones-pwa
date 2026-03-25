@@ -1,4 +1,4 @@
-const API_BASE = 'https://script.google.com/macros/s/AKfycbxAqDQfnjew21PPYZniTkoNn-Y-lx0SVUmOYM9yVOSfUWVyYiojMjW7mQA1GHOlcwY61Q/exec'
+const API_BASE = 'https://script.google.com/macros/s/AKfycbxgiSmDVrtuYRWlcsFOhImaN5uwagJ0yHZ8Y1nFU8we0dKDI4HzFgPgnfkoFWFJszs8wA/exec'
 
 function getToken(): string { return localStorage.getItem('auth_token') || '' }
 
@@ -255,4 +255,12 @@ export const api = {
 
   // ═══ EXPEDIENTE DIGITAL ═══
   expediente: (id_empleado: string) => fetchAPI('expediente', { id: id_empleado }),
+
+  // ═══ PLANTILLAS DOCUMENTALES ═══
+  plantillas: (modulo?: string) => fetchAPI('obtener_plantillas', modulo ? { modulo } : {}),
+  registrarPlantilla: (data: any) => postAPI({ action: 'registrar_plantilla', ...data }),
+  crearPlantillaVacia: (data: any) => postAPI({ action: 'crear_plantilla_vacia', ...data }),
+  generarDesdePlantilla: (data: any) => postAPI({ action: 'generar_desde_plantilla', ...data }),
+  actualizarPlantilla: (data: any) => postAPI({ action: 'actualizar_plantilla', ...data }),
+  etiquetasPlantilla: (id: string) => postAPI({ action: 'obtener_etiquetas_plantilla', id }),
 }

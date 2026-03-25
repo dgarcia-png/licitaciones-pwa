@@ -46,7 +46,7 @@ export const MENU_POR_ROL: Record<Rol, string[]> = {
   ],
   ADMIN_RRHH: [
     'dashboard', 'personal', 'subrogacion', 'fichajes', 'ausencias',
-    'prl', 'rgpd', 'usuarios'
+    'prl', 'rgpd', 'plantillas', 'usuarios'
   ],
   ADMIN_TERRITORIO: [
     'dashboard', 'personal', 'fichajes', 'ausencias', 'territorio'

@@ -1,10 +1,13 @@
 import { useState, useEffect } from 'react'
+import { usePermisos } from '../hooks/usePermisos'
 import { api } from '../services/api'
+import ModalPlantilla from '../components/ModalPlantilla'
 import { Shield, Loader2, Plus, AlertTriangle, CheckCircle2, XCircle, Clock, FileText, Lock, UserCheck, Database, Siren, X, Save, ChevronDown, ChevronUp, User, ExternalLink } from 'lucide-react'
 
 function fmtDate(d: any) { if (!d) return ''; try { const date = new Date(d); if (isNaN(date.getTime())) return String(d); return date.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' }) } catch { return String(d) } }
 
 export default function RgpdPage() {
+  const { esAdmin, esAdminRRHH } = usePermisos()
   const [tab, setTab] = useState('dashboard')
   const [cargando, setCargando] = useState(true)
   const [dashboard, setDashboard] = useState<any>(null)
@@ -19,6 +22,8 @@ export default function RgpdPage() {
   const [mostrarForm, setMostrarForm] = useState(false)
   const [guardando, setGuardando] = useState(false)
   const [generandoDoc, setGenerandoDoc] = useState<string|null>(null)
+  const [modalPlantilla, setModalPlantilla] = useState<{ datos: any; titulo: string } | null>(null)
+  const showMsg = (m: string) => { setMsg(m); setTimeout(() => setMsg(''), 3000) }
   const [msg, setMsg] = useState('')
   const [form, setForm] = useState<any>({})
 
@@ -100,6 +105,15 @@ export default function RgpdPage() {
 
   return (
     <div className="p-6 lg:p-8 max-w-6xl">
+      {modalPlantilla && (
+        <ModalPlantilla
+          modulo="RGPD"
+          datos={modalPlantilla.datos}
+          titulo={modalPlantilla.titulo}
+          onCerrar={() => setModalPlantilla(null)}
+          onGenerado={() => { showMsg('✅ Documento generado'); setModalPlantilla(null) }}
+        />
+      )}
       <div className="flex items-center gap-4 mb-6">
         <div className="p-2.5 bg-gradient-to-br from-blue-700 to-indigo-800 rounded-xl shadow-lg shadow-blue-200"><Lock size={22} className="text-white" /></div>
         <div><h1 className="text-2xl font-bold text-slate-900">Protección de Datos (RGPD)</h1><p className="text-sm text-slate-500">{dashboard?.alertas || 0} alertas activas</p></div>
@@ -116,40 +130,88 @@ export default function RgpdPage() {
 
       {msg && <div className={`mb-4 p-4 rounded-xl text-sm font-medium ${msg.includes('✅') ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-red-50 text-red-700 border border-red-200'}`}>{msg}</div>}
 
-      {/* DASHBOARD */}
+      {/* ═══ DASHBOARD MEJORADO ═══ */}
       {tab === 'dashboard' && s && (
         <div>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-            <div className="bg-white border border-slate-200 rounded-xl p-5">
-              <div className="flex items-center gap-2 mb-2"><UserCheck size={18} className="text-blue-600" /><span className="text-[10px] text-slate-500 uppercase font-bold">Consentimientos</span></div>
-              <p className="text-3xl font-black">{s.consentimientos?.vigentes || 0}</p>
-              <p className="text-xs text-slate-500">{s.consentimientos?.revocados || 0} revocados</p>
-            </div>
-            <div className={`bg-white border rounded-xl p-5 ${s.arco?.vencidos > 0 ? 'border-red-300' : 'border-slate-200'}`}>
-              <div className="flex items-center gap-2 mb-2"><Shield size={18} className="text-purple-600" /><span className="text-[10px] text-slate-500 uppercase font-bold">ARCO</span></div>
-              <p className="text-3xl font-black">{s.arco?.pendientes || 0}</p>
-              <p className="text-xs text-slate-500">pendientes {s.arco?.vencidos > 0 ? <span className="text-red-600 font-bold">· {s.arco.vencidos} VENCIDOS</span> : ''}</p>
-            </div>
-            <div className="bg-white border border-slate-200 rounded-xl p-5">
-              <div className="flex items-center gap-2 mb-2"><Database size={18} className="text-emerald-600" /><span className="text-[10px] text-slate-500 uppercase font-bold">Tratamientos</span></div>
-              <p className="text-3xl font-black">{s.tratamientos?.activos || 0}</p>
-              <p className="text-xs text-slate-500">registrados (art. 30)</p>
-            </div>
-            <div className={`bg-white border rounded-xl p-5 ${s.brechas?.abiertas > 0 ? 'border-red-300 bg-red-50' : 'border-slate-200'}`}>
-              <div className="flex items-center gap-2 mb-2"><Siren size={18} className="text-red-600" /><span className="text-[10px] text-slate-500 uppercase font-bold">Brechas</span></div>
-              <p className="text-3xl font-black">{s.brechas?.abiertas || 0}</p>
-              <p className="text-xs text-slate-500">{s.brechas?.total || 0} total</p>
-            </div>
+          {/* KPIs con semáforos */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-5">
+            {[
+              { icon: UserCheck, label: 'Consentimientos', valor: s.consentimientos?.vigentes||0, sub: (s.consentimientos?.revocados||0) + ' revocados', urgente: false, aviso: (s.consentimientos?.vigentes||0) === 0, color: 'text-blue-600', tab: 'consentimientos' },
+              { icon: Shield,    label: 'ARCO pendientes', valor: s.arco?.pendientes||0,            sub: (s.arco?.resueltos||0) + ' resueltos',            urgente: (s.arco?.vencidos||0) > 0, aviso: (s.arco?.pendientes||0) > 0, color: 'text-purple-600', tab: 'arco' },
+              { icon: Database,  label: 'Tratamientos',    valor: s.tratamientos?.activos||0,        sub: 'registrados (art. 30)',                          urgente: false, aviso: (s.tratamientos?.activos||0) === 0, color: 'text-emerald-600', tab: 'tratamientos' },
+              { icon: Siren,     label: 'Brechas abiertas',valor: s.brechas?.abiertas||0,            sub: (s.brechas?.total||0) + ' total',                urgente: (s.brechas?.abiertas||0) > 0, aviso: false, color: 'text-red-600', tab: 'brechas' },
+            ].map((card: any) => (
+              <button key={card.tab} onClick={() => { setTab(card.tab); setMostrarForm(false) }}
+                className={`text-left p-4 rounded-2xl border-2 transition-all hover:shadow-md ${card.urgente ? 'border-red-300 bg-red-50' : card.aviso ? 'border-amber-200 bg-amber-50' : 'border-slate-200 bg-white'}`}>
+                <div className="flex items-center justify-between mb-2">
+                  <card.icon size={20} className={card.color} />
+                  {card.urgente ? <span className="w-3 h-3 rounded-full bg-red-500 animate-pulse" /> : card.aviso ? <span className="w-3 h-3 rounded-full bg-amber-400" /> : <span className="w-3 h-3 rounded-full bg-emerald-400" />}
+                </div>
+                <p className="text-3xl font-black text-slate-900">{card.valor}</p>
+                <p className="text-[10px] text-slate-500 uppercase font-bold mt-1">{card.label}</p>
+                <p className="text-xs text-slate-400 mt-0.5">{card.sub}</p>
+                {card.urgente && <p className="text-xs text-red-600 font-bold mt-1">⚠️ Requiere atención</p>}
+              </button>
+            ))}
           </div>
+
+          {/* Alertas urgentes */}
           {(dashboard?.alertas || 0) > 0 && (
-            <div className="bg-red-50 border-2 border-red-300 rounded-xl p-5">
-              <h3 className="text-sm font-bold text-red-800 flex items-center gap-2"><AlertTriangle size={16} />Alertas RGPD</h3>
-              <div className="mt-3 space-y-2">
-                {s.arco?.vencidos > 0 && <div className="flex items-center gap-2 text-sm bg-red-100 p-3 rounded-lg"><XCircle size={16} className="text-red-500" /><span className="text-red-700 font-medium">{s.arco.vencidos} solicitudes ARCO fuera de plazo (máx. 30 días)</span></div>}
-                {s.brechas?.abiertas > 0 && <div className="flex items-center gap-2 text-sm bg-red-100 p-3 rounded-lg"><Siren size={16} className="text-red-500" /><span className="text-red-700 font-medium">{s.brechas.abiertas} brechas de seguridad abiertas</span></div>}
+            <div className="bg-red-50 border-2 border-red-200 rounded-2xl p-5 mb-5">
+              <h3 className="text-sm font-bold text-red-800 mb-3 flex items-center gap-2">
+                <AlertTriangle size={16} /> Alertas RGPD — acción requerida
+              </h3>
+              <div className="space-y-2">
+                {s.arco?.vencidos > 0 && (
+                  <div className="flex items-center gap-3 p-3 bg-white rounded-xl border border-red-200">
+                    <XCircle size={14} className="text-red-500 flex-shrink-0" />
+                    <div className="flex-1">
+                      <p className="text-sm text-red-700 font-bold">{s.arco.vencidos} solicitud{s.arco.vencidos > 1 ? 'es' : ''} ARCO fuera de plazo</p>
+                      <p className="text-xs text-red-600">El plazo máximo de respuesta es 30 días (RGPD art. 12)</p>
+                    </div>
+                    <button onClick={() => setTab('arco')} className="text-xs text-red-600 hover:text-red-800 font-bold flex-shrink-0">Resolver →</button>
+                  </div>
+                )}
+                {s.brechas?.abiertas > 0 && (
+                  <div className="flex items-center gap-3 p-3 bg-white rounded-xl border border-red-200">
+                    <Siren size={14} className="text-red-500 flex-shrink-0" />
+                    <div className="flex-1">
+                      <p className="text-sm text-red-700 font-bold">{s.brechas.abiertas} brecha{s.brechas.abiertas > 1 ? 's' : ''} de seguridad abierta{s.brechas.abiertas > 1 ? 's' : ''}</p>
+                      <p className="text-xs text-red-600">Notificar a la AEPD en 72h si hay riesgo para los afectados</p>
+                    </div>
+                    <button onClick={() => setTab('brechas')} className="text-xs text-red-600 hover:text-red-800 font-bold flex-shrink-0">Gestionar →</button>
+                  </div>
+                )}
               </div>
             </div>
           )}
+
+          {/* Checklist cumplimiento RGPD */}
+          <div className="bg-white border border-slate-200 rounded-2xl p-5">
+            <h3 className="text-sm font-bold text-slate-900 mb-4 flex items-center gap-2">
+              <CheckCircle2 size={15} className="text-blue-600" /> Checklist de cumplimiento RGPD
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+              {[
+                { ok: (s.consentimientos?.vigentes||0) > 0, label: 'Consentimientos de empleados registrados', info: 'Art. 6 RGPD — base legal del tratamiento', tab: 'consentimientos' },
+                { ok: (s.tratamientos?.activos||0) > 0,    label: 'Registro de actividades de tratamiento', info: 'Art. 30 RGPD — obligatorio para empresas', tab: 'tratamientos' },
+                { ok: (s.arco?.vencidos||0) === 0,          label: 'Solicitudes ARCO dentro de plazo',        info: 'Art. 12 — respuesta máx. 30 días', tab: 'arco' },
+                { ok: (s.brechas?.abiertas||0) === 0,       label: 'Sin brechas de seguridad abiertas',       info: 'Art. 33 — notif. AEPD en 72h si aplica', tab: 'brechas' },
+                { ok: (s.consentimientos?.revocados||0) === 0 || (s.consentimientos?.vigentes||0) > 0, label: 'Revocaciones gestionadas correctamente', info: 'Art. 7.3 — derecho a retirar consentimiento', tab: 'consentimientos' },
+              ].map((item: any, i: number) => (
+                <button key={i} onClick={() => setTab(item.tab)}
+                  className={`flex items-start gap-3 p-3 rounded-xl border text-left hover:shadow-sm transition-all ${item.ok ? 'bg-emerald-50 border-emerald-200' : 'bg-amber-50 border-amber-200'}`}>
+                  {item.ok
+                    ? <CheckCircle2 size={16} className="text-emerald-600 flex-shrink-0 mt-0.5" />
+                    : <AlertTriangle size={16} className="text-amber-600 flex-shrink-0 mt-0.5" />}
+                  <div>
+                    <p className={`text-xs font-bold ${item.ok ? 'text-emerald-800' : 'text-amber-800'}`}>{item.label}</p>
+                    <p className="text-[10px] text-slate-500 mt-0.5">{item.info}</p>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
       )}
 
@@ -189,7 +251,7 @@ export default function RgpdPage() {
                     </div>
                   </div>
                   <div className="flex gap-2">
-                    <button onClick={() => generarDoc('consentimiento', { ...c, nombre_empleado: c.nombre })} disabled={!!generandoDoc} className="flex items-center gap-1.5 px-3 py-2 bg-blue-100 hover:bg-blue-200 text-blue-700 text-xs font-bold rounded-lg"><FileText size={12} /> Documento</button>
+                    <button onClick={() => setModalPlantilla({ titulo: 'Consentimiento RGPD — ' + c.nombre, datos: { nombre_empleado: c.nombre, dni: c.dni || '', centro: c.centro || '', tipo_consentimiento: c.tipo || '', finalidad: c.finalidad || '', base_legal: c.base_legal || '' } })} className="flex items-center gap-1.5 px-3 py-2 bg-blue-100 hover:bg-blue-200 text-blue-700 text-xs font-bold rounded-lg"><FileText size={12} /> Documento</button>
                     {c.estado === 'vigente' && <button onClick={() => revocar(c.id)} className="flex items-center gap-1.5 px-3 py-2 bg-red-100 hover:bg-red-200 text-red-700 text-xs font-bold rounded-lg"><XCircle size={12} /> Revocar</button>}
                   </div>
                 </div>
@@ -239,7 +301,7 @@ export default function RgpdPage() {
                     </div>
                   </div>
                   <div className="flex gap-2">
-                    <button onClick={() => generarDoc('arco', a)} disabled={!!generandoDoc} className="flex items-center gap-1.5 px-3 py-2 bg-purple-100 hover:bg-purple-200 text-purple-700 text-xs font-bold rounded-lg"><FileText size={12} /> Respuesta</button>
+                    <button onClick={() => setModalPlantilla({ titulo: 'Respuesta ARCO — ' + a.nombre, datos: { nombre_empleado: a.nombre, dni: a.dni || '', tipo_arco: a.tipo || '', fecha_solicitud_arco: a.fecha_solicitud || '', notas: a.descripcion || '' } })} className="flex items-center gap-1.5 px-3 py-2 bg-purple-100 hover:bg-purple-200 text-purple-700 text-xs font-bold rounded-lg"><FileText size={12} /> Respuesta</button>
                     {a.estado === 'pendiente' && <button onClick={() => responderArco(a.id)} className="flex items-center gap-1.5 px-3 py-2 bg-emerald-100 hover:bg-emerald-200 text-emerald-700 text-xs font-bold rounded-lg"><CheckCircle2 size={12} /> Resolver</button>}
                   </div>
                 </div>

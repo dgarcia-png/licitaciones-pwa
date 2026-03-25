@@ -16,7 +16,7 @@ const RUTA_A_CLAVE: Record<string, string> = {
   '/convenios': 'convenios', '/documentos': 'documentos', '/personal': 'personal',
   '/subrogacion': 'subrogacion', '/fichajes': 'fichajes', '/ausencias': 'ausencias',
   '/prl': 'prl', '/rgpd': 'rgpd', '/territorio': 'territorio',
-  '/configuracion': 'configuracion', '/usuarios': 'usuarios',
+  '/configuracion': 'configuracion', '/usuarios': 'usuarios', '/plantillas': 'plantillas',
 }
 
 const NAV = [
@@ -48,7 +48,8 @@ const NAV = [
   ]},
   { grupo: 'Administración', items: [
     { clave: 'configuracion', to: '/configuracion', label: 'Configuración', icon: Settings },
-    { clave: 'usuarios', to: '/usuarios', label: 'Usuarios', icon: Briefcase },
+    { clave: 'plantillas',    to: '/plantillas',    label: 'Plantillas docs', icon: FileText },
+    { clave: 'usuarios',      to: '/usuarios',       label: 'Usuarios',      icon: Briefcase },
   ]},
 ]
 

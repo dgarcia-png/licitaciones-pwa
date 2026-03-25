@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react'
+import { usePermisos } from '../hooks/usePermisos'
 import { api } from '../services/api'
+import ModalPlantilla from '../components/ModalPlantilla'
 import {
   Shield, Loader2, Plus, AlertTriangle, CheckCircle2, XCircle, Clock,
   HardHat, Stethoscope, GraduationCap, Siren, X, Save, ChevronDown, ChevronUp,
@@ -15,6 +17,7 @@ const MODALIDADES = ['Presencial', 'Online', 'Mixta']
 const TIPOS_RECO = ['Inicial', 'Periódico', 'Reincorporación', 'Cambio puesto']
 
 export default function PrlPage() {
+  const { esAdmin, esAdminRRHH, puedeGestionarRRHH } = usePermisos()
   const [tab, setTab] = useState<string>('dashboard')
   const [cargando, setCargando] = useState(true)
   const [dashboard, setDashboard] = useState<any>(null)
@@ -29,9 +32,13 @@ export default function PrlPage() {
   const [mostrarForm, setMostrarForm] = useState(false)
   const [guardando, setGuardando] = useState(false)
   const [generandoDoc, setGenerandoDoc] = useState<string|null>(null)
+  const [modalPlantilla, setModalPlantilla] = useState<{ datos: any; titulo: string } | null>(null)
   const [msg, setMsg] = useState('')
+  const showMsg = (m: string) => { setMsg(m); setTimeout(() => setMsg(''), 4000) }
   const [form, setForm] = useState<any>({})
   const [expandido, setExpandido] = useState<string|null>(null)
+  const [filtroEmp, setFiltroEmp] = useState('')
+  const [vistaEmp, setVistaEmp] = useState<any>(null)
 
   const cargar = async () => {
     setCargando(true)
@@ -41,6 +48,13 @@ export default function PrlPage() {
       setEmpleados(data.empleados?.empleados || [])
     } catch (e: any) { console.error(e) }
     finally { setCargando(false) }
+    // Cargar datos para semáforos en background
+    Promise.all([api.prlEpis(), api.prlReconocimientos(), api.prlFormacion()])
+      .then(([e, r, f]) => {
+        setEpis(e.epis || [])
+        setReconocimientos(r.reconocimientos || [])
+        setFormaciones(f.formaciones || [])
+      }).catch(() => {})
   }
 
   const cargarTab = async (t: string) => {
@@ -118,6 +132,16 @@ export default function PrlPage() {
 
   return (
     <div className="p-6 lg:p-8 max-w-6xl">
+      {/* Modal selector de plantillas */}
+      {modalPlantilla && (
+        <ModalPlantilla
+          modulo="PRL"
+          datos={modalPlantilla.datos}
+          titulo={modalPlantilla.titulo}
+          onCerrar={() => setModalPlantilla(null)}
+          onGenerado={(url) => { showMsg('✅ Documento generado'); setModalPlantilla(null) }}
+        />
+      )}
       <div className="flex items-center gap-4 mb-6">
         <div className="p-2.5 bg-gradient-to-br from-orange-600 to-red-700 rounded-xl shadow-lg shadow-orange-200"><Shield size={22} className="text-white" /></div>
         <div><h1 className="text-2xl font-bold text-slate-900">Prevención de Riesgos Laborales</h1><p className="text-sm text-slate-500">{dashboard?.alertas_total || 0} alertas activas</p></div>
@@ -141,32 +165,104 @@ export default function PrlPage() {
 
       {msg && <div className={`mb-4 p-4 rounded-xl text-sm font-medium ${msg.includes('✅') ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-red-50 text-red-700 border border-red-200'}`}>{msg}</div>}
 
-      {/* ═══ DASHBOARD ═══ */}
+      {/* ═══ DASHBOARD MEJORADO ═══ */}
       {tab === 'dashboard' && s && (
         <div>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+          {/* KPIs con semáforos */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-5">
             {[
-              { icon: HardHat, label: 'EPIs', total: s.epis?.total, alert: s.epis?.caducados ? s.epis.caducados + ' caducados' : '', color: 'text-orange-600' },
-              { icon: Stethoscope, label: 'Reconocimientos', total: s.reconocimientos?.total, alert: s.reconocimientos?.vencidos ? s.reconocimientos.vencidos + ' vencidos' : '', color: 'text-red-600' },
-              { icon: GraduationCap, label: 'Formación', total: s.formacion?.total, alert: s.formacion?.caducadas ? s.formacion.caducadas + ' caducadas' : '', color: 'text-emerald-600' },
-              { icon: Siren, label: 'Accidentes', total: s.accidentes?.total, alert: s.accidentes?.con_baja ? s.accidentes.con_baja + ' con baja' : '', color: 'text-purple-600' },
-            ].map((card: any, i: number) => (
-              <div key={i} className={`bg-white border ${card.alert ? 'border-amber-200' : 'border-slate-200'} rounded-xl p-5`}>
-                <div className="flex items-center gap-2 mb-2"><card.icon size={18} className={card.color} /><span className="text-[10px] text-slate-500 uppercase font-bold">{card.label}</span></div>
-                <p className="text-3xl font-black text-slate-900">{card.total || 0}</p>
-                {card.alert && <p className="text-xs text-red-600 mt-1 font-medium">{card.alert}</p>}
-              </div>
-            ))}
+              { icon: HardHat,      label: 'EPIs',            total: s.epis?.total||0,            urgente: s.epis?.caducados||0,            aviso: s.epis?.por_caducar||0,            color: 'text-orange-600', bg: 'bg-orange-50', border: 'border-orange-200', tab: 'epis' },
+              { icon: Stethoscope,  label: 'Reconocimientos', total: s.reconocimientos?.total||0,  urgente: s.reconocimientos?.vencidos||0,  aviso: s.reconocimientos?.por_vencer||0,  color: 'text-red-600',    bg: 'bg-red-50',    border: 'border-red-200',    tab: 'reconocimientos' },
+              { icon: GraduationCap,label: 'Formación',       total: s.formacion?.total||0,        urgente: s.formacion?.caducadas||0,       aviso: s.formacion?.por_caducar||0,       color: 'text-emerald-600',bg: 'bg-emerald-50',border: 'border-emerald-200',tab: 'formacion' },
+              { icon: Siren,        label: 'Accidentes',      total: s.accidentes?.total||0,        urgente: s.accidentes?.abiertos||0,       aviso: s.accidentes?.con_baja||0,         color: 'text-purple-600', bg: 'bg-purple-50', border: 'border-purple-200', tab: 'accidentes' },
+            ].map((card: any) => {
+              const hayUrgente = card.urgente > 0
+              const hayAviso   = card.aviso > 0
+              return (
+                <button key={card.tab} onClick={() => { setTab(card.tab); setMostrarForm(false) }}
+                  className={`text-left p-4 rounded-2xl border-2 transition-all hover:shadow-md ${hayUrgente ? 'border-red-300 bg-red-50' : hayAviso ? 'border-amber-200 bg-amber-50' : 'border-slate-200 bg-white'}`}>
+                  <div className="flex items-center justify-between mb-2">
+                    <card.icon size={20} className={card.color} />
+                    {hayUrgente ? <span className="w-3 h-3 rounded-full bg-red-500 animate-pulse" /> : hayAviso ? <span className="w-3 h-3 rounded-full bg-amber-400" /> : <span className="w-3 h-3 rounded-full bg-emerald-400" />}
+                  </div>
+                  <p className="text-3xl font-black text-slate-900">{card.total}</p>
+                  <p className="text-[10px] text-slate-500 uppercase font-bold mt-1">{card.label}</p>
+                  {hayUrgente && <p className="text-xs text-red-600 font-bold mt-1">⚠️ {card.urgente} urgente{card.urgente > 1 ? 's' : ''}</p>}
+                  {!hayUrgente && hayAviso && <p className="text-xs text-amber-700 font-medium mt-1">⏰ {card.aviso} próximo{card.aviso > 1 ? 's' : ''}</p>}
+                  {!hayUrgente && !hayAviso && <p className="text-xs text-emerald-600 font-medium mt-1">✓ Al día</p>}
+                </button>
+              )
+            })}
           </div>
+
+          {/* Panel alertas urgentes */}
           {(dashboard?.alertas_total || 0) > 0 && (
-            <div className="bg-amber-50 border-2 border-amber-300 rounded-xl p-5">
-              <h3 className="text-sm font-bold text-amber-800 mb-3 flex items-center gap-2"><AlertTriangle size={16} />Alertas activas ({dashboard.alertas_total})</h3>
+            <div className="bg-red-50 border-2 border-red-200 rounded-2xl p-5 mb-5">
+              <h3 className="text-sm font-bold text-red-800 mb-3 flex items-center gap-2">
+                <AlertTriangle size={16} /> Requieren atención inmediata ({dashboard.alertas_total})
+              </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                {s.epis?.caducados > 0 && <div className="flex items-center gap-2 text-sm bg-red-50 p-3 rounded-lg"><XCircle size={16} className="text-red-500 shrink-0" /><span className="text-red-700 font-medium">{s.epis.caducados} EPIs caducados</span></div>}
-                {s.reconocimientos?.vencidos > 0 && <div className="flex items-center gap-2 text-sm bg-red-50 p-3 rounded-lg"><XCircle size={16} className="text-red-500 shrink-0" /><span className="text-red-700 font-medium">{s.reconocimientos.vencidos} reconocimientos vencidos</span></div>}
-                {s.formacion?.caducadas > 0 && <div className="flex items-center gap-2 text-sm bg-amber-50 p-3 rounded-lg"><Clock size={16} className="text-amber-500 shrink-0" /><span className="text-amber-700 font-medium">{s.formacion.caducadas} formaciones caducadas</span></div>}
-                {s.accidentes?.abiertos > 0 && <div className="flex items-center gap-2 text-sm bg-purple-50 p-3 rounded-lg"><Siren size={16} className="text-purple-500 shrink-0" /><span className="text-purple-700 font-medium">{s.accidentes.abiertos} accidentes abiertos</span></div>}
+                {s.epis?.caducados > 0 && <div className="flex items-center gap-2 p-3 bg-white rounded-xl border border-red-200"><XCircle size={14} className="text-red-500 flex-shrink-0" /><span className="text-sm text-red-700 font-medium">{s.epis.caducados} EPI{s.epis.caducados > 1 ? 's' : ''} caducado{s.epis.caducados > 1 ? 's' : ''}</span><button onClick={() => setTab('epis')} className="ml-auto text-xs text-red-600 hover:text-red-800 font-bold">Ver →</button></div>}
+                {s.epis?.por_caducar > 0 && <div className="flex items-center gap-2 p-3 bg-white rounded-xl border border-amber-200"><Clock size={14} className="text-amber-500 flex-shrink-0" /><span className="text-sm text-amber-700 font-medium">{s.epis.por_caducar} EPI{s.epis.por_caducar > 1 ? 's' : ''} caducan en 90 días</span><button onClick={() => setTab('epis')} className="ml-auto text-xs text-amber-600 hover:text-amber-800 font-bold">Ver →</button></div>}
+                {s.reconocimientos?.vencidos > 0 && <div className="flex items-center gap-2 p-3 bg-white rounded-xl border border-red-200"><XCircle size={14} className="text-red-500 flex-shrink-0" /><span className="text-sm text-red-700 font-medium">{s.reconocimientos.vencidos} reconocimiento{s.reconocimientos.vencidos > 1 ? 's' : ''} vencido{s.reconocimientos.vencidos > 1 ? 's' : ''}</span><button onClick={() => setTab('reconocimientos')} className="ml-auto text-xs text-red-600 hover:text-red-800 font-bold">Ver →</button></div>}
+                {s.reconocimientos?.por_vencer > 0 && <div className="flex items-center gap-2 p-3 bg-white rounded-xl border border-amber-200"><Clock size={14} className="text-amber-500 flex-shrink-0" /><span className="text-sm text-amber-700 font-medium">{s.reconocimientos.por_vencer} reconocimiento{s.reconocimientos.por_vencer > 1 ? 's' : ''} próximos a vencer</span><button onClick={() => setTab('reconocimientos')} className="ml-auto text-xs text-amber-600 hover:text-amber-800 font-bold">Ver →</button></div>}
+                {s.formacion?.caducadas > 0 && <div className="flex items-center gap-2 p-3 bg-white rounded-xl border border-red-200"><XCircle size={14} className="text-red-500 flex-shrink-0" /><span className="text-sm text-red-700 font-medium">{s.formacion.caducadas} formación PRL caducada</span><button onClick={() => setTab('formacion')} className="ml-auto text-xs text-red-600 hover:text-red-800 font-bold">Ver →</button></div>}
+                {s.accidentes?.abiertos > 0 && <div className="flex items-center gap-2 p-3 bg-white rounded-xl border border-purple-200"><Siren size={14} className="text-purple-500 flex-shrink-0" /><span className="text-sm text-purple-700 font-medium">{s.accidentes.abiertos} accidente{s.accidentes.abiertos > 1 ? 's' : ''} sin cerrar</span><button onClick={() => setTab('accidentes')} className="ml-auto text-xs text-purple-600 hover:text-purple-800 font-bold">Ver →</button></div>}
               </div>
+            </div>
+          )}
+
+          {/* Estado por empleado */}
+          {empleados.length > 0 && (
+            <div className="bg-white border border-slate-200 rounded-2xl p-5">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2"><User size={15} className="text-slate-600" />Estado PRL por empleado</h3>
+                <div className="relative">
+                  <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <input type="text" placeholder="Buscar..." value={filtroEmp} onChange={(e: any) => setFiltroEmp(e.target.value)}
+                    className="pl-8 pr-3 py-1.5 border border-slate-200 rounded-lg text-xs w-40" />
+                </div>
+              </div>
+              <div className="space-y-2">
+                {empleados.filter((e: any) => e.estado === 'activo').filter((e: any) => !filtroEmp || (e.nombre + ' ' + e.apellidos).toLowerCase().includes(filtroEmp.toLowerCase())).map((emp: any) => {
+                  const misEpis    = epis.length > 0 ? epis.filter((x: any) => x.dni === emp.dni) : []
+                  const misRecos   = reconocimientos.length > 0 ? reconocimientos.filter((x: any) => x.dni === emp.dni) : []
+                  const misForm    = formaciones.length > 0 ? formaciones.filter((x: any) => x.dni === emp.dni) : []
+
+                  const epiCad    = misEpis.some((x: any) => x.alerta === 'caducado')
+                  const recoCad   = misRecos.some((x: any) => x.alerta)
+                  const formCad   = misForm.some((x: any) => x.alerta === 'caducado')
+                  const sinReco   = misRecos.length === 0
+                  const sinForm   = misForm.length === 0
+                  const urgente   = epiCad || recoCad || formCad
+                  const aviso     = sinReco || sinForm
+
+                  return (
+                    <div key={emp.id} className={`flex items-center gap-3 p-3 rounded-xl border ${urgente ? 'bg-red-50 border-red-200' : aviso ? 'bg-amber-50 border-amber-200' : 'bg-slate-50 border-slate-200'}`}>
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ${urgente ? 'bg-red-200 text-red-800' : aviso ? 'bg-amber-200 text-amber-800' : 'bg-emerald-100 text-emerald-800'}`}>
+                        {(emp.nombre||'?')[0]}{(emp.apellidos||'')[0]}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-bold text-slate-900 truncate">{emp.nombre} {emp.apellidos}</p>
+                        <p className="text-[10px] text-slate-500">{emp.centro || 'Sin centro'}</p>
+                      </div>
+                      <div className="flex gap-1.5 flex-shrink-0">
+                        <span title="EPIs" className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${epiCad ? 'bg-red-200 text-red-800' : 'bg-slate-200 text-slate-600'}`}>EPI</span>
+                        <span title="Reconocimiento" className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${recoCad ? 'bg-red-200 text-red-800' : sinReco ? 'bg-amber-200 text-amber-800' : 'bg-emerald-100 text-emerald-700'}`}>REC</span>
+                        <span title="Formación" className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${formCad ? 'bg-red-200 text-red-800' : sinForm ? 'bg-amber-200 text-amber-800' : 'bg-emerald-100 text-emerald-700'}`}>FORM</span>
+                      </div>
+                      {(urgente || aviso) && (
+                        <span className={`text-[9px] font-bold flex-shrink-0 ${urgente ? 'text-red-600' : 'text-amber-700'}`}>
+                          {urgente ? '⚠️ Urgente' : '⏰ Pendiente'}
+                        </span>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+              {empleados.filter((e: any) => e.estado === 'activo').length === 0 && (
+                <p className="text-xs text-slate-400 text-center py-4">Carga empleados desde la pestaña Personal para ver el estado PRL individual</p>
+              )}
             </div>
           )}
         </div>
@@ -211,10 +307,9 @@ export default function PrlPage() {
                     </div>
                     <div className="flex items-center gap-3">
                       {persona.items.some((e: any) => e.alerta === 'caducado') && <span className="px-2 py-1 bg-red-100 text-red-700 text-[10px] font-bold rounded-full">CADUCADOS</span>}
-                      <button onClick={(ev) => { ev.stopPropagation(); generarDoc('recibi_epi', { nombre_empleado: persona.nombre, nombre: persona.nombre, dni: persona.dni, centro: persona.centro, items: persona.items.map((e: any) => ({ tipo: e.tipo, descripcion: e.descripcion || '', talla: String(e.talla || ''), cantidad: e.cantidad || 1, fecha_caducidad: e.fecha_caducidad || '' })) }) }}
-                        disabled={generandoDoc === 'recibi_all_'+persona.nombre}
-                        className="flex items-center gap-2 px-4 py-2 bg-orange-600 hover:bg-orange-700 disabled:bg-orange-300 text-white text-xs font-bold rounded-lg">
-                        {generandoDoc === 'recibi_all_'+persona.nombre ? <Loader2 size={14} className="animate-spin" /> : <FileText size={14} />} Recibí completo
+                      <button onClick={(ev) => { ev.stopPropagation(); setModalPlantilla({ titulo: 'Recibí EPI — ' + persona.nombre, datos: { nombre_empleado: persona.nombre, dni: persona.dni, centro: persona.centro, tipo_epi: persona.items[0]?.tipo || '', descripcion_epi: persona.items[0]?.descripcion || '', cantidad_epi: String(persona.items[0]?.cantidad || 1), talla_epi: String(persona.items[0]?.talla || ''), caducidad_epi: persona.items[0]?.fecha_caducidad || '' } }) }}
+                        className="flex items-center gap-2 px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white text-xs font-bold rounded-lg">
+                        <FileText size={14} /> Generar documento
                       </button>
                       {expandido === 'epi_'+persona.nombre ? <ChevronUp size={16} className="text-slate-400" /> : <ChevronDown size={16} className="text-slate-400" />}
                     </div>
@@ -279,9 +374,9 @@ export default function PrlPage() {
                     <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center"><User size={18} className="text-red-600" /></div>
                     <div><h3 className="text-sm font-bold">{persona.nombre}</h3><p className="text-xs text-slate-500">{persona.dni} · {persona.centro}</p></div>
                   </div>
-                  <button onClick={() => generarDoc('notif_reconocimiento', { nombre_empleado: persona.nombre, nombre: persona.nombre, dni: persona.dni, centro: persona.centro, tipo: persona.items[0]?.tipo })}
-                    disabled={!!generandoDoc} className="flex items-center gap-2 px-4 py-2 bg-red-700 hover:bg-red-800 disabled:bg-red-300 text-white text-xs font-bold rounded-lg">
-                    {generandoDoc ? <Loader2 size={14} className="animate-spin" /> : <FileText size={14} />} Generar notificación
+                  <button onClick={() => setModalPlantilla({ titulo: 'Reconocimiento médico — ' + persona.nombre, datos: { nombre_empleado: persona.nombre, dni: persona.dni, centro: persona.centro, tipo_reconocimiento: persona.items[0]?.tipo || '', resultado_reconocimiento: persona.items[0]?.apto || '', fecha_reconocimiento: persona.items[0]?.fecha || '', proximo_reconocimiento: persona.items[0]?.fecha_proximo || '' } })}
+                    className="flex items-center gap-2 px-4 py-2 bg-red-700 hover:bg-red-800 text-white text-xs font-bold rounded-lg">
+                    <FileText size={14} /> Generar documento
                   </button>
                 </div>
                 {persona.items.map((r: any) => (
@@ -333,9 +428,9 @@ export default function PrlPage() {
                     <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center"><User size={18} className="text-emerald-600" /></div>
                     <div><h3 className="text-sm font-bold">{persona.nombre}</h3><p className="text-xs text-slate-500">{persona.dni} · {persona.items.length} curso{persona.items.length !== 1 ? 's' : ''}</p></div>
                   </div>
-                  <button onClick={() => generarDoc('acta_formacion', { nombre_empleado: persona.nombre, nombre: persona.nombre, dni: persona.dni, centro: persona.centro, curso: persona.items[0]?.curso, horas: persona.items[0]?.horas, modalidad: persona.items[0]?.modalidad, entidad: persona.items[0]?.entidad, fecha_fin: persona.items[0]?.fecha_fin })}
-                    disabled={!!generandoDoc} className="flex items-center gap-2 px-4 py-2 bg-emerald-700 hover:bg-emerald-800 disabled:bg-emerald-300 text-white text-xs font-bold rounded-lg">
-                    {generandoDoc ? <Loader2 size={14} className="animate-spin" /> : <FileText size={14} />} Generar acta
+                  <button onClick={() => setModalPlantilla({ titulo: 'Formación PRL — ' + persona.nombre, datos: { nombre_empleado: persona.nombre, dni: persona.dni, centro: persona.centro, curso_prl: persona.items[0]?.curso || '', horas_formacion: String(persona.items[0]?.horas || ''), entidad_formadora: persona.items[0]?.entidad || '', fecha_formacion: persona.items[0]?.fecha_fin || '' } })}
+                    className="flex items-center gap-2 px-4 py-2 bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold rounded-lg">
+                    <FileText size={14} /> Generar documento
                   </button>
                 </div>
                 {persona.items.map((f: any) => (
@@ -432,9 +527,9 @@ export default function PrlPage() {
                         <p className={`text-sm font-bold ${a.dias < 0 ? 'text-red-700' : 'text-amber-700'}`}>{a.dias < 0 ? 'Vencido hace ' + Math.abs(a.dias) + 'd' : 'Caduca en ' + a.dias + 'd'}</p>
                         <p className="text-xs text-slate-500">{fmtDate(a.fecha_caducidad)}</p>
                       </div>
-                      <button onClick={() => generarDoc('aviso_caducidad', a)} disabled={!!generandoDoc}
-                        className="flex items-center gap-2 px-5 py-3 bg-amber-600 hover:bg-amber-700 disabled:bg-amber-300 text-white text-xs font-bold rounded-xl">
-                        {generandoDoc ? <Loader2 size={14} className="animate-spin" /> : <FileText size={14} />} Generar aviso
+                      <button onClick={() => setModalPlantilla({ titulo: 'Aviso caducidad — ' + a.nombre, datos: { nombre_empleado: a.nombre, dni: a.dni, centro: a.centro || '', tipo_epi: a.subtipo || a.tipo || '', caducidad_epi: a.fecha_caducidad || '', notas: (a.dias < 0 ? 'Vencido hace ' + Math.abs(a.dias) + ' días' : 'Caduca en ' + a.dias + ' días') } })}
+                        className="flex items-center gap-2 px-5 py-3 bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold rounded-xl">
+                        <FileText size={14} /> Generar aviso
                       </button>
                     </div>
                   </div>
