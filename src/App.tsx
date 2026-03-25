@@ -27,6 +27,8 @@ const ConfiguracionPage = lazy(() => import('./pages/ConfiguracionPage'))
 const UsuariosPage = lazy(() => import('./pages/UsuariosPage'))
 const PlantillasPage = lazy(() => import('./pages/PlantillasPage'))
 const PortalEmpleadoPage = lazy(() => import('./pages/PortalEmpleadoPage'))
+const DashboardRRHHPage = lazy(() => import('./pages/DashboardRRHHPage'))
+const DashboardLicitacionesPage = lazy(() => import('./pages/DashboardLicitacionesPage'))
 
 function PageLoader() {
   return <div className="flex flex-col items-center justify-center py-20"><Loader2 size={28} className="text-[#1a3c34] animate-spin mb-2" /><p className="text-sm text-slate-400">Cargando...</p></div>
@@ -67,6 +69,8 @@ function AppRoutes() {
           <Route path="/usuarios" element={<UsuariosPage />} />
           <Route path="/plantillas" element={<PlantillasPage />} />
           <Route path="/portal" element={<PortalEmpleadoPage />} />
+          <Route path="/dashboard-rrhh" element={<DashboardRRHHPage />} />
+          <Route path="/licitaciones-dashboard" element={<DashboardLicitacionesPage />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

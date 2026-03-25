@@ -118,11 +118,20 @@ export default function PortalEmpleadoPage() {
     if (!empInfo) return
     setFichando(true)
     try {
-      const accion = estado?.estado === 'fichado' ? 'salida' : 'entrada'
+      const accion = estado?.fichado ? 'salida' : 'entrada'
       const r = await api.fichar({ id_empleado: empInfo.id, tipo: accion, lat: gps?.lat, lng: gps?.lng })
       if (r.ok) {
         showMsg(accion === 'entrada' ? '✅ Entrada registrada' : '✅ Salida registrada')
+        // Limpiar TODA la caché local
+        Object.keys(localStorage).filter(k => k.startsWith('fc_')).forEach(k => localStorage.removeItem(k))
+        // Esperar 1.5s para que GAS procese
+        await new Promise(res => setTimeout(res, 1500))
+        // Actualizar estado con datos frescos directamente desde la API
         const est = await api.estadoFichaje(empInfo.id)
+        setEstado(est)
+        // Actualizar también el resumen
+        const r2 = await api.resumenDiarioFichajes(empInfo.id, String(mes), String(anio))
+        setResumen(r2)
         setEstado(est)
       } else showMsg(r.error || 'Error al fichar', 'err')
     } catch (e: any) { showMsg('Error de conexión', 'err') }
@@ -166,8 +175,8 @@ export default function PortalEmpleadoPage() {
     </div>
   )
 
-  const fichado = estado?.estado === 'fichado'
-  const horaEntrada = estado?.ultima_entrada ? fmtHora(estado.ultima_entrada) : null
+  const fichado = !!estado?.fichado
+  const horaEntrada = estado?.fichajes_hoy?.find((f: any) => f.tipo === 'entrada')?.hora || null
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col max-w-md mx-auto">
@@ -204,7 +213,7 @@ export default function PortalEmpleadoPage() {
           <div className="p-4 space-y-4">
 
             {/* Botón fichar */}
-            <div className={`rounded-3xl p-6 text-center shadow-lg ${fichado ? 'bg-gradient-to-br from-emerald-600 to-emerald-700' : 'bg-gradient-to-br from-[#1a3c34] to-[#2d5a4e]'}`}>
+            <div className={`rounded-3xl p-6 text-center shadow-lg ${fichado ? 'bg-gradient-to-br from-red-600 to-red-700' : 'bg-gradient-to-br from-[#1a3c34] to-[#2d5a4e]'}`}>
               {fichado && horaEntrada && (
                 <p className="text-white/70 text-xs mb-2">Entrada registrada a las {horaEntrada}</p>
               )}

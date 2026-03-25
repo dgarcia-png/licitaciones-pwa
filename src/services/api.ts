@@ -1,4 +1,4 @@
-const API_BASE = 'https://script.google.com/macros/s/AKfycbxgiSmDVrtuYRWlcsFOhImaN5uwagJ0yHZ8Y1nFU8we0dKDI4HzFgPgnfkoFWFJszs8wA/exec'
+const API_BASE = 'https://script.google.com/macros/s/AKfycbx73bo30qGroXx6TArXZ5jo_NX2cw1zBve9jcoa4UJEQWsTjc06-Vk4FP0NPjqg-xt1uA/exec'
 
 function getToken(): string { return localStorage.getItem('auth_token') || '' }
 
@@ -257,6 +257,8 @@ export const api = {
   expediente: (id_empleado: string) => fetchAPI('expediente', { id: id_empleado }),
 
   // ═══ PLANTILLAS DOCUMENTALES ═══
+  dashboardRRHH: () => fetchAPI('dashboard_rrhh', {}),
+  generarInformeFichajes: (id_empleado: string, mes: string, anio: string) => postAPI({ action: 'generar_informe_fichajes', id_empleado, mes, anio }),
   plantillas: (modulo?: string) => fetchAPI('obtener_plantillas', modulo ? { modulo } : {}),
   registrarPlantilla: (data: any) => postAPI({ action: 'registrar_plantilla', ...data }),
   crearPlantillaVacia: (data: any) => postAPI({ action: 'crear_plantilla_vacia', ...data }),

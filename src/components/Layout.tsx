@@ -16,7 +16,7 @@ const RUTA_A_CLAVE: Record<string, string> = {
   '/convenios': 'convenios', '/documentos': 'documentos', '/personal': 'personal',
   '/subrogacion': 'subrogacion', '/fichajes': 'fichajes', '/ausencias': 'ausencias',
   '/prl': 'prl', '/rgpd': 'rgpd', '/territorio': 'territorio',
-  '/configuracion': 'configuracion', '/usuarios': 'usuarios', '/plantillas': 'plantillas', '/portal': 'portal',
+  '/configuracion': 'configuracion', '/usuarios': 'usuarios', '/plantillas': 'plantillas', '/portal': 'portal', '/dashboard-rrhh': 'dashboard-rrhh', '/licitaciones-dashboard': 'licitaciones-dashboard',
 }
 
 const NAV = [
@@ -24,16 +24,18 @@ const NAV = [
     { clave: 'dashboard', to: '/', label: 'Dashboard', icon: LayoutDashboard },
   ]},
   { grupo: 'Licitaciones', items: [
+    { clave: 'licitaciones-dashboard', to: '/licitaciones-dashboard', label: 'Dashboard', icon: BarChart3 },
     { clave: 'oportunidades', to: '/oportunidades', label: 'Oportunidades', icon: FileSearch },
     { clave: 'nueva', to: '/oportunidades/nueva', label: 'Nueva licitación', icon: PlusCircle },
-    { clave: 'analisis', to: '/analisis', label: 'Análisis IA', icon: BarChart3 },
+    { clave: 'analisis', to: '/analisis', label: 'Análisis IA', icon: Activity },
     { clave: 'calculo', to: '/calculo', label: 'Cálculo económico', icon: Calculator },
     { clave: 'decisiones', to: '/decisiones', label: 'GO/NO-GO', icon: Gavel },
     { clave: 'oferta', to: '/oferta', label: 'Generar oferta', icon: FileText },
-    { clave: 'seguimiento', to: '/seguimiento', label: 'Seguimiento', icon: Activity },
+    { clave: 'seguimiento', to: '/seguimiento', label: 'Seguimiento', icon: ClipboardList },
     { clave: 'conocimiento', to: '/conocimiento', label: 'Base conocimiento', icon: BookOpen },
   ]},
   { grupo: 'RRHH', items: [
+    { clave: 'dashboard-rrhh', to: '/dashboard-rrhh', label: 'Dashboard RRHH', icon: BarChart3 },
     { clave: 'personal', to: '/personal', label: 'Personal', icon: Users },
     { clave: 'subrogacion', to: '/subrogacion', label: 'Subrogación', icon: UserCheck },
     { clave: 'fichajes', to: '/fichajes', label: 'Fichajes', icon: Clock },

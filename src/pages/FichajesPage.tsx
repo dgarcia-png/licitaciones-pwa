@@ -4,7 +4,7 @@ import { usePermisos } from '../hooks/usePermisos'
 import {
   Clock, LogIn, LogOut, Users, Calendar, ChevronLeft, ChevronRight,
   AlertTriangle, Loader2, MapPin, CheckCircle2, TrendingUp,
-  Activity, RefreshCw, X
+  Activity, RefreshCw, X, FileText
 } from 'lucide-react'
 
 function fmtDate(d: any) {
@@ -34,6 +34,7 @@ export default function FichajesPage() {
   const [horaActual, setHoraActual] = useState(new Date().toLocaleTimeString('es-ES'))
   const [resumen, setResumen] = useState<any>(null)
   const [resumenMensual, setResumenMensual] = useState<any>(null)
+  const [generandoInforme, setGenerandoInforme] = useState<string|null>(null)
   const [mes, setMes] = useState(new Date().getMonth() + 1)
   const [anio, setAnio] = useState(new Date().getFullYear())
   const [recargando, setRecargando] = useState(false)
@@ -412,10 +413,12 @@ export default function FichajesPage() {
         <div>
           <div className="flex justify-between items-center mb-5">
             <p className="text-sm text-slate-600">{empleados.length} empleados</p>
-            <div className="flex items-center gap-1 bg-white border border-slate-200 rounded-xl p-1">
-              <button onClick={() => { if (mes === 1) { setMes(12); setAnio(anio - 1) } else setMes(mes - 1) }} className="p-2 hover:bg-slate-100 rounded-lg"><ChevronLeft size={16} /></button>
-              <span className="text-sm font-semibold px-3 whitespace-nowrap">{MESES[mes]} {anio}</span>
-              <button onClick={() => { if (mes === 12) { setMes(1); setAnio(anio + 1) } else setMes(mes + 1) }} className="p-2 hover:bg-slate-100 rounded-lg"><ChevronRight size={16} /></button>
+            <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1 bg-white border border-slate-200 rounded-xl p-1">
+                <button onClick={() => { if (mes === 1) { setMes(12); setAnio(anio - 1) } else setMes(mes - 1) }} className="p-2 hover:bg-slate-100 rounded-lg"><ChevronLeft size={16} /></button>
+                <span className="text-sm font-semibold px-3 whitespace-nowrap">{MESES[mes]} {anio}</span>
+                <button onClick={() => { if (mes === 12) { setMes(1); setAnio(anio + 1) } else setMes(mes + 1) }} className="p-2 hover:bg-slate-100 rounded-lg"><ChevronRight size={16} /></button>
+              </div>
             </div>
           </div>
 
@@ -434,9 +437,27 @@ export default function FichajesPage() {
                         <p className="text-xs text-slate-500">{r.dni} · {r.centro || '—'}</p>
                       </div>
                     </div>
-                    <div className="text-right">
-                      <p className="text-sm font-bold font-mono">{r.total_horas}</p>
-                      <p className="text-xs text-slate-500">{r.dias_trabajados} días</p>
+                    <div className="flex items-center gap-3">
+                      <div className="text-right">
+                        <p className="text-sm font-bold font-mono">{r.total_horas}</p>
+                        <p className="text-xs text-slate-500">{r.dias_trabajados} días</p>
+                      </div>
+                      <button
+                        onClick={async () => {
+                          setGenerandoInforme(r.id)
+                          try {
+                            const res = await (api as any).generarInformeFichajes(r.id, String(mes), String(anio))
+                            if (res.ok) window.open(res.url, '_blank')
+                            else alert('Error: ' + (res.error || 'No se pudo generar'))
+                          } catch(e) { alert('Error de conexión') }
+                          finally { setGenerandoInforme(null) }
+                        }}
+                        disabled={generandoInforme === r.id}
+                        title="Generar informe mensual RD-ley 8/2019"
+                        className="flex items-center gap-1.5 px-3 py-2 bg-[#1a3c34] hover:bg-[#2d5a4e] disabled:bg-slate-300 text-white text-xs font-bold rounded-lg">
+                        {generandoInforme === r.id ? <Loader2 size={13} className="animate-spin" /> : <FileText size={13} />}
+                        Informe
+                      </button>
                     </div>
                   </div>
                 ))}
