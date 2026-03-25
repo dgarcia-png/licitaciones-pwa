@@ -1,0 +1,512 @@
+import { useState, useEffect, useRef } from 'react'
+import { api } from '../services/api'
+import { usePermisos } from '../hooks/usePermisos'
+import {
+  Clock, LogIn, LogOut, Users, Calendar, ChevronLeft, ChevronRight,
+  AlertTriangle, Loader2, MapPin, CheckCircle2, TrendingUp,
+  Activity, RefreshCw, X
+} from 'lucide-react'
+
+function fmtDate(d: any) {
+  if (!d) return ''
+  try { const date = new Date(d); if (isNaN(date.getTime())) return String(d); return date.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' }) } catch { return String(d) }
+}
+function minToHM(min: number) {
+  if (!min || min <= 0) return '—'
+  return Math.floor(min / 60) + 'h ' + String(Math.floor(min % 60)).padStart(2, '0') + 'm'
+}
+const MESES = ['', 'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre']
+
+export default function FichajesPage() {
+  const permisos = usePermisos()
+  const { usuario, esAdmin, esSupervisor, soloSusDatos, centrosAsignados } = permisos
+
+  const [tab, setTab] = useState('fichar')
+  const [cargando, setCargando] = useState(true)
+  const [empleados, setEmpleados] = useState<any[]>([])
+  const [empSel, setEmpSel] = useState('')
+  const [empInfo, setEmpInfo] = useState<any>(null)
+  const [estado, setEstado] = useState<any>(null)
+  const [fichando, setFichando] = useState(false)
+  const [msg, setMsg] = useState('')
+  const [gps, setGps] = useState<{ lat: number; lng: number } | null>(null)
+  const [gpsError, setGpsError] = useState('')
+  const [horaActual, setHoraActual] = useState(new Date().toLocaleTimeString('es-ES'))
+  const [resumen, setResumen] = useState<any>(null)
+  const [resumenMensual, setResumenMensual] = useState<any>(null)
+  const [mes, setMes] = useState(new Date().getMonth() + 1)
+  const [anio, setAnio] = useState(new Date().getFullYear())
+  const [recargando, setRecargando] = useState(false)
+
+  // Ref para evitar doble carga inicial
+  const cargadoRef = useRef(false)
+
+  const showMsg = (m: string) => { setMsg(m); setTimeout(() => setMsg(''), 5000) }
+
+  // Reloj
+  useEffect(() => {
+    const t = setInterval(() => setHoraActual(new Date().toLocaleTimeString('es-ES')), 1000)
+    return () => clearInterval(t)
+  }, [])
+
+  // Carga inicial — una sola vez
+  useEffect(() => {
+    if (cargadoRef.current) return
+    cargadoRef.current = true
+    cargarEmpleados()
+  }, [])
+
+  const cargarEmpleados = async () => {
+    setCargando(true)
+    try {
+      const data = await api.empleados()
+      let emps: any[] = (data.empleados || []).filter((e: any) => e.estado === 'activo')
+
+      // Filtrar por centros si supervisor
+      if (esSupervisor && !esAdmin && centrosAsignados.length > 0) {
+        emps = emps.filter((e: any) => centrosAsignados.includes(e.centro) || centrosAsignados.includes(e.zona))
+      }
+
+      setEmpleados(emps)
+
+      // Auto-seleccionar para trabajadores
+      if (soloSusDatos || (!esAdmin && !esSupervisor)) {
+        const miEmp = emps.find((e: any) => e.email === usuario?.email)
+        if (miEmp) {
+          setEmpSel(miEmp.id)
+          setEmpInfo(miEmp)
+          cargarEstado(miEmp.id)
+        }
+      }
+    } catch (e) { console.error(e) }
+    finally { setCargando(false) }
+  }
+
+  const cargarEstado = async (id: string) => {
+    Object.keys(localStorage).filter(k => k.startsWith('fc_') && k.includes('estado_fichaje')).forEach(k => localStorage.removeItem(k))
+    try { const data = await api.estadoFichaje(id); setEstado(data) } catch { }
+  }
+
+  const cargarResumen = async (id: string, m: number, a: number) => {
+    if (!id) return
+    setCargando(true)
+    Object.keys(localStorage).filter(k => k.startsWith('fc_') && k.includes('resumen_diario')).forEach(k => localStorage.removeItem(k))
+    try { const data = await api.resumenDiarioFichajes(id, String(m), String(a)); setResumen(data) } catch { }
+    finally { setCargando(false) }
+  }
+
+  const cargarResumenMensual = async (m: number, a: number) => {
+    setCargando(true)
+    Object.keys(localStorage).filter(k => k.startsWith('fc_') && k.includes('resumen_mensual')).forEach(k => localStorage.removeItem(k))
+    try { const data = await api.resumenMensualFichajes(String(m), String(a)); setResumenMensual(data) } catch { }
+    finally { setCargando(false) }
+  }
+
+  useEffect(() => {
+    if (empSel && tab === 'historial') cargarResumen(empSel, mes, anio)
+  }, [empSel, tab, mes, anio])
+
+  useEffect(() => {
+    if (tab === 'supervision') cargarResumenMensual(mes, anio)
+  }, [tab, mes, anio])
+
+  const selEmpleado = (id: string) => {
+    setEmpSel(id)
+    const emp = empleados.find((e: any) => e.id === id)
+    setEmpInfo(emp || null)
+    if (id) cargarEstado(id)
+    else setEstado(null)
+  }
+
+  const obtenerGPS = (): Promise<{ lat: number; lng: number }> =>
+    new Promise((resolve, reject) => {
+      if (!navigator.geolocation) { reject('GPS no disponible'); return }
+      navigator.geolocation.getCurrentPosition(
+        pos => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+        err => reject('GPS: ' + err.message),
+        { enableHighAccuracy: true, timeout: 8000 }
+      )
+    })
+
+  const handleFichar = async (tipo: string) => {
+    if (!empSel || !empInfo) { showMsg('❌ Selecciona una persona'); return }
+    setFichando(true); setGpsError('')
+    let posicion: any = {}
+    try { const pos = await obtenerGPS(); posicion = { lat: pos.lat, lng: pos.lng }; setGps(pos) }
+    catch (e: any) { setGpsError(String(e)) }
+    try {
+      const result = await api.fichar({
+        id_empleado: empSel, nombre: empInfo.nombre + ' ' + empInfo.apellidos,
+        dni: empInfo.dni || '', centro: empInfo.centro || '',
+        tipo, ...posicion, dispositivo: 'PWA', metodo: posicion.lat ? 'GPS' : 'Manual'
+      })
+      if (result?.ok) {
+        showMsg('✅ ' + (tipo === 'entrada' ? '🟢 Entrada' : '🔴 Salida') + ' registrada a las ' + result.hora)
+        setEstado((prev: any) => ({
+          ...prev, fichado: tipo === 'entrada', ultimo_tipo: tipo,
+          fichajes_hoy: [...(prev?.fichajes_hoy || []), { tipo, hora: result.hora, lat: posicion.lat, lng: posicion.lng }]
+        }))
+      } else showMsg('❌ ' + (result?.error || 'Error'))
+    } catch { showMsg('❌ Error de conexión') }
+    finally { setFichando(false) }
+  }
+
+  // Calcular tiempo en servicio actual
+  const minutosHoy = (() => {
+    if (!estado?.fichado || !estado?.fichajes_hoy) return null
+    const entrada = estado.fichajes_hoy.filter((f: any) => f.tipo === 'entrada').pop()
+    if (!entrada?.hora) return null
+    const [h, m, s] = entrada.hora.split(':').map(Number)
+    const dt = new Date(); dt.setHours(h, m, s, 0)
+    return Math.floor((Date.now() - dt.getTime()) / 60000)
+  })()
+
+  // Tabs según rol
+  const tabs = [
+    { id: 'fichar',      label: 'Fichar',          icon: Clock },
+    { id: 'historial',   label: soloSusDatos ? 'Mi historial' : 'Historial', icon: Calendar },
+    ...((esAdmin || esSupervisor) ? [{ id: 'supervision', label: 'Resumen mes', icon: Users }] : []),
+    ...(esAdmin ? [{ id: 'panel', label: 'Panel hoy', icon: Activity }] : []),
+  ]
+
+  if (cargando && empleados.length === 0) return (
+    <div className="flex flex-col items-center py-20">
+      <Loader2 size={32} className="text-blue-500 animate-spin mb-3" />
+      <p className="text-slate-500">Cargando fichajes...</p>
+    </div>
+  )
+
+  return (
+    <div className="max-w-4xl">
+      <div className="flex items-center gap-4 mb-6">
+        <div className="p-2.5 bg-gradient-to-br from-blue-700 to-cyan-600 rounded-xl shadow-lg shadow-blue-200">
+          <Clock size={22} className="text-white" />
+        </div>
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900">Control de Fichajes</h1>
+          <p className="text-sm text-slate-500">RD-ley 8/2019 · Registro horario obligatorio</p>
+        </div>
+      </div>
+
+      {/* Tabs */}
+      <div className="flex gap-1 bg-slate-100 p-1 rounded-xl mb-6">
+        {tabs.map(t => (
+          <button key={t.id} onClick={() => setTab(t.id)}
+            className={`flex items-center gap-1.5 py-2.5 px-4 rounded-lg text-xs font-medium whitespace-nowrap transition-colors ${tab === t.id ? 'bg-white shadow text-[#1a3c34]' : 'text-slate-500 hover:text-slate-700'}`}>
+            <t.icon size={14} /> {t.label}
+          </button>
+        ))}
+      </div>
+
+      {msg && (
+        <div className={`mb-4 p-4 rounded-xl text-sm font-medium flex items-center gap-2 ${msg.includes('✅') ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-red-50 text-red-700 border border-red-200'}`}>
+          <span className="flex-1">{msg}</span>
+          <button onClick={() => setMsg('')}><X size={14} /></button>
+        </div>
+      )}
+
+      {/* ══ FICHAR ══════════════════════════════════════════════════════════ */}
+      {tab === 'fichar' && (
+        <div>
+          {/* Selector persona (admin/supervisor) */}
+          {(esAdmin || esSupervisor) && (
+            <div className="mb-5">
+              <label className="text-xs text-slate-600 font-semibold mb-1 block">Personal</label>
+              <select value={empSel} onChange={(e: any) => selEmpleado(e.target.value)}
+                className="w-full px-4 py-3 border border-slate-200 rounded-xl text-sm bg-white">
+                <option value="">— Seleccionar persona —</option>
+                {empleados.map((e: any) => (
+                  <option key={e.id} value={e.id}>{e.nombre} {e.apellidos} · {e.dni} · {e.centro || 'Sin centro'}</option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {/* Ficha empleado (trabajador) */}
+          {soloSusDatos && empInfo && (
+            <div className="mb-5 bg-slate-50 border border-slate-200 rounded-xl p-4 flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-bold text-sm">
+                {(empInfo.nombre || '?')[0]}{(empInfo.apellidos || '?')[0]}
+              </div>
+              <div>
+                <p className="text-sm font-bold text-slate-900">{empInfo.nombre} {empInfo.apellidos}</p>
+                <p className="text-xs text-slate-500">{empInfo.centro || 'Sin centro'}</p>
+              </div>
+            </div>
+          )}
+
+          {empSel ? (
+            <div>
+              {/* Alerta jornada larga */}
+              {minutosHoy !== null && minutosHoy > 9 * 60 && (
+                <div className="mb-4 p-3 bg-amber-50 border border-amber-300 rounded-xl flex items-center gap-2">
+                  <AlertTriangle size={16} className="text-amber-600 flex-shrink-0" />
+                  <span className="text-sm text-amber-800 font-medium">
+                    ⚠️ Llevas más de 9 horas en servicio ({minToHM(minutosHoy)}). Registra la salida.
+                  </span>
+                </div>
+              )}
+
+              {/* Reloj */}
+              <div className="bg-gradient-to-br from-slate-900 to-slate-800 rounded-2xl p-8 mb-5 text-center text-white">
+                <p className="text-6xl font-black tracking-wider mb-2 font-mono">{horaActual}</p>
+                <p className="text-sm text-slate-400 mb-4">
+                  {new Date().toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' })}
+                </p>
+                {estado && (
+                  <div className="flex items-center justify-center gap-4 flex-wrap">
+                    <span className={`px-4 py-1.5 rounded-full text-sm font-bold ${estado.fichado ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : 'bg-slate-700 text-slate-400'}`}>
+                      {estado.fichado ? '🟢 En servicio' : '⚪ Fuera de servicio'}
+                    </span>
+                    {minutosHoy !== null && minutosHoy > 0 && (
+                      <span className="px-3 py-1.5 bg-blue-500/20 text-blue-300 rounded-full text-sm border border-blue-500/30">
+                        <Clock size={12} className="inline mr-1" />{minToHM(minutosHoy)}
+                      </span>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Botones */}
+              <div className="grid grid-cols-2 gap-4 mb-5">
+                <button onClick={() => handleFichar('entrada')}
+                  disabled={fichando || estado?.fichado === true}
+                  className={`flex flex-col items-center gap-3 p-8 rounded-2xl text-lg font-bold transition-all ${
+                    estado?.fichado ? 'bg-slate-100 text-slate-400 cursor-not-allowed' : 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-200 active:scale-95'
+                  }`}>
+                  {fichando ? <Loader2 size={32} className="animate-spin" /> : <LogIn size={32} />}
+                  ENTRADA
+                </button>
+                <button onClick={() => handleFichar('salida')}
+                  disabled={fichando || !estado?.fichado}
+                  className={`flex flex-col items-center gap-3 p-8 rounded-2xl text-lg font-bold transition-all ${
+                    !estado?.fichado ? 'bg-slate-100 text-slate-400 cursor-not-allowed' : 'bg-red-600 hover:bg-red-700 text-white shadow-lg shadow-red-200 active:scale-95'
+                  }`}>
+                  {fichando ? <Loader2 size={32} className="animate-spin" /> : <LogOut size={32} />}
+                  SALIDA
+                </button>
+              </div>
+
+              {gpsError && <div className="mb-3 p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-700 flex items-center gap-2"><AlertTriangle size={14} />{gpsError} — sin ubicación</div>}
+              {gps && <div className="mb-3 p-3 bg-blue-50 border border-blue-200 rounded-xl text-xs text-blue-700 flex items-center gap-2"><MapPin size={14} />GPS: {gps.lat.toFixed(5)}, {gps.lng.toFixed(5)}</div>}
+
+              {/* Registro de hoy */}
+              {estado?.fichajes_hoy?.length > 0 && (
+                <div className="bg-white border border-slate-200 rounded-2xl p-5">
+                  <h3 className="text-sm font-bold text-slate-900 mb-3">Registro de hoy</h3>
+                  <div className="space-y-2">
+                    {estado.fichajes_hoy.map((f: any, i: number) => (
+                      <div key={i} className={`flex items-center gap-3 p-3 rounded-xl ${f.tipo === 'entrada' ? 'bg-emerald-50' : 'bg-red-50'}`}>
+                        {f.tipo === 'entrada' ? <LogIn size={16} className="text-emerald-600" /> : <LogOut size={16} className="text-red-600" />}
+                        <span className="text-sm font-bold font-mono">{f.hora}</span>
+                        <span className={`text-xs font-semibold ${f.tipo === 'entrada' ? 'text-emerald-600' : 'text-red-600'}`}>{f.tipo.toUpperCase()}</span>
+                        {f.lat && <span className="text-[10px] text-slate-400 ml-auto flex items-center gap-1"><MapPin size={10} />GPS</span>}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : (esAdmin || esSupervisor) && (
+            <div className="text-center py-16 bg-white border border-slate-200 rounded-2xl">
+              <Users size={40} className="text-slate-300 mx-auto mb-3" />
+              <p className="text-slate-500">Selecciona un empleado para fichar</p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ══ HISTORIAL ══════════════════════════════════════════════════════ */}
+      {tab === 'historial' && (
+        <div>
+          <div className="flex items-center gap-3 mb-5 flex-wrap">
+            {(esAdmin || esSupervisor) ? (
+              <select value={empSel} onChange={(e: any) => selEmpleado(e.target.value)}
+                className="flex-1 min-w-[200px] px-4 py-3 border border-slate-200 rounded-xl text-sm bg-white">
+                <option value="">— Seleccionar persona —</option>
+                {empleados.map((e: any) => <option key={e.id} value={e.id}>{e.nombre} {e.apellidos}</option>)}
+              </select>
+            ) : empInfo && (
+              <div className="flex-1 text-sm font-bold text-slate-700 bg-white border border-slate-200 rounded-xl px-4 py-3">
+                {empInfo.nombre} {empInfo.apellidos}
+              </div>
+            )}
+            <div className="flex items-center gap-1 bg-white border border-slate-200 rounded-xl p-1">
+              <button onClick={() => { if (mes === 1) { setMes(12); setAnio(anio - 1) } else setMes(mes - 1) }} className="p-2 hover:bg-slate-100 rounded-lg"><ChevronLeft size={16} /></button>
+              <span className="text-sm font-semibold px-3 whitespace-nowrap">{MESES[mes]} {anio}</span>
+              <button onClick={() => { if (mes === 12) { setMes(1); setAnio(anio + 1) } else setMes(mes + 1) }} className="p-2 hover:bg-slate-100 rounded-lg"><ChevronRight size={16} /></button>
+            </div>
+          </div>
+
+          {!empSel ? <div className="text-center py-12 text-slate-400">Selecciona una persona</div>
+            : cargando ? <div className="text-center py-8"><Loader2 size={24} className="animate-spin text-slate-400 mx-auto" /></div>
+            : !resumen?.dias?.length ? <div className="text-center py-12 text-slate-400">Sin fichajes en {MESES[mes]} {anio}</div>
+            : (
+              <div>
+                {/* KPIs */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">
+                  <div className="bg-white border border-slate-200 rounded-xl p-4 text-center">
+                    <p className="text-[10px] text-slate-500 uppercase font-bold mb-1">Días trabajados</p>
+                    <p className="text-2xl font-black">{resumen.dias_trabajados}</p>
+                  </div>
+                  <div className="bg-white border border-slate-200 rounded-xl p-4 text-center">
+                    <p className="text-[10px] text-slate-500 uppercase font-bold mb-1">Horas totales</p>
+                    <p className="text-2xl font-black">{resumen.total_horas_texto}</p>
+                  </div>
+                  <div className="bg-white border border-slate-200 rounded-xl p-4 text-center">
+                    <p className="text-[10px] text-slate-500 uppercase font-bold mb-1">Media diaria</p>
+                    <p className="text-2xl font-black">
+                      {resumen.dias_trabajados > 0 ? minToHM(Math.floor(resumen.total_minutos / resumen.dias_trabajados)) : '—'}
+                    </p>
+                  </div>
+                  <div className={`border rounded-xl p-4 text-center ${empInfo?.jornada && (resumen.total_minutos > (empInfo.jornada / 5) * 60 * resumen.dias_trabajados) ? 'bg-amber-50 border-amber-200' : 'bg-white border-slate-200'}`}>
+                    <p className="text-[10px] text-slate-500 uppercase font-bold mb-1">Vs jornada</p>
+                    {empInfo?.jornada ? (() => {
+                      const cont = Math.round((empInfo.jornada / 5) * 60 * resumen.dias_trabajados)
+                      const diff = resumen.total_minutos - cont
+                      return <p className={`text-2xl font-black ${diff > 0 ? 'text-amber-700' : diff < -30 ? 'text-red-600' : 'text-emerald-600'}`}>{diff > 0 ? '+' : ''}{minToHM(Math.abs(diff))}</p>
+                    })() : <p className="text-2xl font-black text-slate-400">—</p>}
+                  </div>
+                </div>
+
+                {/* Alertas sin salida */}
+                {resumen.dias.filter((d: any) => !d.completo && d.entrada).length > 0 && (
+                  <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-xl">
+                    <p className="text-xs font-bold text-amber-800 flex items-center gap-2">
+                      <AlertTriangle size={13} />
+                      {resumen.dias.filter((d: any) => !d.completo && d.entrada).length} fichaje(s) sin salida registrada
+                    </p>
+                  </div>
+                )}
+
+                {/* Días */}
+                <div className="space-y-2">
+                  {resumen.dias.map((d: any) => (
+                    <div key={d.fecha} className={`bg-white border rounded-xl p-4 flex items-center justify-between ${!d.completo && d.entrada ? 'border-amber-300 bg-amber-50/30' : 'border-slate-200'}`}>
+                      <div className="flex items-center gap-3">
+                        <div className={`w-10 h-10 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ${d.completo ? 'bg-emerald-100 text-emerald-700' : d.entrada ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-500'}`}>
+                          {new Date(d.fecha + 'T12:00:00').toLocaleDateString('es-ES', { weekday: 'short' }).substring(0, 2).toUpperCase()}
+                        </div>
+                        <div>
+                          <p className="text-sm font-bold text-slate-900">{fmtDate(d.fecha)}</p>
+                          <p className="text-xs text-slate-500 font-mono">
+                            {d.entrada || '—'} → {d.salida || '—'}
+                            {!d.completo && d.entrada && <span className="text-amber-600 ml-2 not-italic font-sans text-[10px]">⚠️ Sin salida</span>}
+                          </p>
+                        </div>
+                      </div>
+                      <p className={`text-sm font-bold font-mono ${d.minutos >= 480 ? 'text-emerald-700' : d.minutos > 0 ? 'text-amber-700' : 'text-slate-400'}`}>
+                        {d.horas_texto || '—'}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )
+          }
+        </div>
+      )}
+
+      {/* ══ SUPERVISIÓN ════════════════════════════════════════════════════ */}
+      {tab === 'supervision' && (esAdmin || esSupervisor) && (
+        <div>
+          <div className="flex justify-between items-center mb-5">
+            <p className="text-sm text-slate-600">{empleados.length} empleados</p>
+            <div className="flex items-center gap-1 bg-white border border-slate-200 rounded-xl p-1">
+              <button onClick={() => { if (mes === 1) { setMes(12); setAnio(anio - 1) } else setMes(mes - 1) }} className="p-2 hover:bg-slate-100 rounded-lg"><ChevronLeft size={16} /></button>
+              <span className="text-sm font-semibold px-3 whitespace-nowrap">{MESES[mes]} {anio}</span>
+              <button onClick={() => { if (mes === 12) { setMes(1); setAnio(anio + 1) } else setMes(mes + 1) }} className="p-2 hover:bg-slate-100 rounded-lg"><ChevronRight size={16} /></button>
+            </div>
+          </div>
+
+          {cargando ? <div className="text-center py-8"><Loader2 size={24} className="animate-spin text-slate-400 mx-auto" /></div>
+            : !resumenMensual?.resumen?.length ? <div className="text-center py-12 text-slate-400">Sin fichajes en {MESES[mes]} {anio}</div>
+            : (
+              <div className="space-y-2">
+                {resumenMensual.resumen.map((r: any) => (
+                  <div key={r.id} className="bg-white border border-slate-200 rounded-xl p-4 flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-9 h-9 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-bold text-sm">
+                        {(r.nombre || '?')[0]}
+                      </div>
+                      <div>
+                        <p className="text-sm font-bold text-slate-900">{r.nombre}</p>
+                        <p className="text-xs text-slate-500">{r.dni} · {r.centro || '—'}</p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm font-bold font-mono">{r.total_horas}</p>
+                      <p className="text-xs text-slate-500">{r.dias_trabajados} días</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )
+          }
+        </div>
+      )}
+
+      {/* ══ PANEL HOY (solo admin) ══════════════════════════════════════════ */}
+      {tab === 'panel' && esAdmin && (
+        <div>
+          <div className="flex items-center justify-between mb-5">
+            <div>
+              <h2 className="text-base font-bold text-slate-900">Estado hoy</h2>
+              <p className="text-xs text-slate-500">{new Date().toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' })}</p>
+            </div>
+            <button onClick={() => cargarResumenMensual(new Date().getMonth() + 1, new Date().getFullYear())} disabled={cargando}
+              className="flex items-center gap-2 px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-xl">
+              {cargando ? <Loader2 size={13} className="animate-spin" /> : <RefreshCw size={13} />} Actualizar
+            </button>
+          </div>
+
+          {/* KPIs */}
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-5">
+            <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 text-center">
+              <Users size={20} className="text-blue-600 mx-auto mb-1" />
+              <p className="text-2xl font-black text-blue-900">{empleados.length}</p>
+              <p className="text-xs text-blue-700">Plantilla activa</p>
+            </div>
+            <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 text-center">
+              <CheckCircle2 size={20} className="text-emerald-600 mx-auto mb-1" />
+              <p className="text-2xl font-black text-emerald-900">{resumenMensual?.resumen?.filter((r: any) => r.dias_trabajados > 0).length || 0}</p>
+              <p className="text-xs text-emerald-700">Han fichado este mes</p>
+            </div>
+            <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 text-center">
+              <AlertTriangle size={20} className="text-amber-600 mx-auto mb-1" />
+              <p className="text-2xl font-black text-amber-900">{empleados.length - (resumenMensual?.resumen?.filter((r: any) => r.dias_trabajados > 0).length || 0)}</p>
+              <p className="text-xs text-amber-700">Sin fichajes este mes</p>
+            </div>
+          </div>
+
+          {/* Listado por empleado */}
+          <div className="bg-white border border-slate-200 rounded-2xl p-5">
+            <h3 className="text-sm font-bold text-slate-900 mb-3">Actividad este mes por empleado</h3>
+            <div className="space-y-2">
+              {empleados.map((emp: any) => {
+                const actividad = resumenMensual?.resumen?.find((r: any) => r.id === emp.id)
+                return (
+                  <div key={emp.id} className={`flex items-center gap-3 p-3 rounded-xl ${actividad?.dias_trabajados > 0 ? 'bg-emerald-50' : 'bg-slate-50'}`}>
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ${actividad?.dias_trabajados > 0 ? 'bg-emerald-200 text-emerald-800' : 'bg-slate-200 text-slate-600'}`}>
+                      {(emp.nombre || '?')[0]}{(emp.apellidos || '')[0]}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate">{emp.nombre} {emp.apellidos}</p>
+                      <p className="text-xs text-slate-500">{emp.centro || 'Sin centro'}</p>
+                    </div>
+                    <div className="text-right flex-shrink-0">
+                      {actividad?.dias_trabajados > 0
+                        ? <span className="text-xs font-bold text-emerald-700 bg-emerald-100 px-2 py-1 rounded-full">{actividad.dias_trabajados}d · {actividad.total_horas}</span>
+                        : <span className="text-xs text-slate-400 bg-slate-200 px-2 py-1 rounded-full">Sin actividad</span>
+                      }
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
