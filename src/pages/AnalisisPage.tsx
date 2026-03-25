@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { api } from '../services/api'
+import PipelineBar from '../components/PipelineBar'
 import {
   Brain, Loader2, AlertCircle, Search, ArrowLeft, ChevronDown, ChevronUp,
   Shield, Users, FileText, AlertTriangle, Lightbulb, Target, Clock,
@@ -135,7 +136,8 @@ export default function AnalisisPage() {
 
   return (
     <div className="p-6 lg:p-8 max-w-4xl">
-      {/* Cabecera */}
+      {/* Pipeline de navegación */}
+      <PipelineBar currentStep="analisis" />
       <div className="flex items-center gap-4 mb-6">
         <div className="p-2.5 bg-gradient-to-br from-violet-500 to-purple-600 rounded-xl shadow-lg shadow-violet-200">
           <Brain size={22} className="text-white" />

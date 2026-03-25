@@ -1,4 +1,4 @@
-const API_BASE = 'https://script.google.com/macros/s/AKfycbwduOAKTsWc531Mnebo7DU5rB7xChzzqeJTyD2Ju0ihVnsm-HiU_czh10rcX4SpqW5clA/exec'
+const API_BASE = 'https://script.google.com/macros/s/AKfycbzI8WUyKjQAhnMtR5cJt_f0-wEyreBKgVCVo5CEV2JSZBBKvpRARlRsjwvScpaUACmZzw/exec'
 
 function getToken(): string { return localStorage.getItem('auth_token') || '' }
 
@@ -99,6 +99,8 @@ function fileToBase64(file: File): Promise<string> {
 export interface Stats { total: number; nueva: number; en_analisis: number; go: number; no_go: number }
 
 export const api = {
+  extraerDatosPliego: (data: { docs: { nombre: string; base64: string; mime: string }[] }) =>
+    postAPI({ action: 'extraer_datos_pliego', ...data }),
   // ═══ PRECARGA ═══
   prefetch: () => prefetchCommonData(),
   // ═══ BATCH (una llamada por página) ═══
@@ -112,7 +114,7 @@ export const api = {
   addConfig: (data: { tipo: string; valor: string; activo?: boolean; descripcion?: string }) => postAPI({ action: 'add_config', ...data }),
   updateConfig: (data: { fila: number; valor?: string; activo?: boolean; descripcion?: string }) => postAPI({ action: 'update_config', ...data }),
   deleteConfig: (fila: number) => postAPI({ action: 'delete_config', fila }),
-  buscar: () => fetchAPI('buscar'),
+  buscar: async () => { cacheInvalidate(); return fetchAPI('buscar') },
   crearOportunidad: (data: any) => fetchAPI('crear', { titulo: data.titulo||'', organismo: data.organismo||'', cpv: data.cpv||'', presupuesto: String(data.presupuesto||0), fecha_limite: data.fecha_limite||'', procedimiento: data.procedimiento||'', url_anuncio: data.url||'', descripcion: data.descripcion||'', fuente: data.fuente||'Manual', notas: data.notas||'' }),
   detalle: (id: string) => fetchAPI('detalle', { id }),
   actualizar: (id: string, data: any) => { const p: Record<string, string> = { id }; if (data.titulo) p.titulo = data.titulo; if (data.organismo) p.organismo = data.organismo; if (data.cpv) p.cpv = data.cpv; if (data.presupuesto) p.presupuesto = String(data.presupuesto); if (data.fecha_limite) p.fecha_limite = data.fecha_limite; if (data.procedimiento) p.procedimiento = data.procedimiento; if (data.url) p.url_anuncio = data.url; if (data.estado) p.estado = data.estado; if (data.descripcion) p.descripcion = data.descripcion; return fetchAPI('actualizar', p) },
@@ -240,7 +242,7 @@ export const api = {
   subirArchivo: async (file: File, id: string) => { const b = await fileToBase64(file); return postAPI({ action: 'upload', filename: file.name, base64: b, oportunidad_id: id, mime_type: file.type || 'application/pdf' }) },
 
   // ═══ BATCH POR PÁGINA (1 llamada = toda la página) ═══
-  batchDecisiones:   (id: string) => fetchAPI('batch_decisiones', { id }),
+  batchDecisiones:   (id: string) => { cacheInvalidate('batch_decisiones'); return fetchAPI('batch_decisiones', { id }) },
   batchOfertas:      (id: string) => fetchAPI('batch_ofertas', { id }),
   batchSeguimiento:  ()           => fetchAPI('batch_seguimiento'),
   batchSubrogacion:  ()           => fetchAPI('batch_subrogacion'),
@@ -260,9 +262,16 @@ export const api = {
   dashboardRRHH: () => fetchAPI('dashboard_rrhh', {}),
   generarInformeFichajes: (id_empleado: string, mes: string, anio: string) => postAPI({ action: 'generar_informe_fichajes', id_empleado, mes, anio }),
   // ═══ LOTES ═══
-  obtenerLotes: (id_oportunidad: string) => fetchAPI('obtener_lotes', { id_oportunidad }),
+  obtenerLotes: (id_oportunidad: string) => {
+    cacheInvalidate('obtener_lotes')
+    return fetchAPI('obtener_lotes', { id_oportunidad })
+  },
   resumenLotes: (id_oportunidad: string) => fetchAPI('resumen_lotes', { id_oportunidad }),
-  crearLotesDesdeAnalisis: (id_oportunidad: string) => postAPI({ action: 'crear_lotes_desde_analisis', id_oportunidad }),
+  crearLotesDesdeAnalisis: async (id_oportunidad: string) => {
+    const r = await postAPI({ action: 'crear_lotes_desde_analisis', id_oportunidad })
+    cacheInvalidate('obtener_lotes')
+    return r
+  },
   actualizarLote: (data: any) => postAPI({ action: 'actualizar_lote', ...data }),
   guardarCalculoLote: (data: any) => postAPI({ action: 'guardar_calculo_lote', ...data }),
   cargarCalculoLote: (oportunidad_id: string, id_lote: string) => fetchAPI('cargar_calculo_lote', { oportunidad_id, id_lote }),

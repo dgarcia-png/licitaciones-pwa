@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { api } from '../services/api'
+import PipelineBar from '../components/PipelineBar'
 import {
   Calculator, Users, Package, Shield, Settings, TrendingUp, Loader2, Plus, Trash2,
   ChevronDown, ChevronUp, AlertTriangle, CheckCircle2, XCircle, Brain, Wrench,
@@ -471,6 +472,8 @@ export default function CalculoPage() {
   return (
     <div ref={containerRef} className="p-4 lg:p-8 max-w-4xl mx-auto">
       <style>{`@keyframes fadeSlideIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }`}</style>
+      {/* Pipeline de navegación */}
+      <PipelineBar currentStep="calculo" />
       {/* Header */}
       <div className="flex items-center gap-4 mb-6">
         <div className="p-2.5 bg-gradient-to-br from-[#1a3c34] to-[#3a7a6a] rounded-xl shadow-lg shadow-[#1a3c34]/20"><Calculator size={22} className="text-white"/></div>

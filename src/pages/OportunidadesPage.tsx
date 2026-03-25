@@ -79,6 +79,8 @@ export default function OportunidadesPage() {
       if (r.historico > 0) msg.push(r.historico + ' al histórico')
       if (r.duplicadas > 0) msg.push(r.duplicadas + ' ya existentes')
       setMensaje(msg.length > 0 ? 'Búsqueda completada: ' + msg.join(', ') : 'Búsqueda completada. No hay novedades.')
+      // Invalidar caché y recargar lista
+      ;(api as any).invalidarCache?.()
       await cargar()
     } catch (e) {
       setMensaje('Error al buscar. Revisa el log en Apps Script.')

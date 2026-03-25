@@ -58,6 +58,18 @@ export default function LotesPanel({
     try {
       await (api as any).actualizarLote({ id: lote.id, decision })
       onRecargar()
+
+      // Actualizar estado de la oportunidad según decisión de lotes
+      const lotesActualizados = lotes.map(l => l.id === lote.id ? { ...l, decision } : l)
+      const todosGO = lotesActualizados.every(l => l.decision === 'go')
+      const todosNoGO = lotesActualizados.every(l => l.decision === 'no_go')
+      const algunoGO = lotesActualizados.some(l => l.decision === 'go')
+
+      if (todosNoGO) {
+        await api.actualizar(oportunidadId, { estado: 'no_go' })
+      } else if (todosGO || algunoGO) {
+        await api.actualizar(oportunidadId, { estado: 'go' })
+      }
     } catch { showMsg('❌ Error') }
   }
 
@@ -102,13 +114,11 @@ export default function LotesPanel({
           <button onClick={onRecargar} className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg">
             <RefreshCw size={14} />
           </button>
-          {lotes.length === 0 && (
-            <button onClick={handleCrearLotes} disabled={creandoLotes}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-violet-700 hover:bg-violet-800 disabled:bg-violet-300 text-white text-xs font-bold rounded-lg">
-              {creandoLotes ? <Loader2 size={12} className="animate-spin" /> : <Plus size={12} />}
-              Crear desde análisis
-            </button>
-          )}
+          <button onClick={handleCrearLotes} disabled={creandoLotes}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-violet-700 hover:bg-violet-800 disabled:bg-violet-300 text-white text-xs font-bold rounded-lg">
+            {creandoLotes ? <Loader2 size={12} className="animate-spin" /> : <Plus size={12} />}
+            {lotes.length === 0 ? 'Crear desde análisis' : 'Recrear lotes'}
+          </button>
         </div>
       </div>
 

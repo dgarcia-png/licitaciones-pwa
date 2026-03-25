@@ -353,11 +353,11 @@ export default function DetalleOportunidadPage() {
   let nextAction = ''
   let nextActionLabel = ''
   let NextActionIcon = Download
-  if (form.estado === 'nueva' && numDocsDisponibles > 0) {
+  if (form.estado === 'nueva' && numDocsDisponibles > 0 && docsDescargados === 0) {
     nextAction = 'descargar'
     nextActionLabel = 'Siguiente paso: Descargar pliegos'
     NextActionIcon = Download
-  } else if (docsDescargados > 0 && !analisis?.existe) {
+  } else if ((docsDescargados > 0 || numDocsDisponibles > 0) && !analisis?.existe) {
     nextAction = 'analizar'
     nextActionLabel = 'Siguiente paso: Analizar con IA'
     NextActionIcon = Brain
@@ -402,7 +402,7 @@ export default function DetalleOportunidadPage() {
 
       {/* ── PipelineBar de navegación ── */}
       <div className="mb-6 mt-2">
-        <PipelineBar currentStep="oportunidad" idOverride={id} showNext={false} />
+        <PipelineBar currentStep="oportunidad" idOverride={id} />
       </div>
 
       {/* Siguiente acción recomendada */}
