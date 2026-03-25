@@ -67,7 +67,7 @@ export default function PortalEmpleadoPage() {
     try {
       const data = await api.empleados()
       const emps: any[] = data.empleados || []
-      const emp = emps.find((e: any) => e.email === usuario?.email || e.id === usuario?.id_empleado)
+      const emp = emps.find((e: any) => e.email === usuario?.email || e.id === (usuario as any)?.id_empleado)
       if (emp) {
         setEmpInfo(emp)
         // Cargar estado fichaje y ausencias en paralelo
@@ -88,7 +88,7 @@ export default function PortalEmpleadoPage() {
   // Cargar PRL cuando se entra en esa tab
   useEffect(() => {
     if (tab === 'prl' && empInfo && !prlData) {
-      Promise.all([api.prlEpis({ dni: empInfo.dni }), api.prlReconocimientos({ dni: empInfo.dni })])
+      Promise.all([api.prlEpis(empInfo.dni), api.prlReconocimientos(empInfo.dni)])
         .then(([epis, recos]) => setPrlData({ epis: epis.epis || [], recos: recos.reconocimientos || [] }))
         .catch(() => {})
     }
