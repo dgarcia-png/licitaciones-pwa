@@ -1,12 +1,13 @@
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useEffect, useState } from 'react'
 import { api } from '../services/api'
-import { FileSearch, Brain, Calculator, Gavel, FileText, Activity, ChevronRight, CheckCircle2, Circle, ArrowRight } from 'lucide-react'
+import { FileSearch, Brain, Layers, Calculator, Gavel, FileText, Activity, ChevronRight, CheckCircle2, Circle, ArrowRight } from 'lucide-react'
 
 // ── Pasos del pipeline ────────────────────────────────────────────────────────
 export const PIPELINE_STEPS = [
   { key: 'oportunidad', label: 'Ficha',       icon: FileSearch, path: (id: string) => `/oportunidades/${id}` },
   { key: 'analisis',    label: 'Análisis IA', icon: Brain,      path: (id: string) => `/analisis?id=${id}` },
+  { key: 'lotes',       label: 'Lotes',       icon: Layers,     path: (id: string) => `/oportunidades/${id}#lotes` },
   { key: 'calculo',     label: 'Cálculo',     icon: Calculator, path: (id: string) => `/calculo?id=${id}` },
   { key: 'decisiones',  label: 'GO/NO-GO',    icon: Gavel,      path: (id: string) => `/decisiones?id=${id}` },
   { key: 'oferta',      label: 'Oferta',      icon: FileText,   path: (id: string) => `/oferta?id=${id}` },
@@ -17,6 +18,7 @@ export type PipelineStepKey = typeof PIPELINE_STEPS[number]['key']
 
 interface PipelineBarProps {
   currentStep:      PipelineStepKey
+  idOverride?:      string
   showNext?:        boolean
   nextLabel?:       string
   onNext?:          () => void
@@ -27,6 +29,7 @@ interface PipelineBarProps {
 // ── Componente ────────────────────────────────────────────────────────────────
 export default function PipelineBar({
   currentStep,
+  idOverride,
   showNext = true,
   nextLabel,
   onNext,
@@ -35,7 +38,7 @@ export default function PipelineBar({
 }: PipelineBarProps) {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
-  const id = searchParams.get('id') || ''
+  const id = idOverride || searchParams.get('id') || ''
 
   const [titulo, setTitulo] = useState('')
   const [estado, setEstado] = useState('')

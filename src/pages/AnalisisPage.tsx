@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { api } from '../services/api'
-import PipelineBar from '../components/PipelineBar'
 import {
   Brain, Loader2, AlertCircle, Search, ArrowLeft, ChevronDown, ChevronUp,
   Shield, Users, FileText, AlertTriangle, Lightbulb, Target, Clock,
@@ -71,7 +70,7 @@ function DataRow({ label, value }: { label: string, value: string | number | und
 
 export default function AnalisisPage() {
   const navigate = useNavigate()
-  const [searchParams, setSearchParams] = useSearchParams()
+  const [searchParams] = useSearchParams()
   const idParam = searchParams.get('id')
 
   const [oportunidades, setOportunidades] = useState<any[]>([])
@@ -80,16 +79,6 @@ export default function AnalisisPage() {
   const [cargando, setCargando] = useState(false)
   const [analizando, setAnalizando] = useState(false)
   const [error, setError] = useState('')
-
-  // Sync selector ↔ URL
-  const handleSelectId = (id: string) => {
-    setSelectedId(id)
-    if (id) setSearchParams({ id }, { replace: true })
-    else setSearchParams({}, { replace: true })
-  }
-  useEffect(() => {
-    if (idParam && idParam !== selectedId) setSelectedId(idParam)
-  }, [idParam]) // eslint-disable-line
 
   // Cargar lista de oportunidades
   useEffect(() => {
@@ -145,16 +134,7 @@ export default function AnalisisPage() {
   const ac = analisis?.analisis_completo || {}
 
   return (
-    <div className="max-w-4xl">
-      {/* Pipeline */}
-      <PipelineBar
-        currentStep="analisis"
-        showNext={!!(analisis?.existe && selectedId)}
-        nextLabel="Ir a Cálculo →"
-        nextDisabled={!analisis?.existe}
-        nextDisabledMsg="Completa el análisis IA antes de continuar"
-      />
-
+    <div className="p-6 lg:p-8 max-w-4xl">
       {/* Cabecera */}
       <div className="flex items-center gap-4 mb-6">
         <div className="p-2.5 bg-gradient-to-br from-violet-500 to-purple-600 rounded-xl shadow-lg shadow-violet-200">
@@ -162,7 +142,7 @@ export default function AnalisisPage() {
         </div>
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Análisis IA</h1>
-          <p className="text-sm text-slate-500">Análisis automático de pliegos con Gemini Pro</p>
+          <p className="text-sm text-slate-500">Análisis automático de pliegos con Gemini 3.1 Pro</p>
         </div>
       </div>
 
@@ -171,7 +151,7 @@ export default function AnalisisPage() {
         <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Seleccionar oportunidad</label>
         <div className="relative">
           <Search size={16} className="absolute left-3 top-3 text-slate-400" />
-          <select value={selectedId} onChange={e => handleSelectId(e.target.value)}
+          <select value={selectedId} onChange={e => setSelectedId(e.target.value)}
             className="w-full pl-10 pr-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 bg-slate-50 appearance-none">
             <option value="">-- Selecciona una oportunidad --</option>
             {oportunidades.map((o: any) => (
@@ -386,10 +366,23 @@ export default function AnalisisPage() {
                   <h3 className="text-sm font-bold text-red-800">Riesgos detectados</h3>
                 </div>
                 <ul className="space-y-2">
-                  {ac.riesgos_detectados.map((r: string, i: number) => (
-                    <li key={i} className="text-sm text-red-700 flex gap-2">
-                      <span className="text-red-400 shrink-0">•</span>
-                      <span>{r}</span>
+                  {ac.riesgos_detectados.map((r: any, i: number) => (
+                    <li key={i} className="text-sm text-red-700">
+                      {typeof r === 'string' ? (
+                        <span className="flex gap-2"><span className="text-red-400 shrink-0">•</span><span>{r}</span></span>
+                      ) : (
+                        <div className="flex items-start gap-2">
+                          <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded shrink-0 mt-0.5 ${
+                            r.gravedad === 'alta' ? 'bg-red-200 text-red-800' :
+                            r.gravedad === 'media' ? 'bg-amber-200 text-amber-800' :
+                            'bg-slate-200 text-slate-700'
+                          }`}>{(r.gravedad || 'media').toUpperCase()}</span>
+                          <div>
+                            <p className="font-medium">{r.riesgo}</p>
+                            {r.mitigacion && <p className="text-xs text-slate-500 mt-0.5">{r.mitigacion}</p>}
+                          </div>
+                        </div>
+                      )}
                     </li>
                   ))}
                 </ul>
@@ -403,10 +396,20 @@ export default function AnalisisPage() {
                   <h3 className="text-sm font-bold text-emerald-800">Oportunidades detectadas</h3>
                 </div>
                 <ul className="space-y-2">
-                  {ac.oportunidades_detectadas.map((o: string, i: number) => (
-                    <li key={i} className="text-sm text-emerald-700 flex gap-2">
-                      <span className="text-emerald-400 shrink-0">•</span>
-                      <span>{o}</span>
+                  {ac.oportunidades_detectadas.map((o: any, i: number) => (
+                    <li key={i} className="text-sm text-emerald-700">
+                      {typeof o === 'string' ? (
+                        <span className="flex gap-2"><span className="text-emerald-400 shrink-0">•</span><span>{o}</span></span>
+                      ) : (
+                        <div className="flex items-start gap-2">
+                          <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded shrink-0 mt-0.5 ${
+                            o.impacto === 'alto' ? 'bg-emerald-200 text-emerald-800' :
+                            o.impacto === 'medio' ? 'bg-blue-200 text-blue-800' :
+                            'bg-slate-200 text-slate-700'
+                          }`}>{(o.impacto || 'medio').toUpperCase()}</span>
+                          <p>{o.oportunidad}</p>
+                        </div>
+                      )}
                     </li>
                   ))}
                 </ul>

@@ -1,11 +1,10 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
-import { useSearchParams, useNavigate } from 'react-router-dom'
+import { useSearchParams } from 'react-router-dom'
 import { api } from '../services/api'
-import PipelineBar from '../components/PipelineBar'
 import {
   Calculator, Users, Package, Shield, Settings, TrendingUp, Loader2, Plus, Trash2,
   ChevronDown, ChevronUp, AlertTriangle, CheckCircle2, XCircle, Brain, Wrench,
-  RotateCcw, UserPlus, Save, ArrowLeft, ArrowRight, FileText, Truck, BarChart3, Star
+  RotateCcw, UserPlus, Save, ArrowLeft, ArrowRight, FileText, Truck, BarChart3
 } from 'lucide-react'
 
 interface LineaPersonal {
@@ -16,13 +15,6 @@ interface LineaCoste {
   id: string; concepto: string; cantidad: number; costeUnitario: number; meses: number; unidad: string
 }
 interface ItemCatalogo { concepto: string; unidad: string; valor: number; notas: string; activo: boolean }
-interface MejoraSeleccionada {
-  mejora: string
-  puntuacion: number
-  seleccionada: boolean
-  costeEstimado: number
-  descripcionOferta: string
-}
 
 function uid() { return Math.random().toString(36).substring(2, 8) }
 function fmt(n: number) { return n.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €' }
@@ -96,9 +88,9 @@ function TablaCatalogo({ lineas, setLineas, catalogo, conMeses = true, duracion 
 
 // ═════════════════════════════════════════════════════════════
 export default function CalculoPage() {
-  const [searchParams, setSearchParams] = useSearchParams()
-  const navigate = useNavigate()
-  const idParam = searchParams.get('id')
+  const [searchParams] = useSearchParams()
+  const idParam = searchParams.get('id') || searchParams.get('opo')
+  const loteParam = searchParams.get('lote')
   const [step, setStep] = useState(0)
   const [transitioning, setTransitioning] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -118,20 +110,11 @@ export default function CalculoPage() {
   const [guardadoOk, setGuardadoOk] = useState(false)
   const [oportunidades, setOportunidades] = useState<any[]>([])
   const [selectedId, setSelectedId] = useState(idParam || '')
+  const [selectedLoteId, setSelectedLoteId] = useState(loteParam || '')
+  const [lote, setLote] = useState<any>(null)
+  const [lotes, setLotes] = useState<any[]>([])
   const [oportunidad, setOportunidad] = useState<any>(null)
   const [analisis, setAnalisis] = useState<any>(null)
-  const [mejoras, setMejoras] = useState<MejoraSeleccionada[]>([])
-
-  // Sync selector ↔ URL
-  const handleSelectId = (id: string) => {
-    setSelectedId(id)
-    if (id) setSearchParams({ id }, { replace: true })
-    else setSearchParams({}, { replace: true })
-  }
-  useEffect(() => {
-    if (idParam && idParam !== selectedId) setSelectedId(idParam)
-  }, [idParam]) // eslint-disable-line
-
   const [convenios, setConvenios] = useState<any[]>([])
   const [categoriasPorConvenio, setCategoriasPorConvenio] = useState<Record<string, any[]>>({})
   const [catalogoPorBloque, setCatalogoPorBloque] = useState<Record<string, ItemCatalogo[]>>({})
@@ -185,8 +168,7 @@ export default function CalculoPage() {
     setSubrogadosImportados(false); setRecomendacion(null); setGuardadoOk(false)
     setPersonal([]); setUniformidad([]); setMateriales([]); setMaquinaria([])
     setPrl([]); setSeguros([]); setGestion([]); setTransporte([]); setOtrosIndirectos([]);
-    setMejoras([])
-    ;(async () => {
+    (async () => {
       try {
         const data = await api.detalle(selectedId)
         if (data.error) return
@@ -199,19 +181,25 @@ export default function CalculoPage() {
             const mA = dur.match(/(\d+)\s*año/); const mM = dur.match(/(\d+)\s*mes/)
             if (mA) setDuracionMeses(parseInt(mA[1])*12); else if (mM) setDuracionMeses(parseInt(mM[1]))
           }
-          // Inicializar mejoras del pliego
-          if (ac.mejoras_valorables && ac.mejoras_valorables.length > 0) {
-            setMejoras(ac.mejoras_valorables.map((m: any) => ({
-              mejora: m.mejora || '',
-              puntuacion: m.puntuacion || 0,
-              seleccionada: false,
-              costeEstimado: 0,
-              descripcionOferta: '',
-            })))
-          }
         }
+        // Cargar lotes de esta oportunidad
         try {
-          const calc = await api.cargarCalculo(selectedId)
+          const lotesData = await (api as any).obtenerLotes(selectedId)
+          setLotes(lotesData.lotes || [])
+          // Si viene un lote por URL, cargarlo
+          if (selectedLoteId) {
+            const loteEncontrado = (lotesData.lotes || []).find((l: any) => l.id === selectedLoteId)
+            if (loteEncontrado) {
+              setLote(loteEncontrado)
+              if (loteEncontrado.presupuesto_con_iva > 0) setPresupuestoLicitacion(loteEncontrado.presupuesto_con_iva)
+            }
+          }
+        } catch {}
+        // Cargar cálculo: por lote si hay lote, sino por oportunidad
+        try {
+          const calc = selectedLoteId
+            ? await (api as any).cargarCalculoLote(selectedId, selectedLoteId)
+            : await api.cargarCalculo(selectedId)
           if (calc.existe && calc.datos) {
             const d = typeof calc.datos === 'string' ? JSON.parse(calc.datos) : calc.datos
             if (d.personal) setPersonal(d.personal); if (d.uniformidad) setUniformidad(d.uniformidad)
@@ -222,13 +210,11 @@ export default function CalculoPage() {
             if (d.duracionMeses) setDuracionMeses(d.duracionMeses); if (d.numCentros) setNumCentros(d.numCentros)
             if (d.pctGG !== undefined) setPctGG(d.pctGG); if (d.pctBI !== undefined) setPctBI(d.pctBI)
             if (d.factorAbsentismo) setFactorAbsentismo(d.factorAbsentismo)
-            // Restaurar mejoras guardadas (preserva selección y costes)
-            if (d.mejoras && d.mejoras.length > 0) setMejoras(d.mejoras)
           }
         } catch { /* no saved calc */ }
       } catch(e) { console.error(e) }
     })()
-  }, [selectedId])
+  }, [selectedId, selectedLoteId])
 
   const totalTrabajadores = personal.reduce((s,l) => s + l.cantidad, 0)
   const calcPersonalLinea = (l: LineaPersonal) => {
@@ -241,10 +227,7 @@ export default function CalculoPage() {
   const totalMaquinaria = sumaLineas(maquinaria); const totalPRL = sumaLineas(prl)
   const totalSeguros = sumaLineas(seguros); const totalGestion = sumaLineas(gestion)
   const totalTransporte = sumaLineas(transporte); const totalOtrosInd = sumaLineas(otrosIndirectos)
-  const totalMejoras = mejoras.filter(m => m.seleccionada).reduce((s, m) => s + (m.costeEstimado || 0), 0)
-  const mejorasSeleccionadas = mejoras.filter(m => m.seleccionada)
-  const puntosExtraMejoras = mejorasSeleccionadas.reduce((s, m) => s + (m.puntuacion || 0), 0)
-  const costesDirectos = totalPersonal + totalUniformidad + totalMateriales + totalMaquinaria + totalMejoras
+  const costesDirectos = totalPersonal + totalUniformidad + totalMateriales + totalMaquinaria
   const costesIndirectos = totalPRL + totalSeguros + totalGestion + totalTransporte + totalOtrosInd
   const base = costesDirectos + costesIndirectos
   const importeGG = base * (pctGG/100); const importeBI = base * (pctBI/100)
@@ -271,24 +254,28 @@ export default function CalculoPage() {
     try {
       const datos = {
         personal, uniformidad, materiales, maquinaria, prl, seguros, gestion, transporte, otrosIndirectos,
-        mejoras,
         duracionMeses, numCentros, pctGG, pctBI, pctIVA, factorAbsentismo, ssTotal, presupuestoLicitacion,
+        lote_id: selectedLoteId || null,
         resumen: {
           trabajadores: totalTrabajadores, personal: totalPersonal, uniformidad: totalUniformidad,
           materiales: totalMateriales, maquinaria: totalMaquinaria, prl: totalPRL, seguros: totalSeguros,
           gestion: totalGestion, transporte: totalTransporte, otrosIndirectos: totalOtrosInd,
-          mejoras: totalMejoras, mejorasSeleccionadas,
           costesDirectos, costesIndirectos, base, importeGG, importeBI,
           totalSinIVA, importeIVA, totalConIVA,
           presupuestoSinIVA: presSinIVA, bajaPct: baja, margenRealPct: margenReal, esRentable,
           costeMes: duracionMeses > 0 ? totalSinIVA/duracionMeses : 0,
           costeTrabMes: (duracionMeses > 0 && totalTrabajadores > 0) ? totalSinIVA/duracionMeses/totalTrabajadores : 0,
           pctPersonal: totalSinIVA > 0 ? (totalPersonal/totalSinIVA*100) : 0,
+          totalTrabajadores, baja, margenReal,
         },
         escenarios: escenarios.map(e => ({ nombre: e.nombre, gg: e.gg, bi: e.bi, total: e.total, baja: e.baja, viable: e.viable })),
         fechaCalculo: new Date().toISOString(),
       }
-      await api.guardarCalculo(selectedId, JSON.stringify(datos))
+      if (selectedLoteId) {
+        await (api as any).guardarCalculoLote({ oportunidad_id: selectedId, id_lote: selectedLoteId, json_datos: JSON.stringify(datos) })
+      } else {
+        await api.guardarCalculo(selectedId, JSON.stringify(datos))
+      }
       setGuardadoOk(true); setTimeout(() => setGuardadoOk(false), 3000)
     } catch { alert('Error guardando cálculo') }
     finally { setGuardando(false) }
@@ -361,7 +348,7 @@ export default function CalculoPage() {
   const stepDatos = (<>
     <div className="bg-white border border-[#dce5e1] rounded-2xl p-6">
       <label className={lbl}>Seleccionar oportunidad</label>
-      <select value={selectedId} onChange={e => handleSelectId(e.target.value)} className={`${inp} bg-[#f8faf9] cursor-pointer`}>
+      <select value={selectedId} onChange={e => setSelectedId(e.target.value)} className={`${inp} bg-[#f8faf9] cursor-pointer`}>
         <option value="">— Seleccionar oportunidad —</option>
         {oportunidades.filter(o => o.estado !== 'descartada').map((o: any) => (<option key={o.id} value={o.id}>{o.titulo?.substring(0,80)} — {o.presupuesto ? Number(o.presupuesto).toLocaleString('es-ES')+' €' : '?'}</option>))}
       </select>
@@ -410,102 +397,7 @@ export default function CalculoPage() {
     <Bloque title="Uniformidad y EPIs" icon={Shield} badge={totalUniformidad > 0 ? fmt(totalUniformidad) : undefined}><TablaCatalogo lineas={uniformidad} setLineas={setUniformidad} catalogo={catalogoPorBloque['Uniformidad']||[]} conMeses={false} {...catProps}/></Bloque>
     <Bloque title="Materiales y suministros" icon={Package} badge={totalMateriales > 0 ? fmt(totalMateriales) : undefined}><TablaCatalogo lineas={materiales} setLineas={setMateriales} catalogo={catalogoPorBloque['Productos']||[]} conMeses={true} {...catProps}/></Bloque>
     <Bloque title="Maquinaria y utillaje" icon={Wrench} badge={totalMaquinaria > 0 ? fmt(totalMaquinaria) : undefined}><TablaCatalogo lineas={maquinaria} setLineas={setMaquinaria} catalogo={catalogoPorBloque['Maquinaria']||[]} conMeses={false} {...catProps}/></Bloque>
-
-    {/* ── MEJORAS DEL PLIEGO ── */}
-    <Bloque
-      title="Mejoras valorables del pliego"
-      icon={Star}
-      badge={mejorasSeleccionadas.length > 0 ? `${mejorasSeleccionadas.length} selec. · +${puntosExtraMejoras}pts · ${fmt(totalMejoras)}` : undefined}
-    >
-      {mejoras.length === 0 ? (
-        <div className="flex items-center gap-2 text-sm text-[#8a9e96] py-2">
-          <Brain size={15} />
-          <span>No se detectaron mejoras valorables en el pliego. Analiza primero con IA.</span>
-        </div>
-      ) : (
-        <div className="space-y-3">
-          {/* Cabecera informativa */}
-          <div className="flex items-center gap-2 p-3 bg-[#e8f0ee] rounded-xl">
-            <Star size={14} className="text-[#1a3c34]" />
-            <p className="text-xs text-[#1a3c34] font-medium">
-              Selecciona las mejoras que vas a ofertar. Su coste se sumará a los costes directos y aparecerán destacadas en los documentos generados.
-            </p>
-          </div>
-
-          {mejoras.map((m, idx) => (
-            <div
-              key={idx}
-              className={`rounded-xl border p-4 transition-all ${m.seleccionada ? 'border-[#2d5a4e] bg-[#f0f7f4]' : 'border-[#dce5e1] bg-white'}`}
-            >
-              {/* Fila principal: checkbox + mejora + puntos */}
-              <div className="flex items-start gap-3">
-                <input
-                  type="checkbox"
-                  checked={m.seleccionada}
-                  onChange={e => setMejoras(prev => prev.map((x, i) => i === idx ? { ...x, seleccionada: e.target.checked } : x))}
-                  className="mt-0.5 w-4 h-4 accent-[#1a3c34] cursor-pointer flex-shrink-0"
-                />
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between gap-2 flex-wrap">
-                    <p className="text-sm font-semibold text-[#1a2e28]">{m.mejora}</p>
-                    {m.puntuacion > 0 && (
-                      <span className="flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 flex-shrink-0">
-                        <Star size={10} />+{m.puntuacion} pts
-                      </span>
-                    )}
-                  </div>
-
-                  {/* Campos adicionales solo si está seleccionada */}
-                  {m.seleccionada && (
-                    <div className="grid grid-cols-2 gap-3 mt-3">
-                      <div>
-                        <label className="block text-[10px] text-[#8a9e96] uppercase tracking-wider mb-1 font-medium">Coste estimado (€)</label>
-                        <input
-                          type="number"
-                          step="0.01"
-                          min="0"
-                          value={m.costeEstimado || ''}
-                          placeholder="0.00"
-                          onChange={e => setMejoras(prev => prev.map((x, i) => i === idx ? { ...x, costeEstimado: parseFloat(e.target.value) || 0 } : x))}
-                          className="w-full px-3 py-2 border border-[#dce5e1] rounded-xl text-sm focus:border-[#2d5a4e] focus:outline-none"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-[10px] text-[#8a9e96] uppercase tracking-wider mb-1 font-medium">Descripción para la oferta</label>
-                        <input
-                          type="text"
-                          value={m.descripcionOferta}
-                          placeholder="Cómo la presentamos en la oferta..."
-                          onChange={e => setMejoras(prev => prev.map((x, i) => i === idx ? { ...x, descripcionOferta: e.target.value } : x))}
-                          className="w-full px-3 py-2 border border-[#dce5e1] rounded-xl text-sm focus:border-[#2d5a4e] focus:outline-none"
-                        />
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          ))}
-
-          {/* Totales mejoras */}
-          {mejorasSeleccionadas.length > 0 && (
-            <div className="flex items-center justify-between p-3 bg-[#1a3c34] rounded-xl text-white">
-              <span className="text-xs font-semibold opacity-80">{mejorasSeleccionadas.length} mejoras · +{puntosExtraMejoras} puntos extra</span>
-              <span className="text-sm font-extrabold">{fmt(totalMejoras)}</span>
-            </div>
-          )}
-        </div>
-      )}
-    </Bloque>
-
-    {costesDirectos > 0 && (
-      <div className="flex justify-end p-3 bg-[#e8f0ee] rounded-xl border border-[#1a3c34]/10">
-        <span className="text-sm font-extrabold text-[#1a3c34]">
-          Total costes directos: {fmt(costesDirectos)}
-          {totalMejoras > 0 && <span className="text-[11px] font-medium opacity-70 ml-2">(incl. {fmt(totalMejoras)} mejoras)</span>}
-        </span>
-      </div>
-    )}
+    {costesDirectos > 0 && <div className="flex justify-end p-3 bg-[#e8f0ee] rounded-xl border border-[#1a3c34]/10"><span className="text-sm font-extrabold text-[#1a3c34]">Total costes directos: {fmt(costesDirectos)}</span></div>}
   </>)
 
   const stepIndirectos = (<>
@@ -529,15 +421,6 @@ export default function CalculoPage() {
         {totalUniformidad > 0 && <div className="flex justify-between py-2 border-b border-[#e8eeeb]"><span className="text-sm text-[#5a7a70]">Uniformidad y EPIs</span><span className="text-sm font-bold">{fmt(totalUniformidad)}</span></div>}
         {totalMateriales > 0 && <div className="flex justify-between py-2 border-b border-[#e8eeeb]"><span className="text-sm text-[#5a7a70]">Materiales</span><span className="text-sm font-bold">{fmt(totalMateriales)}</span></div>}
         {totalMaquinaria > 0 && <div className="flex justify-between py-2 border-b border-[#e8eeeb]"><span className="text-sm text-[#5a7a70]">Maquinaria</span><span className="text-sm font-bold">{fmt(totalMaquinaria)}</span></div>}
-        {totalMejoras > 0 && (
-          <div className="flex justify-between py-2 border-b border-[#e8eeeb]">
-            <span className="text-sm text-[#5a7a70] flex items-center gap-1.5">
-              <Star size={12} className="text-amber-500" />
-              Mejoras ofertadas ({mejorasSeleccionadas.length})
-            </span>
-            <span className="text-sm font-bold text-amber-700">{fmt(totalMejoras)}</span>
-          </div>
-        )}
         <div className="flex justify-between py-2.5 bg-[#e8f0ee] px-4 rounded-xl"><span className="text-sm font-bold text-[#1a3c34]">COSTES DIRECTOS</span><span className="text-sm font-extrabold text-[#1a3c34]">{fmt(costesDirectos)}</span></div>
         {costesIndirectos > 0 && <div className="flex justify-between py-2.5 bg-amber-50 px-4 rounded-xl mt-1"><span className="text-sm font-bold text-amber-800">COSTES INDIRECTOS</span><span className="text-sm font-extrabold text-amber-800">{fmt(costesIndirectos)}</span></div>}
       </div>
@@ -586,18 +469,8 @@ export default function CalculoPage() {
   const stepContent = [stepDatos, stepPersonal, stepDirectos, stepIndirectos, stepResumen]
 
   return (
-    <div ref={containerRef} className="max-w-4xl mx-auto">
+    <div ref={containerRef} className="p-4 lg:p-8 max-w-4xl mx-auto">
       <style>{`@keyframes fadeSlideIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }`}</style>
-
-      {/* Pipeline */}
-      <PipelineBar
-        currentStep="calculo"
-        showNext={!!(selectedId && step === STEPS.length - 1 && totalSinIVA > 0)}
-        nextLabel="Ir a GO/NO-GO →"
-        nextDisabled={!(totalSinIVA > 0)}
-        nextDisabledMsg="Completa el cálculo económico antes de continuar"
-      />
-
       {/* Header */}
       <div className="flex items-center gap-4 mb-6">
         <div className="p-2.5 bg-gradient-to-br from-[#1a3c34] to-[#3a7a6a] rounded-xl shadow-lg shadow-[#1a3c34]/20"><Calculator size={22} className="text-white"/></div>
@@ -607,6 +480,43 @@ export default function CalculoPage() {
           <button onClick={limpiarTodo} className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-[#5a7a70] bg-[#f1f5f3] hover:bg-[#dce5e1] rounded-xl transition-colors"><RotateCcw size={14}/> Limpiar</button>
         </div>
       </div>
+
+      {/* Banner lote seleccionado */}
+      {lote && (
+        <div className="flex items-center gap-3 mb-5 p-3.5 bg-violet-50 border border-violet-200 rounded-2xl">
+          <div className="w-8 h-8 rounded-xl bg-violet-600 flex items-center justify-center text-sm font-black text-white flex-shrink-0">
+            {lote.num_lote}
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-xs font-bold text-violet-900">{lote.descripcion}</p>
+            <p className="text-[10px] text-violet-600">
+              Lote {lote.num_lote}
+              {lote.presupuesto_sin_iva > 0 && ` · ${Number(lote.presupuesto_sin_iva).toLocaleString('es-ES', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 })} sin IVA`}
+              {lote.horas_totales > 0 && ` · ${lote.horas_totales.toLocaleString('es-ES')}h`}
+            </p>
+          </div>
+          <span className="text-[10px] font-bold px-2.5 py-1 bg-violet-100 text-violet-700 rounded-full">Calculando lote</span>
+        </div>
+      )}
+
+      {/* Selector de lote si hay varios y no viene por URL */}
+      {!loteParam && lotes.length > 1 && selectedId && (
+        <div className="mb-5 p-4 bg-white border border-slate-200 rounded-2xl">
+          <p className="text-xs font-bold text-slate-700 mb-2">Esta licitación tiene {lotes.length} lotes — selecciona uno o calcula el contrato completo:</p>
+          <div className="flex flex-wrap gap-2">
+            <button onClick={() => { setSelectedLoteId(''); setLote(null) }}
+              className={`text-xs font-bold px-3 py-1.5 rounded-lg transition-all ${!selectedLoteId ? 'bg-[#1a3c34] text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>
+              Todo el contrato
+            </button>
+            {lotes.map((l: any) => (
+              <button key={l.id} onClick={() => { setSelectedLoteId(l.id); setLote(l); if (l.presupuesto_con_iva > 0) setPresupuestoLicitacion(l.presupuesto_con_iva) }}
+                className={`text-xs font-bold px-3 py-1.5 rounded-lg transition-all ${selectedLoteId === l.id ? 'bg-violet-700 text-white' : l.decision === 'no_go' ? 'bg-red-50 text-red-500 line-through' : 'bg-violet-50 text-violet-700 hover:bg-violet-100'}`}>
+                Lote {l.num_lote}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Step tabs — libre, sin bloqueos */}
       <div className="flex items-center gap-1 mb-6 bg-white border border-[#dce5e1] rounded-2xl p-2">

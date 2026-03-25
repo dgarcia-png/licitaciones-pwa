@@ -1,12 +1,14 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { api } from '../services/api'
+import LotesPanel from '../components/LotesPanel'
+import PipelineBar from '../components/PipelineBar'
 import {
   ArrowLeft, Save, Upload, FileText, Building2, Euro, Calendar,
   Tag, ExternalLink, Loader2, CheckCircle2, AlertCircle,
   Download, Brain, AlertTriangle, Lightbulb, Award, Shield,
   Users, Scale, Target, XCircle, ChevronDown, ChevronUp,
-  PlayCircle, ArrowRight
+  Clock, Wrench, Layers, BarChart3
 } from 'lucide-react'
 
 const ESTADOS = [
@@ -144,35 +146,6 @@ function Collapsible({ title, icon: Icon, children, defaultOpen = false }: {
   )
 }
 
-// Pipeline visual
-function PipelineBar({ estado, analisis }: { estado: string, analisis: any }) {
-  const steps = [
-    { key: 'nueva', label: 'Detectada', done: true },
-    { key: 'pliegos', label: 'Pliegos', done: ['en_analisis','go','no_go','adjudicada'].includes(estado) },
-    { key: 'ia', label: 'Análisis IA', done: !!analisis?.existe },
-    { key: 'calculo', label: 'Cálculo', done: false },
-    { key: 'decision', label: 'Decisión', done: ['go','no_go','descartada','adjudicada'].includes(estado) },
-  ]
-  return (
-    <div className="flex items-center gap-1 mb-6">
-      {steps.map((s, i) => (
-        <div key={s.key} className="flex items-center flex-1">
-          <div className={`flex-1 h-2 rounded-full ${s.done ? 'bg-violet-500' : 'bg-slate-200'}`} />
-          <div className="relative">
-            <div className={`w-3 h-3 rounded-full border-2 ${
-              s.done ? 'bg-violet-500 border-violet-500' : 'bg-white border-slate-300'
-            }`} />
-            <span className={`absolute -bottom-5 left-1/2 -translate-x-1/2 text-[10px] whitespace-nowrap font-medium ${
-              s.done ? 'text-violet-600' : 'text-slate-400'
-            }`}>{s.label}</span>
-          </div>
-          {i < steps.length - 1 && <div className={`flex-1 h-2 rounded-full ${steps[i+1].done ? 'bg-violet-500' : 'bg-slate-200'}`} />}
-        </div>
-      ))}
-    </div>
-  )
-}
-
 export default function DetalleOportunidadPage() {
   const { id } = useParams()
   const navigate = useNavigate()
@@ -189,6 +162,18 @@ export default function DetalleOportunidadPage() {
   const [cpvOriginal, setCpvOriginal] = useState('')
   const [analisis, setAnalisis] = useState<any>(null)
   const [sugerenciaIA, setSugerenciaIA] = useState('')
+  const [lotes, setLotes] = useState<any[]>([])
+  const [cargandoLotes, setCargandoLotes] = useState(false)
+
+  const recargarLotes = async () => {
+    if (!id) return
+    setCargandoLotes(true)
+    try {
+      const data = await (api as any).obtenerLotes(id)
+      setLotes(data.lotes || [])
+    } catch (e) {}
+    finally { setCargandoLotes(false) }
+  }
 
   const [form, setForm] = useState({
     titulo: '', organismo: '', cpv: '', presupuesto: '',
@@ -264,6 +249,7 @@ export default function DetalleOportunidadPage() {
           fecha_deteccion: String(data.fecha_deteccion ?? ''),
         })
         await recargarAnalisis()
+        await recargarLotes()
       } catch (e) {
         setError('Error cargando la oportunidad')
       } finally {
@@ -414,9 +400,9 @@ export default function DetalleOportunidadPage() {
         </div>
       </div>
 
-      {/* Pipeline visual */}
-      <div className="mb-8 mt-2">
-        <PipelineBar estado={form.estado} analisis={analisis} />
+      {/* ── PipelineBar de navegación ── */}
+      <div className="mb-6 mt-2">
+        <PipelineBar currentStep="oportunidad" idOverride={id} showNext={false} />
       </div>
 
       {/* Siguiente acción recomendada */}
@@ -604,6 +590,17 @@ export default function DetalleOportunidadPage() {
         )}
       </div>
 
+      {/* ═══ LOTES ═══ */}
+      <div className="bg-white border border-slate-200 rounded-2xl p-6 mb-4">
+        <LotesPanel
+          oportunidadId={id || ''}
+          lotes={lotes}
+          cargando={cargandoLotes}
+          onRecargar={recargarLotes}
+          modo="detalle"
+        />
+      </div>
+
       {/* ═══ ANÁLISIS IA ═══ */}
       {analisis?.existe && (
         <div className="bg-white border border-slate-200 rounded-2xl p-6 mb-4">
@@ -665,41 +662,208 @@ export default function DetalleOportunidadPage() {
             {ac.riesgos_detectados && ac.riesgos_detectados.length > 0 && (
               <div className="bg-red-50 border border-red-200 rounded-xl p-4">
                 <div className="flex items-center gap-2 mb-2"><AlertTriangle size={16} className="text-red-600" /><span className="text-xs font-bold text-red-800">Riesgos</span></div>
-                {ac.riesgos_detectados.map((r: string, i: number) => (<p key={i} className="text-xs text-red-700 mb-1">• {r}</p>))}
+                {ac.riesgos_detectados.map((r: any, i: number) => (
+                  <div key={i} className="mb-1.5">
+                    {typeof r === 'string' ? (
+                      <p className="text-xs text-red-700">• {r}</p>
+                    ) : (
+                      <div className="flex items-start gap-1.5">
+                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded shrink-0 mt-0.5 ${
+                          r.gravedad === 'alta' ? 'bg-red-200 text-red-800' :
+                          r.gravedad === 'media' ? 'bg-amber-200 text-amber-800' :
+                          'bg-slate-200 text-slate-700'
+                        }`}>{(r.gravedad || 'media').toUpperCase()}</span>
+                        <div>
+                          <p className="text-xs text-red-700 font-medium">{r.riesgo}</p>
+                          {r.mitigacion && <p className="text-[10px] text-slate-500 mt-0.5">{r.mitigacion}</p>}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))}
               </div>
             )}
             {ac.oportunidades_detectadas && ac.oportunidades_detectadas.length > 0 && (
               <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4">
                 <div className="flex items-center gap-2 mb-2"><Lightbulb size={16} className="text-emerald-600" /><span className="text-xs font-bold text-emerald-800">Oportunidades</span></div>
-                {ac.oportunidades_detectadas.map((o: string, i: number) => (<p key={i} className="text-xs text-emerald-700 mb-1">• {o}</p>))}
+                {ac.oportunidades_detectadas.map((o: any, i: number) => (
+                  <div key={i} className="mb-1.5">
+                    {typeof o === 'string' ? (
+                      <p className="text-xs text-emerald-700">• {o}</p>
+                    ) : (
+                      <div className="flex items-start gap-1.5">
+                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded shrink-0 mt-0.5 ${
+                          o.impacto === 'alto' ? 'bg-emerald-200 text-emerald-800' :
+                          o.impacto === 'medio' ? 'bg-blue-200 text-blue-800' :
+                          'bg-slate-200 text-slate-700'
+                        }`}>{(o.impacto || 'medio').toUpperCase()}</span>
+                        <p className="text-xs text-emerald-700">{o.oportunidad}</p>
+                      </div>
+                    )}
+                  </div>
+                ))}
               </div>
             )}
           </div>
 
           <Collapsible title="Datos del contrato" icon={FileText}>
             <DataRow label="Tipo" value={ac.datos_basicos?.tipo_contrato} />
-            <DataRow label="Presupuesto (IVA)" value={ac.datos_basicos?.presupuesto_base_iva ? Number(ac.datos_basicos.presupuesto_base_iva).toLocaleString('es-ES') + ' €' : undefined} />
+            <DataRow label="Presupuesto sin IVA" value={ac.datos_basicos?.presupuesto_base_sin_iva ? Number(ac.datos_basicos.presupuesto_base_sin_iva).toLocaleString('es-ES') + ' €' : undefined} />
+            <DataRow label="Presupuesto con IVA" value={ac.datos_basicos?.presupuesto_base_con_iva ? Number(ac.datos_basicos.presupuesto_base_con_iva).toLocaleString('es-ES') + ' €' : undefined} />
+            <DataRow label="Valor estimado" value={ac.datos_basicos?.valor_estimado ? Number(ac.datos_basicos.valor_estimado).toLocaleString('es-ES') + ' €' : undefined} />
             <DataRow label="Duración" value={ac.datos_basicos?.duracion_contrato} />
-            <DataRow label="Lotes" value={ac.datos_basicos?.lotes} />
+            <DataRow label="Lotes" value={ac.datos_basicos?.num_lotes ? `${ac.datos_basicos.num_lotes} lotes — ${ac.datos_basicos.lotes_descripcion || ''}` : ac.datos_basicos?.lotes} />
             <DataRow label="Prórrogas" value={ac.datos_basicos?.prorrogas} />
+            <DataRow label="Revisión precios" value={ac.datos_basicos?.revision_precios} />
           </Collapsible>
+
+          {/* Estructura económica — nueva sección v2 */}
+          {ac.estructura_economica && (ac.estructura_economica.precio_hora_maximo > 0 || ac.estructura_economica.convenio_referencia) && (
+            <Collapsible title="Estructura económica del pliego" icon={BarChart3} defaultOpen={true}>
+              <DataRow label="Precio/hora máximo" value={ac.estructura_economica.precio_hora_maximo ? ac.estructura_economica.precio_hora_maximo + ' €/h' : undefined} />
+              <DataRow label="% Coste personal" value={ac.estructura_economica.pct_coste_personal ? ac.estructura_economica.pct_coste_personal + '%' : undefined} />
+              <DataRow label="% Materiales" value={ac.estructura_economica.pct_materiales ? ac.estructura_economica.pct_materiales + '%' : undefined} />
+              <DataRow label="% Indirectos" value={ac.estructura_economica.pct_costes_indirectos ? ac.estructura_economica.pct_costes_indirectos + '%' : undefined} />
+              <DataRow label="% Beneficio industrial" value={ac.estructura_economica.pct_beneficio ? ac.estructura_economica.pct_beneficio + '%' : undefined} />
+              <DataRow label="Convenio referencia" value={ac.estructura_economica.convenio_referencia} />
+              <DataRow label="Forma de pago" value={ac.estructura_economica.forma_pago} />
+            </Collapsible>
+          )}
+
+          {/* Servicios requeridos — nueva sección v2 */}
+          {ac.servicios_requeridos && (ac.servicios_requeridos.total_horas_contrato > 0 || ac.servicios_requeridos.centros_o_zonas?.length > 0) && (
+            <Collapsible title={`Servicios requeridos${ac.servicios_requeridos.total_horas_contrato > 0 ? ` — ${ac.servicios_requeridos.total_horas_contrato.toLocaleString('es-ES')}h` : ''}`} icon={Wrench} defaultOpen={true}>
+              <DataRow label="Total horas contrato" value={ac.servicios_requeridos.total_horas_contrato ? ac.servicios_requeridos.total_horas_contrato.toLocaleString('es-ES') + ' h' : undefined} />
+              <DataRow label="Bolsa emergencia" value={ac.servicios_requeridos.bolsa_horas_emergencia ? ac.servicios_requeridos.bolsa_horas_emergencia.toLocaleString('es-ES') + ' h' : undefined} />
+              <DataRow label="Superficie total" value={ac.servicios_requeridos.total_superficie_m2 ? ac.servicios_requeridos.total_superficie_m2.toLocaleString('es-ES') + ' m²' : undefined} />
+              <DataRow label="Materiales empresa" value={(ac.servicios_requeridos.materiales_cargo_empresa || []).join(', ')} />
+              {/* Tabla de centros */}
+              {ac.servicios_requeridos.centros_o_zonas?.length > 0 && (
+                <div className="mt-3">
+                  <p className="text-xs font-semibold text-slate-600 mb-2">Centros / zonas ({ac.servicios_requeridos.centros_o_zonas.length})</p>
+                  <div className="space-y-2">
+                    {ac.servicios_requeridos.centros_o_zonas.map((c: any, i: number) => (
+                      <div key={i} className="p-2.5 bg-slate-50 rounded-lg">
+                        <p className="text-xs font-bold text-slate-800">{c.nombre}</p>
+                        <div className="flex flex-wrap gap-3 mt-1">
+                          {c.dias_servicio && <span className="text-[10px] text-slate-500">📅 {c.dias_servicio}</span>}
+                          {(c.horario_inicio || c.horario_fin) && <span className="text-[10px] text-slate-500">🕐 {c.horario_inicio}–{c.horario_fin}</span>}
+                          {c.horas_anuales > 0 && <span className="text-[10px] text-slate-500">⏱ {c.horas_anuales.toLocaleString('es-ES')}h/año</span>}
+                          {c.superficie_m2 > 0 && <span className="text-[10px] text-slate-500">📐 {c.superficie_m2.toLocaleString('es-ES')} m²</span>}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {/* Tareas principales */}
+              {ac.servicios_requeridos.tareas_principales?.length > 0 && (
+                <div className="mt-3">
+                  <p className="text-xs font-semibold text-slate-600 mb-2">Tareas principales</p>
+                  <div className="space-y-1.5">
+                    {ac.servicios_requeridos.tareas_principales.map((t: any, i: number) => (
+                      <div key={i} className="flex items-start gap-2">
+                        <span className="text-[10px] bg-slate-200 text-slate-700 px-1.5 py-0.5 rounded font-bold shrink-0 mt-0.5">{t.frecuencia}</span>
+                        <p className="text-xs text-slate-700">{t.tarea}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </Collapsible>
+          )}
+
+          {/* Medios mínimos — nueva sección v2 */}
+          {ac.medios_minimos_requeridos && (ac.medios_minimos_requeridos.personal?.length > 0 || ac.medios_minimos_requeridos.maquinaria?.length > 0) && (
+            <Collapsible title="Medios mínimos requeridos" icon={Users} defaultOpen={false}>
+              {ac.medios_minimos_requeridos.personal?.length > 0 && (
+                <div className="mb-3">
+                  <p className="text-xs font-semibold text-slate-600 mb-2">Personal mínimo</p>
+                  {ac.medios_minimos_requeridos.personal.map((p: any, i: number) => (
+                    <div key={i} className="flex justify-between py-1.5 border-b border-slate-50 last:border-0">
+                      <span className="text-xs text-slate-700">{p.categoria}</span>
+                      <span className="text-xs font-bold text-slate-900">{p.num_minimo} · {p.jornada_horas_semana}h/sem</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {ac.medios_minimos_requeridos.maquinaria?.length > 0 && (
+                <div className="mb-3">
+                  <p className="text-xs font-semibold text-slate-600 mb-2">Maquinaria</p>
+                  {ac.medios_minimos_requeridos.maquinaria.map((m: any, i: number) => (
+                    <div key={i} className="flex justify-between py-1.5 border-b border-slate-50 last:border-0">
+                      <span className="text-xs text-slate-700">{m.tipo}</span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-bold text-slate-900">{m.unidades} ud</span>
+                        <span className={`text-[10px] px-1.5 py-0.5 rounded font-bold ${m.disponibilidad === '100%' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>{m.disponibilidad}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {ac.medios_minimos_requeridos.vehiculos?.length > 0 && (
+                <div>
+                  <p className="text-xs font-semibold text-slate-600 mb-2">Vehículos</p>
+                  {ac.medios_minimos_requeridos.vehiculos.map((v: any, i: number) => (
+                    <div key={i} className="flex justify-between py-1.5 border-b border-slate-50 last:border-0">
+                      <span className="text-xs text-slate-700">{v.tipo}</span>
+                      <span className="text-xs font-bold text-slate-900">{v.unidades} ud</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {ac.medios_minimos_requeridos.seguro_responsabilidad_minimo > 0 && (
+                <DataRow label="Seguro RC mínimo" value={Number(ac.medios_minimos_requeridos.seguro_responsabilidad_minimo).toLocaleString('es-ES') + ' €'} />
+              )}
+            </Collapsible>
+          )}
+
+          {/* Dimensionamiento estimado — nueva sección v2 */}
+          {ac.dimensionamiento_estimado && ac.dimensionamiento_estimado.total_personas > 0 && (
+            <Collapsible title="Dimensionamiento estimado" icon={Clock} defaultOpen={true}>
+              <div className="grid grid-cols-3 gap-3 mb-3">
+                <div className="bg-slate-50 rounded-xl p-3 text-center">
+                  <p className="text-2xl font-black text-slate-900">{ac.dimensionamiento_estimado.operarios_estimados || 0}</p>
+                  <p className="text-[10px] text-slate-500">Operarios</p>
+                </div>
+                <div className="bg-slate-50 rounded-xl p-3 text-center">
+                  <p className="text-2xl font-black text-slate-900">{ac.dimensionamiento_estimado.encargados_estimados || 0}</p>
+                  <p className="text-[10px] text-slate-500">Encargados</p>
+                </div>
+                <div className="bg-[#1a3c34] rounded-xl p-3 text-center">
+                  <p className="text-2xl font-black text-white">{ac.dimensionamiento_estimado.total_personas}</p>
+                  <p className="text-[10px] text-white/70">Total personas</p>
+                </div>
+              </div>
+              <DataRow label="Jornada tipo" value={ac.dimensionamiento_estimado.jornada_tipo} />
+              <DataRow label="Turnos" value={ac.dimensionamiento_estimado.turnos} />
+              {ac.dimensionamiento_estimado.notas_dimensionamiento && (
+                <div className="mt-2 p-3 bg-amber-50 rounded-lg">
+                  <p className="text-xs text-amber-800">{ac.dimensionamiento_estimado.notas_dimensionamiento}</p>
+                </div>
+              )}
+            </Collapsible>
+          )}
 
           <Collapsible title="Solvencia y clasificación" icon={Shield}>
             <DataRow label="Volumen negocios" value={ac.solvencia_economica?.volumen_anual_negocios} />
-            <DataRow label="Seguro RC" value={ac.solvencia_economica?.seguro_responsabilidad} />
+            <DataRow label="Importe mínimo" value={ac.solvencia_economica?.importe_minimo ? Number(ac.solvencia_economica.importe_minimo).toLocaleString('es-ES') + ' €' : undefined} />
+            <DataRow label="Seguro RC" value={ac.solvencia_economica?.seguro_responsabilidad ? Number(ac.solvencia_economica.seguro_responsabilidad).toLocaleString('es-ES') + ' €' : undefined} />
             <DataRow label="Trabajos similares" value={ac.solvencia_tecnica?.trabajos_similares} />
-            <DataRow label="Certificaciones" value={ac.solvencia_tecnica?.certificaciones} />
+            <DataRow label="Certificaciones" value={Array.isArray(ac.solvencia_tecnica?.certificaciones) ? ac.solvencia_tecnica.certificaciones.join(', ') : ac.solvencia_tecnica?.certificaciones} />
             <DataRow label="Clasificación" value={ac.clasificacion_empresarial?.requerida === 'Sí' ? `Sí — ${ac.clasificacion_empresarial.grupo}` : ac.clasificacion_empresarial?.requerida} />
           </Collapsible>
 
-          <Collapsible title="Personal" icon={Users}>
-            <DataRow label="Subrogación" value={ac.personal_requerido?.subrogacion} />
-            <DataRow label="Convenio" value={ac.personal_requerido?.convenio_aplicable} />
-            <DataRow label="Detalle" value={ac.personal_requerido?.detalle} />
+          <Collapsible title="Personal y subrogación" icon={Users}>
+            <DataRow label="Subrogación" value={ac.personal_subrogacion?.aplica || ac.personal_requerido?.subrogacion} />
+            <DataRow label="Nº trabajadores" value={ac.personal_subrogacion?.num_trabajadores} />
+            <DataRow label="Convenio" value={ac.personal_subrogacion?.convenio_aplicable || ac.personal_requerido?.convenio_aplicable} />
+            <DataRow label="Empresa saliente" value={ac.personal_subrogacion?.empresa_saliente} />
+            <DataRow label="Categorías" value={ac.personal_subrogacion?.categorias_resumen || ac.personal_requerido?.categorias_profesionales} />
           </Collapsible>
 
           <Collapsible title="Garantías y penalizaciones" icon={Scale}>
-            <DataRow label="Garantía definitiva" value={ac.garantias?.definitiva} />
+            <DataRow label="Garantía definitiva" value={ac.garantias?.definitiva_pct ? ac.garantias.definitiva_pct + '%' : ac.garantias?.definitiva} />
             <DataRow label="Penalización incumplimiento" value={ac.penalizaciones?.por_incumplimiento} />
             <DataRow label="Penalización retraso" value={ac.penalizaciones?.por_retraso} />
           </Collapsible>
@@ -727,45 +891,6 @@ export default function DetalleOportunidadPage() {
           <CheckCircle2 size={16} className="shrink-0" />Cambios guardados correctamente
         </div>
       )}
-
-      {/* ── PIPELINE DE LICITACIÓN ── */}
-      <div
-        className="rounded-2xl overflow-hidden mb-6"
-        style={{ background: 'linear-gradient(135deg, #1a3c34 0%, #2d5a4e 100%)' }}
-      >
-        <div className="px-5 py-4 flex items-center justify-between flex-wrap gap-3">
-          <div>
-            <p className="text-white/60 text-[11px] uppercase tracking-widest font-semibold mb-0.5">Pipeline de licitación</p>
-            <p className="text-white font-semibold text-sm">Continúa el proceso desde donde lo dejaste</p>
-          </div>
-          <button
-            onClick={() => navigate(`/analisis?id=${id}`)}
-            className="flex items-center gap-2 px-5 py-2.5 bg-white text-[#1a3c34] font-bold text-sm rounded-xl hover:bg-white/90 transition-all shadow-lg"
-          >
-            <PlayCircle size={16} />
-            Iniciar / Continuar pipeline
-            <ArrowRight size={14} />
-          </button>
-        </div>
-        <div className="flex border-t border-white/10 divide-x divide-white/10">
-          {[
-            { label: 'Análisis IA',  path: `/analisis?id=${id}`,   emoji: '🧠' },
-            { label: 'Cálculo',      path: `/calculo?id=${id}`,    emoji: '📊' },
-            { label: 'GO/NO-GO',     path: `/decisiones?id=${id}`, emoji: '⚖️' },
-            { label: 'Oferta',       path: `/oferta?id=${id}`,     emoji: '📄' },
-            { label: 'Seguimiento',  path: `/seguimiento?id=${id}`,emoji: '📈' },
-          ].map(s => (
-            <button
-              key={s.path}
-              onClick={() => navigate(s.path)}
-              className="flex-1 flex flex-col items-center gap-0.5 py-2.5 text-white/60 hover:text-white hover:bg-white/10 transition-colors text-[11px] font-medium"
-            >
-              <span>{s.emoji}</span>
-              <span>{s.label}</span>
-            </button>
-          ))}
-        </div>
-      </div>
 
       {/* Botones */}
       <div className="flex justify-between">
