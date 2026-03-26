@@ -6,6 +6,7 @@ import {
   Calculator, ChevronRight, Loader2, Plus, RefreshCw,
   AlertTriangle, Target, Edit2, Save, X
 } from 'lucide-react'
+import ConfirmModal from './ConfirmModal'
 
 const DECISION_CONFIG: Record<string, { label: string; color: string; bg: string; icon: any }> = {
   pendiente: { label: 'Pendiente',  color: 'text-slate-600',  bg: 'bg-slate-100',  icon: Clock },
@@ -35,6 +36,7 @@ export default function LotesPanel({
 }: Props) {
   const navigate = useNavigate()
   const [creandoLotes, setCreandoLotes] = useState(false)
+  const [confirmRecrear, setConfirmRecrear] = useState(false)
   const [editandoId, setEditandoId] = useState<string | null>(null)
   const [formEdit, setFormEdit] = useState<any>({})
   const [guardando, setGuardando] = useState(false)
@@ -114,13 +116,25 @@ export default function LotesPanel({
           <button onClick={onRecargar} className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg">
             <RefreshCw size={14} />
           </button>
-          <button onClick={handleCrearLotes} disabled={creandoLotes}
+          <button onClick={() => lotes.length === 0 ? handleCrearLotes() : setConfirmRecrear(true)} disabled={creandoLotes}
             className="flex items-center gap-1.5 px-3 py-1.5 bg-violet-700 hover:bg-violet-800 disabled:bg-violet-300 text-white text-xs font-bold rounded-lg">
             {creandoLotes ? <Loader2 size={12} className="animate-spin" /> : <Plus size={12} />}
             {lotes.length === 0 ? 'Crear desde análisis' : 'Recrear lotes'}
           </button>
         </div>
       </div>
+
+      <ConfirmModal
+        open={confirmRecrear}
+        titulo="¿Recrear lotes?"
+        mensaje={`Se eliminarán los ${lotes.length} lotes existentes y se crearán de nuevo desde el análisis IA. Se perderán los cálculos guardados en cada lote.`}
+        labelOk="Sí, recrear"
+        labelCancel="Cancelar"
+        peligroso
+        cargando={creandoLotes}
+        onConfirm={() => { setConfirmRecrear(false); handleCrearLotes() }}
+        onCancel={() => setConfirmRecrear(false)}
+      />
 
       {/* Sin lotes */}
       {lotes.length === 0 && (

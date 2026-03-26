@@ -137,7 +137,36 @@ export default function OfertaPage() {
       {mensaje && <div className="flex items-center gap-2 p-3 bg-emerald-50 border border-emerald-200 rounded-xl mb-4"><CheckCircle2 size={16} className="text-emerald-600" /><span className="text-sm text-emerald-800">{mensaje}</span><button onClick={() => setMensaje('')} className="ml-auto"><X size={14} /></button></div>}
       {error && <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-xl mb-4"><AlertCircle size={16} className="text-red-600" /><span className="text-sm text-red-800">{error}</span><button onClick={() => setError('')} className="ml-auto"><X size={14} /></button></div>}
 
-      {!selectedId && (<div className="flex flex-col items-center py-16"><FileText size={48} className="text-slate-300 mb-3" /><p className="text-slate-500">Selecciona una oportunidad GO</p></div>)}
+      {/* Info oportunidad seleccionada */}
+      {oportunidad && (
+        <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 mb-6 flex items-center gap-4 flex-wrap">
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-bold text-slate-800 truncate">{oportunidad.titulo}</p>
+            <p className="text-xs text-slate-500">{oportunidad.organismo} · {oportunidad.presupuesto ? Number(oportunidad.presupuesto).toLocaleString('es-ES') + ' €' : '?'}</p>
+          </div>
+          {oportunidad.cpv && (
+            <div className="shrink-0">
+              <span className="text-xs bg-blue-100 text-blue-700 font-bold px-2.5 py-1 rounded-lg">
+                CPV {oportunidad.cpv}
+              </span>
+            </div>
+          )}
+          <div className="shrink-0">
+            <span className={`text-xs font-bold px-2.5 py-1 rounded-lg ${
+              String(oportunidad.cpv || '').startsWith('773') ? 'bg-emerald-100 text-emerald-700' :
+              String(oportunidad.cpv || '').startsWith('507') ? 'bg-amber-100 text-amber-700' :
+              String(oportunidad.cpv || '').startsWith('983') ? 'bg-purple-100 text-purple-700' :
+              'bg-slate-100 text-slate-600'
+            }`}>
+              {String(oportunidad.cpv || '').startsWith('773') ? '🌿 Jardinería' :
+               String(oportunidad.cpv || '').startsWith('507') ? '🔧 Mantenimiento' :
+               String(oportunidad.cpv || '').startsWith('983') ? '🏢 Conserjería' :
+               String(oportunidad.cpv || '').startsWith('797') ? '🛡️ Vigilancia' :
+               '🧹 Limpieza'}
+            </span>
+          </div>
+        </div>
+      )}
 
       {selectedId && oportunidad && (
         <>

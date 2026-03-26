@@ -70,6 +70,9 @@ export default function SeguimientoPage() {
           if (r.triggers.conocimiento?.ok) {
             msg += ' · ✅ Guardado en base de conocimiento'
           }
+          if (r.triggers.territorio?.ok) {
+            msg += ` · 🗺️ ${r.triggers.territorio.centros_creados || 0} centros creados en Territorio`
+          }
           if (r.triggers.errores?.length > 0) {
             msg += ' · ⚠️ Algunos triggers fallaron'
           }

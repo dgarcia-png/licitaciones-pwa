@@ -3,6 +3,10 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { api } from '../services/api'
 import LotesPanel from '../components/LotesPanel'
 import PipelineBar from '../components/PipelineBar'
+import { SkeletonDetalle } from '../components/Skeleton'
+import ScoreDesglose from '../components/ScoreDesglose'
+import ConfirmModal from '../components/ConfirmModal'
+import HistorialActividad from '../components/HistorialActividad'
 import {
   ArrowLeft, Save, Upload, FileText, Building2, Euro, Calendar,
   Tag, ExternalLink, Loader2, CheckCircle2, AlertCircle,
@@ -367,12 +371,7 @@ export default function DetalleOportunidadPage() {
     NextActionIcon = Euro
   }
 
-  if (cargando) return (
-    <div className="flex flex-col items-center justify-center py-20">
-      <Loader2 size={32} className="text-blue-500 animate-spin mb-3" />
-      <p className="text-slate-500">Cargando oportunidad...</p>
-    </div>
-  )
+  if (cargando) return <div className="p-6 lg:p-8"><SkeletonDetalle /></div>
 
   return (
     <div className="p-6 lg:p-8 max-w-4xl">
@@ -401,8 +400,13 @@ export default function DetalleOportunidadPage() {
       </div>
 
       {/* ── PipelineBar de navegación ── */}
-      <div className="mb-6 mt-2">
+      <div className="mb-4 mt-2">
         <PipelineBar currentStep="oportunidad" idOverride={id} />
+      </div>
+
+      {/* ── Score desglosado ── */}
+      <div className="mb-4">
+        <ScoreDesglose oportunidad={form} />
       </div>
 
       {/* Siguiente acción recomendada */}
@@ -903,6 +907,11 @@ export default function DetalleOportunidadPage() {
           {guardando ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
           {guardando ? 'Guardando...' : 'Guardar cambios'}
         </button>
+      </div>
+
+      {/* Historial de actividad */}
+      <div className="mt-6">
+        <HistorialActividad oportunidadId={id || ''} />
       </div>
     </div>
   )

@@ -29,6 +29,9 @@ const PlantillasPage = lazy(() => import('./pages/PlantillasPage'))
 const PortalEmpleadoPage = lazy(() => import('./pages/PortalEmpleadoPage'))
 const DashboardRRHHPage = lazy(() => import('./pages/DashboardRRHHPage'))
 const DashboardLicitacionesPage = lazy(() => import('./pages/DashboardLicitacionesPage'))
+const TerritorioPage = lazy(() => import('./pages/TerritorioPage'))
+const PartesPage = lazy(() => import('./pages/PartesPage'))
+const Dashboard360Page = lazy(() => import('./pages/Dashboard360Page'))
 
 function PageLoader() {
   return <div className="flex flex-col items-center justify-center py-20"><Loader2 size={28} className="text-[#1a3c34] animate-spin mb-2" /><p className="text-sm text-slate-400">Cargando...</p></div>
@@ -47,7 +50,8 @@ function AppRoutes() {
       <Routes>
         <Route path="/login" element={<PublicRoute><LoginPage /></PublicRoute>} />
         <Route element={<ProtectedRoute><Layout /></ProtectedRoute>}>
-          <Route path="/" element={<DashboardPage />} />
+          <Route path="/" element={<Dashboard360Page />} />
+          <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/oportunidades" element={<OportunidadesPage />} />
           <Route path="/oportunidades/nueva" element={<NuevaOportunidadPage />} />
           <Route path="/oportunidades/:id" element={<DetalleOportunidadPage />} />
@@ -71,6 +75,8 @@ function AppRoutes() {
           <Route path="/portal" element={<PortalEmpleadoPage />} />
           <Route path="/dashboard-rrhh" element={<DashboardRRHHPage />} />
           <Route path="/licitaciones-dashboard" element={<DashboardLicitacionesPage />} />
+          <Route path="/territorio" element={<TerritorioPage />} />
+          <Route path="/partes" element={<PartesPage />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

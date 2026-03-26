@@ -2,10 +2,11 @@ import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { api } from '../services/api'
 import PipelineBar from '../components/PipelineBar'
+import { exportarCalculoPDF } from '../utils/exportPDF'
 import {
   Calculator, Users, Package, Shield, Settings, TrendingUp, Loader2, Plus, Trash2,
   ChevronDown, ChevronUp, AlertTriangle, CheckCircle2, XCircle, Brain, Wrench,
-  RotateCcw, UserPlus, Save, ArrowLeft, ArrowRight, FileText, Truck, BarChart3
+  RotateCcw, UserPlus, Save, ArrowLeft, ArrowRight, FileText, Truck, BarChart3, Download
 } from 'lucide-react'
 
 interface LineaPersonal {
@@ -480,6 +481,12 @@ export default function CalculoPage() {
         <div className="flex-1"><h1 className="text-2xl font-extrabold text-[#1a2e28]">Cálculo Económico</h1><p className="text-sm text-[#5a7a70]">Escandallo de costes — LCSP</p></div>
         <div className="flex gap-2">
           {selectedId && (<button onClick={guardarCalculo} disabled={guardando} className={`flex items-center gap-1.5 px-4 py-2 text-xs font-bold rounded-xl transition-all ${guardadoOk ? 'bg-emerald-100 text-emerald-700' : 'bg-[#1a3c34] text-white hover:bg-[#2d5a4e]'} disabled:opacity-50`}>{guardando ? <Loader2 size={14} className="animate-spin"/> : guardadoOk ? <CheckCircle2 size={14}/> : <Save size={14}/>}{guardando ? 'Guardando...' : guardadoOk ? 'Guardado' : 'Guardar'}</button>)}
+            {selectedId && totalConIVA > 0 && (
+              <button onClick={() => exportarCalculoPDF({ resumen: { totalSinIVA, totalConIVA }, personal }, oportunidades.find((o: any) => o.id === selectedId))}
+                className="flex items-center gap-1.5 px-4 py-2 text-xs font-bold rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 transition-all">
+                <Download size={14} /> PDF
+              </button>
+            )}
           <button onClick={limpiarTodo} className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-[#5a7a70] bg-[#f1f5f3] hover:bg-[#dce5e1] rounded-xl transition-colors"><RotateCcw size={14}/> Limpiar</button>
         </div>
       </div>

@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react'
+import { SkeletonAnalisis } from '../components/Skeleton'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { api } from '../services/api'
 import PipelineBar from '../components/PipelineBar'
+import { exportarAnalisisPDF } from '../utils/exportPDF'
 import {
   Brain, Loader2, AlertCircle, Search, ArrowLeft, ChevronDown, ChevronUp,
   Shield, Users, FileText, AlertTriangle, Lightbulb, Target, Clock,
-  Euro, Building2, Scale, Award, CheckCircle2, XCircle, TrendingUp
+  Euro, Building2, Scale, Award, CheckCircle2, XCircle, TrendingUp, Download
 } from 'lucide-react'
 
 interface Analisis {
@@ -112,16 +114,21 @@ export default function AnalisisPage() {
     cargarAnalisis()
   }, [selectedId])
 
+  const [msgLotes, setMsgLotes] = useState('')
+
   const handleAnalizar = async () => {
     if (!selectedId) return
     setAnalizando(true)
     setError('')
+    setMsgLotes('')
     try {
       const result = await api.analizarPliegos(selectedId)
       if (result.ok) {
-        // Recargar análisis
         const data = await api.obtenerAnalisis(selectedId)
         setAnalisis(data)
+        if (result.lotes_creados > 0) {
+          setMsgLotes('✅ ' + result.lotes_creados + ' lotes creados automáticamente desde el análisis')
+        }
       } else {
         setError(result.error || 'Error en el análisis')
       }
@@ -171,6 +178,12 @@ export default function AnalisisPage() {
               {analizando ? <Loader2 size={16} className="animate-spin" /> : <Brain size={16} />}
               {analizando ? 'Analizando pliegos... (1-2 min)' : analisis?.existe ? 'Re-analizar con IA' : 'Analizar con IA'}
             </button>
+            {analisis?.existe && (
+              <button onClick={() => exportarAnalisisPDF(analisis)}
+                className="flex items-center gap-2 px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-semibold rounded-xl transition-colors">
+                <Download size={15} /> Exportar PDF
+              </button>
+            )}
             <button onClick={() => navigate('/oportunidades/' + selectedId)}
               className="px-4 py-2.5 text-sm text-slate-600 hover:bg-slate-100 rounded-xl transition-colors">
               Ver ficha
@@ -180,18 +193,19 @@ export default function AnalisisPage() {
       </div>
 
       {/* Mensajes */}
+      {msgLotes && (
+        <div className="flex items-center gap-2 p-4 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-700 text-sm mb-4">
+          <CheckCircle2 size={16} className="shrink-0" />{msgLotes}
+        </div>
+      )}
+
       {error && (
         <div className="flex items-center gap-2 p-4 bg-red-50 border border-red-100 rounded-xl text-red-600 text-sm mb-4">
           <AlertCircle size={16} className="shrink-0" />{error}
         </div>
       )}
 
-      {cargando && (
-        <div className="flex flex-col items-center justify-center py-16">
-          <Loader2 size={32} className="text-violet-500 animate-spin mb-3" />
-          <p className="text-slate-500">Cargando análisis...</p>
-        </div>
-      )}
+      {cargando && <SkeletonAnalisis />}
 
       {/* Sin análisis */}
       {!cargando && selectedId && analisis && !analisis.existe && (

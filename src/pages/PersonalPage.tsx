@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { usePermisos } from '../hooks/usePermisos'
 import { api } from '../services/api'
+import ConfirmModal from '../components/ConfirmModal'
 import {
   Users, Search, Plus, Loader2, User, Phone, Mail, MapPin, Calendar,
   Briefcase, CheckCircle2, XCircle, AlertTriangle, ChevronDown, ChevronUp,
@@ -226,8 +227,9 @@ export default function PersonalPage() {
     finally { setGuardando(false) }
   }
 
+  const [confirmBaja, setConfirmBaja] = useState(false)
+
   const handleBaja = async () => {
-    if (!empleadoSel || !confirm('¿Registrar baja de ' + empleadoSel.nombre + ' ' + empleadoSel.apellidos + '?')) return
     setGuardando(true)
     try {
       const result = await api.bajaEmpleado({ id: empleadoSel.id, motivo: 'Baja voluntaria' })
@@ -271,10 +273,21 @@ export default function PersonalPage() {
 
   const empFiltrados = empleados.filter((e: any) => filtroEstado === 'todos' || e.estado === filtroEstado)
 
-  if (cargando && vista === 'lista') return (<div className="flex flex-col items-center py-20"><Loader2 size={32} className="text-[#1a3c34] animate-spin mb-3" /><p className="text-slate-500">Cargando personal...</p></div>)
+  if (cargando && vista === 'lista') return (<div className="p-6 lg:p-8 max-w-5xl"><div className="flex items-center gap-4 mb-6"><div className="p-2.5 bg-[#e8f0ee] rounded-xl w-10 h-10 animate-pulse"/><div className="space-y-2"><div className="h-6 w-40 bg-slate-200 rounded animate-pulse"/><div className="h-3 w-24 bg-slate-200 rounded animate-pulse"/></div></div><div className="space-y-3">{[1,2,3,4,5].map(i=><div key={i} className="bg-white border border-slate-200 rounded-2xl p-4 flex items-center gap-4"><div className="w-10 h-10 rounded-full bg-slate-200 animate-pulse shrink-0"/><div className="flex-1 space-y-2"><div className="h-4 w-1/3 bg-slate-200 rounded animate-pulse"/><div className="h-3 w-1/4 bg-slate-200 rounded animate-pulse"/></div><div className="h-6 w-16 bg-slate-200 rounded animate-pulse"/></div>)}</div></div>)
 
   return (
     <div className="p-6 lg:p-8 max-w-6xl">
+      <ConfirmModal
+        open={confirmBaja}
+        titulo={`¿Registrar baja de ${empleadoSel?.nombre || ''} ${empleadoSel?.apellidos || ''}?`}
+        mensaje="Se registrará la baja del empleado. Esta acción cambiará su estado a inactivo y no podrá fichar."
+        labelOk="Sí, registrar baja"
+        labelCancel="Cancelar"
+        peligroso
+        cargando={guardando}
+        onConfirm={() => { setConfirmBaja(false); handleBaja() }}
+        onCancel={() => setConfirmBaja(false)}
+      />
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-4">
@@ -313,8 +326,7 @@ export default function PersonalPage() {
           ) : (
             <div className="space-y-2">
               {empFiltrados.map((emp: any) => (
-                <button key={emp.id} onClick={() => cargarDetalle(emp.id)}
-                  className="w-full bg-white border border-slate-200 rounded-xl p-4 hover:shadow-md transition-shadow text-left">
+                <div key={emp.id} className="w-full bg-white border border-slate-200 rounded-xl p-4 hover:shadow-md transition-shadow">
                   <div className="flex items-center gap-4">
                     <div className={`w-11 h-11 rounded-full flex items-center justify-center text-white text-sm font-bold shrink-0 ${emp.estado === 'activo' ? 'bg-[#1a3c34]' : 'bg-slate-400'}`}>
                       {(emp.nombre || '?')[0]}{(emp.apellidos || '?')[0]}
@@ -328,21 +340,15 @@ export default function PersonalPage() {
                         {emp.dni && <span>{emp.dni}</span>}
                         {emp.categoria && <span>· {emp.categoria}</span>}
                         {emp.centro && <span>· 📍 {emp.centro}</span>}
-                        {emp.horario_entrada && <span>· ⏰ {emp.horario_entrada}–{emp.horario_salida}</span>}
                       </div>
                     </div>
-                    <div className="hidden md:flex items-center gap-2 shrink-0">
-                      {emp.docs_pct !== undefined && (
-                        <div className="flex items-center gap-1.5">
-                          <div className="w-16 h-2 bg-slate-200 rounded-full overflow-hidden">
-                            <div className={`h-full rounded-full ${emp.docs_pct === 100 ? 'bg-emerald-500' : emp.docs_pct >= 50 ? 'bg-amber-500' : 'bg-red-500'}`} style={{width: `${emp.docs_pct}%`}} />
-                          </div>
-                          <span className={`text-[10px] font-bold ${emp.docs_pct === 100 ? 'text-emerald-600' : emp.docs_pct >= 50 ? 'text-amber-600' : 'text-red-600'}`}>{emp.docs_pct}%</span>
-                        </div>
-                      )}
-                    </div>
+                    <button
+                      onClick={() => abrirDetalle(emp)}
+                      className="flex items-center gap-2 px-4 py-2 bg-[#1a3c34] hover:bg-[#2d5a4e] text-white text-xs font-bold rounded-xl shrink-0">
+                      <User size={13} /> Ver ficha
+                    </button>
                   </div>
-                </button>
+                </div>
               ))}
             </div>
           )}
@@ -473,7 +479,7 @@ export default function PersonalPage() {
                   </button>
                 )}
                 {empleadoSel.estado === 'activo' && (
-                  <button onClick={handleBaja} className="flex items-center gap-2 px-4 py-2.5 text-sm font-bold text-red-200 bg-red-500/30 hover:bg-red-500/50 rounded-xl"><UserMinus size={16} /> Baja</button>
+                  <button onClick={() => setConfirmBaja(true)} className="flex items-center gap-2 px-4 py-2.5 text-sm font-bold text-red-200 bg-red-500/30 hover:bg-red-500/50 rounded-xl"><UserMinus size={16} /> Baja</button>
                 )}
               </div>
             </div>

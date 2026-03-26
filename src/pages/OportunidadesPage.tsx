@@ -1,7 +1,10 @@
 import { Search, Filter, RefreshCw, ExternalLink, Plus, Loader2, FileText, Brain, Calendar, Building2 } from 'lucide-react'
+import { SkeletonList } from '../components/Skeleton'
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { api } from '../services/api'
+import ConfirmModal from '../components/ConfirmModal'
+import { ScoreBadge } from '../components/ScoreDesglose'
 
 const ESTADO_BADGE: Record<string, { label: string; className: string }> = {
   nueva:       { label: 'Nueva',        className: 'bg-blue-100 text-blue-700' },
@@ -59,6 +62,7 @@ export default function OportunidadesPage() {
   const [cargando, setCargando] = useState(true)
   const [buscandoPLACSP, setBuscandoPLACSP] = useState(false)
   const [mensaje, setMensaje] = useState('')
+  const [confirmBuscar, setConfirmBuscar] = useState(false)
   const navigate = useNavigate()
 
   const cargar = async () => {
@@ -116,13 +120,24 @@ export default function OportunidadesPage() {
             className="flex items-center gap-2 px-4 py-2.5 bg-slate-900 hover:bg-slate-800 text-white text-sm font-medium rounded-xl transition-colors shadow-sm">
             <Plus size={15} /> Nueva manual
           </button>
-          <button onClick={buscarPLACSP} disabled={buscandoPLACSP}
+          <button onClick={() => setConfirmBuscar(true)} disabled={buscandoPLACSP}
             className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white text-sm font-medium rounded-xl transition-colors shadow-sm">
             {buscandoPLACSP ? <Loader2 size={15} className="animate-spin" /> : <RefreshCw size={15} />}
             {buscandoPLACSP ? 'Buscando...' : 'Buscar PLACSP'}
           </button>
         </div>
       </div>
+
+      <ConfirmModal
+        open={confirmBuscar}
+        titulo="Buscar en PLACSP"
+        mensaje="Se buscarán licitaciones activas en PLACSP. Las nuevas se añadirán automáticamente a la lista. ¿Continuar?"
+        labelOk="Sí, buscar"
+        labelCancel="Cancelar"
+        cargando={buscandoPLACSP}
+        onConfirm={() => { setConfirmBuscar(false); buscarPLACSP() }}
+        onCancel={() => setConfirmBuscar(false)}
+      />
 
       {/* Mensaje */}
       {mensaje && (
@@ -155,10 +170,7 @@ export default function OportunidadesPage() {
 
       {/* Lista */}
       {cargando ? (
-        <div className="flex flex-col items-center py-20">
-          <Loader2 size={32} className="text-blue-500 animate-spin mb-3" />
-          <p className="text-slate-500">Cargando desde Google Sheets...</p>
-        </div>
+        <SkeletonList count={4} />
       ) : filtradas.length === 0 ? (
         <div className="flex flex-col items-center py-20">
           <Search size={40} className="text-slate-300 mb-3" />

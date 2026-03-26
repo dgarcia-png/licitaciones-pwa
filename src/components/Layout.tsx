@@ -15,7 +15,7 @@ const RUTA_A_CLAVE: Record<string, string> = {
   '/oferta': 'oferta', '/seguimiento': 'seguimiento', '/conocimiento': 'conocimiento',
   '/convenios': 'convenios', '/documentos': 'documentos', '/personal': 'personal',
   '/subrogacion': 'subrogacion', '/fichajes': 'fichajes', '/ausencias': 'ausencias',
-  '/prl': 'prl', '/rgpd': 'rgpd', '/territorio': 'territorio',
+  '/prl': 'prl', '/rgpd': 'rgpd', '/territorio': 'territorio', '/partes': 'partes',
   '/configuracion': 'configuracion', '/usuarios': 'usuarios', '/plantillas': 'plantillas', '/portal': 'portal', '/dashboard-rrhh': 'dashboard-rrhh', '/licitaciones-dashboard': 'licitaciones-dashboard',
 }
 
@@ -47,6 +47,7 @@ const NAV = [
   ]},
   { grupo: 'Territorio', items: [
     { clave: 'territorio', to: '/territorio', label: 'Territorio', icon: Map },
+    { clave: 'partes', to: '/partes', label: 'Partes / Incidencias', icon: ClipboardList },
   ]},
   { grupo: 'Administración', items: [
     { clave: 'configuracion', to: '/configuracion', label: 'Configuración', icon: Settings },
