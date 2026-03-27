@@ -32,12 +32,15 @@ const DashboardLicitacionesPage = lazy(() => import('./pages/DashboardLicitacion
 const TerritorioPage = lazy(() => import('./pages/TerritorioPage'))
 const PartesPage = lazy(() => import('./pages/PartesPage'))
 const Dashboard360Page = lazy(() => import('./pages/Dashboard360Page'))
-const OperadorCampoPage = lazy(() => import('./pages/OperadorCampoPage'))
+const OperadorCampoV2Page = lazy(() => import('./pages/OperadorCampoV2Page'))
 const ChecklistConfigPage = lazy(() => import('./pages/ChecklistConfigPage'))
 const OrdenesPage = lazy(() => import('./pages/OrdenesPage'))
 const InventarioPage = lazy(() => import('./pages/InventarioPage'))
 const VehiculosPage = lazy(() => import('./pages/VehiculosPage'))
 const CalidadPage = lazy(() => import('./pages/CalidadPage'))
+const PortalClientePage = lazy(() => import('./pages/PortalClientePage'))
+const PortalTokensPage = lazy(() => import('./pages/PortalTokensPage'))
+const PlanificacionPage = lazy(() => import('./pages/PlanificacionPage'))
 
 function PageLoader() {
   return <div className="flex flex-col items-center justify-center py-20"><Loader2 size={28} className="text-[#1a3c34] animate-spin mb-2" /><p className="text-sm text-slate-400">Cargando...</p></div>
@@ -55,6 +58,7 @@ function AppRoutes() {
     <Suspense fallback={<PageLoader />}>
       <Routes>
         <Route path="/login" element={<PublicRoute><LoginPage /></PublicRoute>} />
+        <Route path="/portal-cliente" element={<PortalClientePage />} />
         <Route element={<ProtectedRoute><Layout /></ProtectedRoute>}>
           <Route path="/" element={<Dashboard360Page />} />
           <Route path="/dashboard" element={<DashboardPage />} />
@@ -83,12 +87,14 @@ function AppRoutes() {
           <Route path="/licitaciones-dashboard" element={<DashboardLicitacionesPage />} />
           <Route path="/territorio" element={<TerritorioPage />} />
           <Route path="/partes" element={<PartesPage />} />
-          <Route path="/operador" element={<OperadorCampoPage />} />
+          <Route path="/operador" element={<OperadorCampoV2Page />} />
           <Route path="/checklist-config" element={<ChecklistConfigPage />} />
           <Route path="/ordenes" element={<OrdenesPage />} />
           <Route path="/inventario" element={<InventarioPage />} />
           <Route path="/vehiculos" element={<VehiculosPage />} />
           <Route path="/calidad" element={<CalidadPage />} />
+          <Route path="/portal-tokens" element={<PortalTokensPage />} />
+          <Route path="/planificacion" element={<PlanificacionPage />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

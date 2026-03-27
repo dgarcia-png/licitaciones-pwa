@@ -1,4 +1,4 @@
-const API_BASE = 'https://script.google.com/macros/s/AKfycbwtYN4EGKee8TKORidpVp8ginxjRg4r6abJX0jKRVhW5oOLm--wc0V5GPO_wzjZ_je-xQ/exec'
+const API_BASE = 'https://script.google.com/macros/s/AKfycbxlgdN_0JQcG1xqJBBBuU8Qana4GIILRVQl0M6oRZqguZMk24kjymTXMz9AcfsAIZpBmw/exec'
 
 function getToken(): string { return localStorage.getItem('auth_token') || '' }
 
@@ -359,4 +359,16 @@ export const api = {
   registrarNPS:             (data: any) => postAPI({ action: 'registrar_nps', ...data }),
   crearAccionCorrectiva:    (data: any) => postAPI({ action: 'crear_accion_correctiva', ...data }),
   cerrarAccionCorrectiva:   (data: any) => postAPI({ action: 'cerrar_accion_correctiva', ...data }),
+  // ═══ T-30 PORTAL CLIENTE ═══
+  portalCliente:            (token: string) => fetchAPI('portal_cliente', { token }),
+  tokensCliente:            () => fetchAPI('tokens_cliente'),
+  generarTokenCliente:      (data: any) => postAPI({ action: 'generar_token_cliente', ...data }),
+  revocarToken:             (id: string) => postAPI({ action: 'revocar_token', id }),
+  // ═══ T-22 PLANIFICACIÓN ═══
+  serviciosProgramados:     (filtros?: any) => fetchAPI('servicios_programados', filtros || {}),
+  cuadranteSemanal:         (semana?: string) => fetchAPI('cuadrante_semanal', semana ? { semana } : {}),
+  sustituciones:            (fecha?: string) => fetchAPI('sustituciones', fecha ? { fecha } : {}),
+  crearServicioProgramado:  (data: any) => postAPI({ action: 'crear_servicio_programado', ...data }),
+  eliminarServicioProgramado:(id: string) => postAPI({ action: 'eliminar_servicio_programado', id }),
+  crearSustitucion:         (data: any) => postAPI({ action: 'crear_sustitucion', ...data }),
 }

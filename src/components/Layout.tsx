@@ -2,12 +2,13 @@ import { useState, useEffect } from 'react'
 import { Link, useLocation, useNavigate, Outlet } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { usePermisos, MENU_POR_ROL } from '../hooks/usePermisos'
+import OfflineBanner from './OfflineBanner'
 import {
   LayoutDashboard, FileSearch, PlusCircle, BarChart3,
   Calculator, Gavel, FileText, BookOpen, Settings, Users,
   LogOut, Menu, X, UserCheck, Shield, ClipboardList,
   Clock, CalendarDays, Map, Activity, Briefcase, CheckSquare,
-  Package, Car, Star,
+  Package, Car, Star, Link2,
 } from 'lucide-react'
 
 const RUTA_A_CLAVE: Record<string, string> = {
@@ -19,6 +20,7 @@ const RUTA_A_CLAVE: Record<string, string> = {
   '/prl': 'prl', '/rgpd': 'rgpd', '/territorio': 'territorio', '/partes': 'partes',
   '/operador': 'operador', '/checklist-config': 'checklist-config',
   '/ordenes': 'ordenes', '/inventario': 'inventario', '/vehiculos': 'vehiculos', '/calidad': 'calidad',
+  '/portal-tokens': 'portal-tokens', '/planificacion': 'planificacion',
   '/configuracion': 'configuracion', '/usuarios': 'usuarios', '/plantillas': 'plantillas', '/portal': 'portal', '/dashboard-rrhh': 'dashboard-rrhh', '/licitaciones-dashboard': 'licitaciones-dashboard',
 }
 
@@ -56,6 +58,8 @@ const NAV = [
     { clave: 'inventario',      to: '/inventario',       label: 'Inventario',         icon: Package },
     { clave: 'vehiculos',       to: '/vehiculos',        label: 'Vehículos',          icon: Car },
     { clave: 'calidad',         to: '/calidad',          label: 'Calidad',            icon: Star },
+    { clave: 'planificacion',   to: '/planificacion',    label: 'Planificación',      icon: CalendarDays },
+    { clave: 'portal-tokens',   to: '/portal-tokens',    label: 'Portal cliente',     icon: Link2 },
   ]},
   { grupo: 'Administración', items: [
     { clave: 'configuracion', to: '/configuracion', label: 'Configuración', icon: Settings },
@@ -208,6 +212,7 @@ export default function Layout() {
 
   return (
     <div className="flex h-screen overflow-hidden bg-slate-50">
+      <OfflineBanner />
       {/* Desktop sidebar */}
       <aside className={`hidden md:flex flex-col flex-shrink-0 transition-all duration-300 ${collapsed ? 'w-16' : 'w-56'}`}>
         <SidebarContent collapsed={collapsed} onToggle={() => setCollapsed(c => !c)} onClose={() => {}} />
