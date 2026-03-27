@@ -53,10 +53,12 @@ export default function TerritorioPage() {
   const [filtroTipo, setFiltroTipo] = useState('todos')
   const [confirmEliminar, setConfirmEliminar] = useState(false)
   const [editando, setEditando] = useState(false)
+  // Modal asignación personal
   const [modalAsignar, setModalAsignar] = useState(false)
   const [empleadosDisp, setEmpleadosDisp] = useState<any[]>([])
   const [formAsig, setFormAsig] = useState<any>({ empleado_id: '', horas_semanales: 40, turno: 'mañana' })
   const [confirmDesasignar, setConfirmDesasignar] = useState<string | null>(null)
+
   const showMsg = (m: string, err = false) => {
     if (err) setError(m); else setMsg(m)
     setTimeout(() => { setMsg(''); setError('') }, 3500)
@@ -173,11 +175,9 @@ export default function TerritorioPage() {
     return matchBusq && matchTipo
   })
 
-  // ── VISTA LISTA ─────────────────────────────────────────────────────────────
+  // ── VISTA LISTA ──────────────────────────────────────────────────────────────
   if (vista === 'lista') return (
     <div className="p-6 lg:p-8 max-w-6xl">
-
-      {/* Cabecera */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-4">
           <div className="p-2.5 bg-gradient-to-br from-[#1a3c34] to-[#2d5a4e] rounded-xl shadow-lg">
@@ -199,7 +199,6 @@ export default function TerritorioPage() {
         </div>
       </div>
 
-      {/* KPIs */}
       {dashboard && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
           {[
@@ -217,11 +216,9 @@ export default function TerritorioPage() {
         </div>
       )}
 
-      {/* Mensajes */}
       {msg && <div className="flex items-center gap-2 p-3 bg-emerald-50 border border-emerald-200 rounded-xl mb-4 text-emerald-800 text-sm"><CheckCircle2 size={15} />{msg}</div>}
       {error && <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-xl mb-4 text-red-800 text-sm"><AlertTriangle size={15} />{error}</div>}
 
-      {/* Filtros */}
       <div className="flex gap-3 mb-4 flex-wrap">
         <div className="relative flex-1 min-w-48">
           <Search size={15} className="absolute left-3 top-3 text-slate-400" />
@@ -238,7 +235,6 @@ export default function TerritorioPage() {
         </select>
       </div>
 
-      {/* Lista */}
       {cargando ? (
         <div className="flex flex-col items-center py-20">
           <Loader2 size={28} className="text-[#1a3c34] animate-spin mb-3" />
@@ -248,9 +244,6 @@ export default function TerritorioPage() {
         <div className="flex flex-col items-center py-20 bg-white border border-slate-200 rounded-2xl">
           <MapPin size={40} className="text-slate-300 mb-3" />
           <p className="text-slate-500 font-medium">{centros.length === 0 ? 'No hay centros registrados' : 'Sin resultados'}</p>
-          <p className="text-sm text-slate-400 mt-1">
-            {centros.length === 0 ? 'Crea el primer centro o importa desde una licitación ganada' : 'Prueba otros filtros'}
-          </p>
           {centros.length === 0 && (
             <button onClick={() => { setForm(FORM_VACIO); setVista('nuevo') }}
               className="mt-4 px-5 py-2 bg-[#1a3c34] text-white text-sm font-semibold rounded-xl">
@@ -282,22 +275,10 @@ export default function TerritorioPage() {
                       </div>
                     </div>
                     <div className="flex items-center gap-4 mt-2 flex-wrap">
-                      {c.municipio && (
-                        <span className="text-xs text-slate-500 flex items-center gap-1">
-                          <MapPin size={11} className="text-slate-400" />{c.municipio}
-                        </span>
-                      )}
+                      {c.municipio && <span className="text-xs text-slate-500 flex items-center gap-1"><MapPin size={11} className="text-slate-400" />{c.municipio}</span>}
                       <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${ts.color}`}>{ts.emoji} {ts.label}</span>
-                      {c.personal_asignado > 0 && (
-                        <span className="text-xs text-slate-500 flex items-center gap-1">
-                          <Users size={11} />{c.personal_asignado} personas
-                        </span>
-                      )}
-                      {c.presupuesto_anual > 0 && (
-                        <span className="text-xs text-slate-500 flex items-center gap-1">
-                          <Euro size={11} />{fmtEuro(c.presupuesto_anual)}/año
-                        </span>
-                      )}
+                      {c.personal_asignado > 0 && <span className="text-xs text-slate-500 flex items-center gap-1"><Users size={11} />{c.personal_asignado} personas</span>}
+                      {c.presupuesto_anual > 0 && <span className="text-xs text-slate-500 flex items-center gap-1"><Euro size={11} />{fmtEuro(c.presupuesto_anual)}/año</span>}
                     </div>
                   </div>
                 </div>
@@ -313,121 +294,83 @@ export default function TerritorioPage() {
   if (vista === 'nuevo' || editando) return (
     <div className="p-6 lg:p-8 max-w-2xl">
       <div className="flex items-center gap-4 mb-6">
-        <button onClick={() => { setVista('lista'); setEditando(false) }}
-          className="p-2 hover:bg-slate-100 rounded-xl text-slate-500">
-          <X size={18} />
-        </button>
-        <h2 className="text-xl font-bold text-slate-900">
-          {editando ? 'Editar centro' : 'Nuevo centro de servicio'}
-        </h2>
+        <button onClick={() => { setVista('lista'); setEditando(false) }} className="p-2 hover:bg-slate-100 rounded-xl text-slate-500"><X size={18} /></button>
+        <h2 className="text-xl font-bold text-slate-900">{editando ? 'Editar centro' : 'Nuevo centro de servicio'}</h2>
       </div>
-
       {msg && <div className="flex items-center gap-2 p-3 bg-emerald-50 border border-emerald-200 rounded-xl mb-4 text-emerald-800 text-sm"><CheckCircle2 size={15} />{msg}</div>}
       {error && <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-xl mb-4 text-red-800 text-sm"><AlertTriangle size={15} />{error}</div>}
-
       <div className="bg-white border border-slate-200 rounded-2xl p-6 space-y-4">
-        {/* Datos básicos */}
         <div>
           <label className="block text-xs font-semibold text-slate-500 uppercase mb-1.5">Nombre del centro *</label>
-          <input value={form.nombre} onChange={e => setForm({ ...form, nombre: e.target.value })}
-            placeholder="Ej: Ayuntamiento de Almonte — Limpieza"
-            className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#1a3c34]" />
+          <input value={form.nombre} onChange={e => setForm({ ...form, nombre: e.target.value })} placeholder="Ej: Ayuntamiento de Almonte — Limpieza" className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#1a3c34]" />
         </div>
         <div>
           <label className="block text-xs font-semibold text-slate-500 uppercase mb-1.5">Organismo contratante *</label>
-          <input value={form.organismo} onChange={e => setForm({ ...form, organismo: e.target.value })}
-            placeholder="Ej: Ayuntamiento de Almonte"
-            className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#1a3c34]" />
+          <input value={form.organismo} onChange={e => setForm({ ...form, organismo: e.target.value })} placeholder="Ej: Ayuntamiento de Almonte" className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#1a3c34]" />
         </div>
         <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="block text-xs font-semibold text-slate-500 uppercase mb-1.5">Tipo de servicio</label>
-            <select value={form.tipo_servicio} onChange={e => setForm({ ...form, tipo_servicio: e.target.value })}
-              className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none">
-              {Object.entries(TIPO_SERVICIO_CONFIG).map(([k, v]) => (
-                <option key={k} value={k}>{v.emoji} {v.label}</option>
-              ))}
+            <select value={form.tipo_servicio} onChange={e => setForm({ ...form, tipo_servicio: e.target.value })} className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none">
+              {Object.entries(TIPO_SERVICIO_CONFIG).map(([k, v]) => <option key={k} value={k}>{v.emoji} {v.label}</option>)}
             </select>
           </div>
           <div>
             <label className="block text-xs font-semibold text-slate-500 uppercase mb-1.5">Estado</label>
-            <select value={form.estado} onChange={e => setForm({ ...form, estado: e.target.value })}
-              className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none">
-              {Object.entries(ESTADO_CONFIG).map(([k, v]) => (
-                <option key={k} value={k}>{v.label}</option>
-              ))}
+            <select value={form.estado} onChange={e => setForm({ ...form, estado: e.target.value })} className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none">
+              {Object.entries(ESTADO_CONFIG).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
             </select>
           </div>
         </div>
         <div>
           <label className="block text-xs font-semibold text-slate-500 uppercase mb-1.5">Dirección</label>
-          <input value={form.direccion} onChange={e => setForm({ ...form, direccion: e.target.value })}
-            placeholder="Calle, número..."
-            className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#1a3c34]" />
+          <input value={form.direccion} onChange={e => setForm({ ...form, direccion: e.target.value })} placeholder="Calle, número..." className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#1a3c34]" />
         </div>
         <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="block text-xs font-semibold text-slate-500 uppercase mb-1.5">Municipio</label>
-            <input value={form.municipio} onChange={e => setForm({ ...form, municipio: e.target.value })}
-              placeholder="Almonte, Huelva..."
-              className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#1a3c34]" />
+            <input value={form.municipio} onChange={e => setForm({ ...form, municipio: e.target.value })} placeholder="Almonte..." className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#1a3c34]" />
           </div>
           <div>
             <label className="block text-xs font-semibold text-slate-500 uppercase mb-1.5">Superficie (m²)</label>
-            <input type="number" value={form.superficie_m2} onChange={e => setForm({ ...form, superficie_m2: e.target.value })}
-              placeholder="0"
-              className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#1a3c34]" />
+            <input type="number" value={form.superficie_m2} onChange={e => setForm({ ...form, superficie_m2: e.target.value })} placeholder="0" className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#1a3c34]" />
           </div>
         </div>
         <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="block text-xs font-semibold text-slate-500 uppercase mb-1.5">Frecuencia servicio</label>
-            <input value={form.frecuencia} onChange={e => setForm({ ...form, frecuencia: e.target.value })}
-              placeholder="Diaria, 3 veces/semana..."
-              className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#1a3c34]" />
+            <input value={form.frecuencia} onChange={e => setForm({ ...form, frecuencia: e.target.value })} placeholder="Diaria, 3 veces/semana..." className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#1a3c34]" />
           </div>
           <div>
             <label className="block text-xs font-semibold text-slate-500 uppercase mb-1.5">Horario</label>
-            <input value={form.horario} onChange={e => setForm({ ...form, horario: e.target.value })}
-              placeholder="07:00 - 15:00"
-              className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#1a3c34]" />
+            <input value={form.horario} onChange={e => setForm({ ...form, horario: e.target.value })} placeholder="07:00 - 15:00" className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#1a3c34]" />
           </div>
         </div>
         <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="block text-xs font-semibold text-slate-500 uppercase mb-1.5">Presupuesto anual (€)</label>
-            <input type="number" value={form.presupuesto_anual} onChange={e => setForm({ ...form, presupuesto_anual: e.target.value })}
-              placeholder="0"
-              className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#1a3c34]" />
+            <input type="number" value={form.presupuesto_anual} onChange={e => setForm({ ...form, presupuesto_anual: e.target.value })} placeholder="0" className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#1a3c34]" />
           </div>
           <div>
             <label className="block text-xs font-semibold text-slate-500 uppercase mb-1.5">Responsable Forgeser</label>
-            <input value={form.responsable} onChange={e => setForm({ ...form, responsable: e.target.value })}
-              placeholder="Nombre del responsable"
-              className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#1a3c34]" />
+            <input value={form.responsable} onChange={e => setForm({ ...form, responsable: e.target.value })} placeholder="Nombre del responsable" className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#1a3c34]" />
           </div>
         </div>
         <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="block text-xs font-semibold text-slate-500 uppercase mb-1.5">Fecha inicio contrato</label>
-            <input type="date" value={form.fecha_inicio} onChange={e => setForm({ ...form, fecha_inicio: e.target.value })}
-              className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#1a3c34]" />
+            <input type="date" value={form.fecha_inicio} onChange={e => setForm({ ...form, fecha_inicio: e.target.value })} className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#1a3c34]" />
           </div>
           <div>
             <label className="block text-xs font-semibold text-slate-500 uppercase mb-1.5">Fecha fin contrato</label>
-            <input type="date" value={form.fecha_fin} onChange={e => setForm({ ...form, fecha_fin: e.target.value })}
-              className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#1a3c34]" />
+            <input type="date" value={form.fecha_fin} onChange={e => setForm({ ...form, fecha_fin: e.target.value })} className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#1a3c34]" />
           </div>
         </div>
         <div>
           <label className="block text-xs font-semibold text-slate-500 uppercase mb-1.5">Notas</label>
-          <textarea value={form.notas} onChange={e => setForm({ ...form, notas: e.target.value })}
-            rows={3} placeholder="Observaciones, condiciones especiales..."
-            className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#1a3c34] resize-none" />
+          <textarea value={form.notas} onChange={e => setForm({ ...form, notas: e.target.value })} rows={3} placeholder="Observaciones..." className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#1a3c34] resize-none" />
         </div>
-
-        <button onClick={handleGuardar} disabled={guardando}
-          className="w-full flex items-center justify-center gap-2 py-3 bg-[#1a3c34] hover:bg-[#2d5a4e] disabled:bg-slate-300 text-white text-sm font-bold rounded-xl">
+        <button onClick={handleGuardar} disabled={guardando} className="w-full flex items-center justify-center gap-2 py-3 bg-[#1a3c34] hover:bg-[#2d5a4e] disabled:bg-slate-300 text-white text-sm font-bold rounded-xl">
           {guardando ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
           {guardando ? 'Guardando...' : editando ? 'Guardar cambios' : 'Crear centro'}
         </button>
@@ -442,98 +385,18 @@ export default function TerritorioPage() {
 
     return (
       <div className="p-6 lg:p-8 max-w-4xl">
-        <ConfirmModal
-          open={confirmEliminar}
-          titulo={`¿Eliminar "${centroSel.nombre}"?`}
-          mensaje="Se eliminará el centro y todas sus asignaciones de personal. Esta acción no se puede deshacer."
-          labelOk="Sí, eliminar"
-          peligroso cargando={guardando}
+
+        <ConfirmModal open={confirmEliminar} titulo={`¿Eliminar "${centroSel.nombre}"?`}
+          mensaje="Se eliminará el centro y todas sus asignaciones. Esta acción no se puede deshacer."
+          labelOk="Sí, eliminar" peligroso cargando={guardando}
           onConfirm={() => { setConfirmEliminar(false); handleEliminar() }}
-          onCancel={() => setConfirmEliminar(false)}
-        />
+          onCancel={() => setConfirmEliminar(false)} />
 
-        {/* Cabecera */}
-        <div className="flex items-start justify-between mb-6">
-          <div className="flex items-start gap-4">
-            <button onClick={() => setVista('lista')} className="p-2 hover:bg-slate-100 rounded-xl text-slate-500 mt-1">
-              <X size={18} />
-            </button>
-            <div>
-              <div className="flex items-center gap-2 mb-1">
-                <span className="text-2xl">{ts.emoji}</span>
-                <h1 className="text-xl font-bold text-slate-900">{centroSel.nombre}</h1>
-              </div>
-              <div className="flex items-center gap-2">
-                <p className="text-sm text-slate-500">{centroSel.organismo}</p>
-                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${es.color}`}>{es.label}</span>
-                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${ts.color}`}>{ts.label}</span>
-              </div>
-            </div>
-          </div>
-          <div className="flex gap-2">
-            <button onClick={() => {
-              setForm({ ...centroSel });
-              setEditando(true);
-              setVista('nuevo');
-            }} className="flex items-center gap-1.5 px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl">
-              <Edit2 size={13} /> Editar
-            </button>
-            <button onClick={() => setConfirmEliminar(true)}
-              className="flex items-center gap-1.5 px-3 py-2 bg-red-50 hover:bg-red-100 text-red-600 text-xs font-bold rounded-xl">
-              <Trash2 size={13} /> Eliminar
-            </button>
-          </div>
-        </div>
-
-        {msg && <div className="flex items-center gap-2 p-3 bg-emerald-50 border border-emerald-200 rounded-xl mb-4 text-emerald-800 text-sm"><CheckCircle2 size={15} />{msg}</div>}
-        {error && <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-xl mb-4 text-red-800 text-sm"><AlertTriangle size={15} />{error}</div>}
-
-        {/* KPIs del centro */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">
-          {[
-            { label: 'Personal', valor: centroSel.personal_asignado || 0, icon: Users },
-            { label: 'Superficie', valor: centroSel.superficie_m2 ? centroSel.superficie_m2 + ' m²' : '—', icon: Building2 },
-            { label: 'Presupuesto/año', valor: fmtEuro(centroSel.presupuesto_anual), icon: Euro },
-            { label: 'Frecuencia', valor: centroSel.frecuencia || '—', icon: BarChart3 },
-          ].map((k, i) => (
-            <div key={i} className="bg-white border border-slate-200 rounded-xl p-3 text-center">
-              <k.icon size={16} className="text-slate-400 mx-auto mb-1" />
-              <p className="text-lg font-black text-slate-900">{k.valor}</p>
-              <p className="text-[10px] text-slate-500 uppercase">{k.label}</p>
-            </div>
-          ))}
-        </div>
-
-        {/* Datos */}
-        <div className="bg-white border border-slate-200 rounded-2xl p-5 mb-5">
-          <h3 className="text-sm font-bold text-slate-900 mb-3">Datos del contrato</h3>
-          <div className="grid grid-cols-2 gap-x-6 gap-y-2">
-            {[
-              ['Dirección', centroSel.direccion],
-              ['Municipio', centroSel.municipio],
-              ['Horario', centroSel.horario],
-              ['Responsable', centroSel.responsable],
-              ['Inicio contrato', centroSel.fecha_inicio],
-              ['Fin contrato', centroSel.fecha_fin],
-            ].filter(([, v]) => v).map(([l, v]) => (
-              <div key={String(l)} className="flex gap-2">
-                <span className="text-xs text-slate-400 min-w-24">{l}</span>
-                <span className="text-xs text-slate-700 font-medium">{String(v)}</span>
-              </div>
-            ))}
-          </div>
-          {centroSel.notas && (
-            <div className="mt-3 p-3 bg-slate-50 rounded-xl">
-              <p className="text-xs text-slate-600">{centroSel.notas}</p>
-            </div>
-          )}
-          {centroSel.oportunidad_id && (
-            <button onClick={() => navigate('/oportunidades/' + centroSel.oportunidad_id)}
-              className="mt-3 flex items-center gap-1.5 text-xs text-blue-600 hover:text-blue-800 font-semibold">
-              <ChevronRight size={13} /> Ver licitación de origen
-            </button>
-          )}
-        </div>
+        <ConfirmModal open={!!confirmDesasignar} titulo="¿Desasignar empleado?"
+          mensaje="El empleado dejará de estar asignado a este centro. Su ficha se actualizará automáticamente."
+          labelOk="Sí, desasignar" peligroso cargando={guardando}
+          onConfirm={() => confirmDesasignar && handleDesasignar(confirmDesasignar)}
+          onCancel={() => setConfirmDesasignar(null)} />
 
         {/* Modal asignar empleado */}
         {modalAsignar && (
@@ -541,7 +404,7 @@ export default function TerritorioPage() {
             <div className="absolute inset-0 bg-black/50" onClick={() => setModalAsignar(false)} />
             <div className="relative bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 z-10">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-base font-bold text-slate-900">Asignar empleado</h3>
+                <h3 className="text-base font-bold text-slate-900">Asignar empleado al centro</h3>
                 <button onClick={() => setModalAsignar(false)}><X size={18} className="text-slate-400" /></button>
               </div>
               <div className="space-y-3">
@@ -552,13 +415,11 @@ export default function TerritorioPage() {
                     className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm bg-white">
                     <option value="">— Seleccionar empleado —</option>
                     {empleadosDisp.map((e: any) => (
-                      <option key={e.id} value={e.id}>
-                        {e.nombre} {e.apellidos} — {e.categoria || 'Sin categoría'}
-                      </option>
+                      <option key={e.id} value={e.id}>{e.nombre} {e.apellidos} — {e.categoria || 'Sin categoría'}</option>
                     ))}
                   </select>
                   {empleadosDisp.length === 0 && (
-                    <p className="text-xs text-slate-400 mt-1">No hay empleados disponibles sin asignar</p>
+                    <p className="text-xs text-amber-600 mt-1">No hay empleados disponibles sin asignar a este centro</p>
                   )}
                 </div>
                 <div className="grid grid-cols-2 gap-3">
@@ -586,29 +447,87 @@ export default function TerritorioPage() {
                 <div className="flex gap-2 pt-1">
                   <button onClick={handleAsignar} disabled={guardando || !formAsig.empleado_id}
                     className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-[#1a3c34] hover:bg-[#2d5a4e] disabled:bg-slate-300 text-white text-sm font-bold rounded-xl">
-                    {guardando ? <Loader2 size={14} className="animate-spin" /> : <UserPlus size={14} />}
-                    Asignar
+                    {guardando ? <Loader2 size={14} className="animate-spin" /> : <UserPlus size={14} />} Asignar
                   </button>
-                  <button onClick={() => setModalAsignar(false)}
-                    className="px-4 py-2.5 bg-slate-100 text-slate-600 text-sm rounded-xl">
-                    Cancelar
-                  </button>
+                  <button onClick={() => setModalAsignar(false)} className="px-4 py-2.5 bg-slate-100 text-slate-600 text-sm rounded-xl">Cancelar</button>
                 </div>
               </div>
             </div>
           </div>
         )}
 
-        {/* Confirm desasignar */}
-        <ConfirmModal
-          open={!!confirmDesasignar}
-          titulo="¿Desasignar empleado?"
-          mensaje="El empleado dejará de estar asignado a este centro. Su ficha se actualizará automáticamente."
-          labelOk="Sí, desasignar" peligroso cargando={guardando}
-          onConfirm={() => confirmDesasignar && handleDesasignar(confirmDesasignar)}
-          onCancel={() => setConfirmDesasignar(null)} />
+        {/* Cabecera */}
+        <div className="flex items-start justify-between mb-6">
+          <div className="flex items-start gap-4">
+            <button onClick={() => setVista('lista')} className="p-2 hover:bg-slate-100 rounded-xl text-slate-500 mt-1"><X size={18} /></button>
+            <div>
+              <div className="flex items-center gap-2 mb-1">
+                <span className="text-2xl">{ts.emoji}</span>
+                <h1 className="text-xl font-bold text-slate-900">{centroSel.nombre}</h1>
+              </div>
+              <div className="flex items-center gap-2">
+                <p className="text-sm text-slate-500">{centroSel.organismo}</p>
+                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${es.color}`}>{es.label}</span>
+                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${ts.color}`}>{ts.label}</span>
+              </div>
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <button onClick={() => { setForm({ ...centroSel }); setEditando(true); setVista('nuevo') }}
+              className="flex items-center gap-1.5 px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl">
+              <Edit2 size={13} /> Editar
+            </button>
+            <button onClick={() => setConfirmEliminar(true)}
+              className="flex items-center gap-1.5 px-3 py-2 bg-red-50 hover:bg-red-100 text-red-600 text-xs font-bold rounded-xl">
+              <Trash2 size={13} /> Eliminar
+            </button>
+          </div>
+        </div>
 
-        {/* Personal asignado + Cuadrante semanal */}
+        {msg && <div className="flex items-center gap-2 p-3 bg-emerald-50 border border-emerald-200 rounded-xl mb-4 text-emerald-800 text-sm"><CheckCircle2 size={15} />{msg}</div>}
+        {error && <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-xl mb-4 text-red-800 text-sm"><AlertTriangle size={15} />{error}</div>}
+
+        {/* KPIs */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">
+          {[
+            { label: 'Personal', valor: centroSel.personal_asignado || 0, icon: Users },
+            { label: 'Superficie', valor: centroSel.superficie_m2 ? centroSel.superficie_m2 + ' m²' : '—', icon: Building2 },
+            { label: 'Presupuesto/año', valor: fmtEuro(centroSel.presupuesto_anual), icon: Euro },
+            { label: 'Frecuencia', valor: centroSel.frecuencia || '—', icon: BarChart3 },
+          ].map((k, i) => (
+            <div key={i} className="bg-white border border-slate-200 rounded-xl p-3 text-center">
+              <k.icon size={16} className="text-slate-400 mx-auto mb-1" />
+              <p className="text-lg font-black text-slate-900">{k.valor}</p>
+              <p className="text-[10px] text-slate-500 uppercase">{k.label}</p>
+            </div>
+          ))}
+        </div>
+
+        {/* Datos contrato */}
+        <div className="bg-white border border-slate-200 rounded-2xl p-5 mb-5">
+          <h3 className="text-sm font-bold text-slate-900 mb-3">Datos del contrato</h3>
+          <div className="grid grid-cols-2 gap-x-6 gap-y-2">
+            {[
+              ['Dirección', centroSel.direccion], ['Municipio', centroSel.municipio],
+              ['Horario', centroSel.horario], ['Responsable', centroSel.responsable],
+              ['Inicio contrato', centroSel.fecha_inicio], ['Fin contrato', centroSel.fecha_fin],
+            ].filter(([, v]) => v).map(([l, v]) => (
+              <div key={String(l)} className="flex gap-2">
+                <span className="text-xs text-slate-400 min-w-24">{l}</span>
+                <span className="text-xs text-slate-700 font-medium">{String(v)}</span>
+              </div>
+            ))}
+          </div>
+          {centroSel.notas && <div className="mt-3 p-3 bg-slate-50 rounded-xl"><p className="text-xs text-slate-600">{centroSel.notas}</p></div>}
+          {centroSel.oportunidad_id && (
+            <button onClick={() => navigate('/oportunidades/' + centroSel.oportunidad_id)}
+              className="mt-3 flex items-center gap-1.5 text-xs text-blue-600 hover:text-blue-800 font-semibold">
+              <ChevronRight size={13} /> Ver licitación de origen
+            </button>
+          )}
+        </div>
+
+        {/* Personal asignado */}
         <div className="bg-white border border-slate-200 rounded-2xl p-5 mb-4">
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
@@ -668,30 +587,24 @@ export default function TerritorioPage() {
                   {centroSel.personal.map((p: any) => {
                     const turno = p.turno || 'mañana'
                     const horas = Number(p.horas_semanales) || 40
-                    const diasSemana = horas <= 20 ? 5 : 5
-                    const colorTurno = turno === 'mañana' ? 'bg-amber-100 text-amber-700'
-                      : turno === 'tarde' ? 'bg-blue-100 text-blue-700'
-                      : 'bg-slate-100 text-slate-600'
+                    const colorTurno = turno === 'mañana' ? 'bg-amber-100 text-amber-700' : turno === 'tarde' ? 'bg-blue-100 text-blue-700' : 'bg-slate-100 text-slate-600'
                     return (
                       <tr key={p.id} className="border-t border-slate-50">
                         <td className="py-2 pr-4">
                           <p className="font-semibold text-slate-800 truncate max-w-32">{p.nombre}</p>
                           <p className="text-[10px] text-slate-400">{p.categoria}</p>
                         </td>
-                        {[0, 1, 2, 3, 4, 5, 6].map(dia => {
-                          const trabaja = dia < diasSemana
-                          return (
-                            <td key={dia} className="text-center py-2">
-                              {trabaja ? (
-                                <span className={`inline-block w-6 h-6 rounded-md text-[9px] font-bold flex items-center justify-center ${colorTurno}`}>
-                                  {turno[0].toUpperCase()}
-                                </span>
-                              ) : (
-                                <span className="inline-block w-6 h-6 rounded-md bg-slate-50 text-slate-300 text-[9px] flex items-center justify-center">—</span>
-                              )}
-                            </td>
-                          )
-                        })}
+                        {[0,1,2,3,4,5,6].map(dia => (
+                          <td key={dia} className="text-center py-2">
+                            {dia < 5 ? (
+                              <span className={`inline-block w-6 h-6 rounded-md text-[9px] font-bold flex items-center justify-center ${colorTurno}`}>
+                                {turno[0].toUpperCase()}
+                              </span>
+                            ) : (
+                              <span className="inline-block w-6 h-6 rounded-md bg-slate-50 text-slate-300 text-[9px] flex items-center justify-center">—</span>
+                            )}
+                          </td>
+                        ))}
                         <td className="text-right py-2 pl-4 font-bold text-slate-700">{horas}h</td>
                       </tr>
                     )
@@ -709,15 +622,9 @@ export default function TerritorioPage() {
               </table>
             </div>
             <div className="flex gap-3 mt-3 pt-3 border-t border-slate-100">
-              <span className="text-[10px] text-slate-500 flex items-center gap-1.5">
-                <span className="w-4 h-4 rounded bg-amber-100 text-amber-700 text-[9px] font-bold flex items-center justify-center">M</span> Mañana
-              </span>
-              <span className="text-[10px] text-slate-500 flex items-center gap-1.5">
-                <span className="w-4 h-4 rounded bg-blue-100 text-blue-700 text-[9px] font-bold flex items-center justify-center">T</span> Tarde
-              </span>
-              <span className="text-[10px] text-slate-500 flex items-center gap-1.5">
-                <span className="w-4 h-4 rounded bg-slate-100 text-slate-600 text-[9px] font-bold flex items-center justify-center">N</span> Noche
-              </span>
+              <span className="text-[10px] text-slate-500 flex items-center gap-1.5"><span className="w-4 h-4 rounded bg-amber-100 text-amber-700 text-[9px] font-bold flex items-center justify-center">M</span> Mañana</span>
+              <span className="text-[10px] text-slate-500 flex items-center gap-1.5"><span className="w-4 h-4 rounded bg-blue-100 text-blue-700 text-[9px] font-bold flex items-center justify-center">T</span> Tarde</span>
+              <span className="text-[10px] text-slate-500 flex items-center gap-1.5"><span className="w-4 h-4 rounded bg-slate-100 text-slate-600 text-[9px] font-bold flex items-center justify-center">N</span> Noche</span>
             </div>
           </div>
         )}
