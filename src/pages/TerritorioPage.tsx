@@ -53,7 +53,10 @@ export default function TerritorioPage() {
   const [filtroTipo, setFiltroTipo] = useState('todos')
   const [confirmEliminar, setConfirmEliminar] = useState(false)
   const [editando, setEditando] = useState(false)
-
+  const [modalAsignar, setModalAsignar] = useState(false)
+  const [empleadosDisp, setEmpleadosDisp] = useState<any[]>([])
+  const [formAsig, setFormAsig] = useState<any>({ empleado_id: '', horas_semanales: 40, turno: 'mañana' })
+  const [confirmDesasignar, setConfirmDesasignar] = useState<string | null>(null)
   const showMsg = (m: string, err = false) => {
     if (err) setError(m); else setMsg(m)
     setTimeout(() => { setMsg(''); setError('') }, 3500)
@@ -107,6 +110,58 @@ export default function TerritorioPage() {
       const d = await (api as any).centro(centro.id)
       if (!d.error) setCentroSel(d)
     } catch {}
+  }
+
+  const abrirModalAsignar = async () => {
+    setFormAsig({ empleado_id: '', horas_semanales: 40, turno: 'mañana' })
+    setModalAsignar(true)
+    try {
+      const r = await api.empleados()
+      const asignadosIds = (centroSel.personal || []).map((p: any) => p.empleado_id)
+      setEmpleadosDisp((r.empleados || []).filter((e: any) =>
+        e.estado !== 'baja' && !asignadosIds.includes(e.id)
+      ))
+    } catch { setEmpleadosDisp([]) }
+  }
+
+  const handleAsignar = async () => {
+    if (!formAsig.empleado_id) { showMsg('Selecciona un empleado', true); return }
+    setGuardando(true)
+    try {
+      const emp = empleadosDisp.find((e: any) => e.id === formAsig.empleado_id)
+      const r = await (api as any).asignarPersonalCentro({
+        centro_id: centroSel.id,
+        empleado_id: formAsig.empleado_id,
+        nombre_empleado: emp ? `${emp.nombre} ${emp.apellidos}` : '',
+        dni: emp?.dni || '',
+        categoria: emp?.categoria || '',
+        horas_semanales: formAsig.horas_semanales,
+        turno: formAsig.turno,
+      })
+      if (r.ok) {
+        showMsg('✅ Empleado asignado')
+        setModalAsignar(false)
+        const d = await (api as any).centro(centroSel.id)
+        if (!d.error) setCentroSel(d)
+        await cargar()
+      } else showMsg(r.error || 'Error', true)
+    } catch { showMsg('Error de conexión', true) }
+    finally { setGuardando(false) }
+  }
+
+  const handleDesasignar = async (asigId: string) => {
+    setGuardando(true)
+    try {
+      const r = await (api as any).desasignarPersonalCentro(asigId)
+      if (r.ok) {
+        showMsg('✅ Empleado desasignado')
+        setConfirmDesasignar(null)
+        const d = await (api as any).centro(centroSel.id)
+        if (!d.error) setCentroSel(d)
+        await cargar()
+      } else showMsg(r.error || 'Error', true)
+    } catch { showMsg('Error', true) }
+    finally { setGuardando(false) }
   }
 
   const filtrados = centros.filter(c => {
@@ -480,18 +535,95 @@ export default function TerritorioPage() {
           )}
         </div>
 
+        {/* Modal asignar empleado */}
+        {modalAsignar && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div className="absolute inset-0 bg-black/50" onClick={() => setModalAsignar(false)} />
+            <div className="relative bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 z-10">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-base font-bold text-slate-900">Asignar empleado</h3>
+                <button onClick={() => setModalAsignar(false)}><X size={18} className="text-slate-400" /></button>
+              </div>
+              <div className="space-y-3">
+                <div>
+                  <label className="text-xs font-semibold text-slate-600 block mb-1">Empleado *</label>
+                  <select value={formAsig.empleado_id}
+                    onChange={(e: any) => setFormAsig({ ...formAsig, empleado_id: e.target.value })}
+                    className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm bg-white">
+                    <option value="">— Seleccionar empleado —</option>
+                    {empleadosDisp.map((e: any) => (
+                      <option key={e.id} value={e.id}>
+                        {e.nombre} {e.apellidos} — {e.categoria || 'Sin categoría'}
+                      </option>
+                    ))}
+                  </select>
+                  {empleadosDisp.length === 0 && (
+                    <p className="text-xs text-slate-400 mt-1">No hay empleados disponibles sin asignar</p>
+                  )}
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-xs font-semibold text-slate-600 block mb-1">Horas semanales</label>
+                    <input type="number" min={1} max={40} value={formAsig.horas_semanales}
+                      onChange={(e: any) => setFormAsig({ ...formAsig, horas_semanales: Number(e.target.value) })}
+                      className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm" />
+                  </div>
+                  <div>
+                    <label className="text-xs font-semibold text-slate-600 block mb-1">Turno</label>
+                    <select value={formAsig.turno}
+                      onChange={(e: any) => setFormAsig({ ...formAsig, turno: e.target.value })}
+                      className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm bg-white">
+                      <option value="mañana">Mañana</option>
+                      <option value="tarde">Tarde</option>
+                      <option value="noche">Noche</option>
+                      <option value="partido">Partido</option>
+                    </select>
+                  </div>
+                </div>
+                <div className="bg-blue-50 rounded-xl p-3">
+                  <p className="text-xs text-blue-700">Al asignar, el campo <strong>Centro</strong> y <strong>Zona</strong> de la ficha del empleado se actualizarán automáticamente.</p>
+                </div>
+                <div className="flex gap-2 pt-1">
+                  <button onClick={handleAsignar} disabled={guardando || !formAsig.empleado_id}
+                    className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-[#1a3c34] hover:bg-[#2d5a4e] disabled:bg-slate-300 text-white text-sm font-bold rounded-xl">
+                    {guardando ? <Loader2 size={14} className="animate-spin" /> : <UserPlus size={14} />}
+                    Asignar
+                  </button>
+                  <button onClick={() => setModalAsignar(false)}
+                    className="px-4 py-2.5 bg-slate-100 text-slate-600 text-sm rounded-xl">
+                    Cancelar
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Confirm desasignar */}
+        <ConfirmModal
+          open={!!confirmDesasignar}
+          titulo="¿Desasignar empleado?"
+          mensaje="El empleado dejará de estar asignado a este centro. Su ficha se actualizará automáticamente."
+          labelOk="Sí, desasignar" peligroso cargando={guardando}
+          onConfirm={() => confirmDesasignar && handleDesasignar(confirmDesasignar)}
+          onCancel={() => setConfirmDesasignar(null)} />
+
         {/* Personal asignado + Cuadrante semanal */}
         <div className="bg-white border border-slate-200 rounded-2xl p-5 mb-4">
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
               <Users size={14} className="text-[#1a3c34]" /> Personal asignado
             </h3>
+            <button onClick={abrirModalAsignar}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-[#1a3c34] hover:bg-[#2d5a4e] text-white text-xs font-bold rounded-xl transition-colors">
+              <UserPlus size={13} /> Asignar
+            </button>
           </div>
           {!centroSel.personal || centroSel.personal.length === 0 ? (
             <div className="text-center py-8 bg-slate-50 rounded-xl">
               <Users size={28} className="text-slate-300 mx-auto mb-2" />
               <p className="text-sm text-slate-400">Sin personal asignado</p>
-              <p className="text-xs text-slate-300 mt-1">Asigna trabajadores desde el módulo de Personal</p>
+              <p className="text-xs text-slate-300 mt-1">Pulsa "Asignar" para añadir trabajadores a este centro</p>
             </div>
           ) : (
             <div className="space-y-2">
@@ -505,6 +637,10 @@ export default function TerritorioPage() {
                     <p className="text-xs text-slate-500">{p.categoria} · {p.horas_semanales}h/sem · Turno {p.turno}</p>
                   </div>
                   <span className="text-[10px] font-bold px-2 py-0.5 bg-emerald-100 text-emerald-700 rounded-full">{p.estado}</span>
+                  <button onClick={() => setConfirmDesasignar(p.id)}
+                    className="p-1.5 text-red-400 hover:bg-red-50 rounded-lg transition-colors" title="Desasignar">
+                    <UserMinus size={14} />
+                  </button>
                 </div>
               ))}
             </div>
