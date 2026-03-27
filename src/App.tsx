@@ -32,6 +32,12 @@ const DashboardLicitacionesPage = lazy(() => import('./pages/DashboardLicitacion
 const TerritorioPage = lazy(() => import('./pages/TerritorioPage'))
 const PartesPage = lazy(() => import('./pages/PartesPage'))
 const Dashboard360Page = lazy(() => import('./pages/Dashboard360Page'))
+const OperadorCampoPage = lazy(() => import('./pages/OperadorCampoPage'))
+const ChecklistConfigPage = lazy(() => import('./pages/ChecklistConfigPage'))
+const OrdenesPage = lazy(() => import('./pages/OrdenesPage'))
+const InventarioPage = lazy(() => import('./pages/InventarioPage'))
+const VehiculosPage = lazy(() => import('./pages/VehiculosPage'))
+const CalidadPage = lazy(() => import('./pages/CalidadPage'))
 
 function PageLoader() {
   return <div className="flex flex-col items-center justify-center py-20"><Loader2 size={28} className="text-[#1a3c34] animate-spin mb-2" /><p className="text-sm text-slate-400">Cargando...</p></div>
@@ -77,6 +83,12 @@ function AppRoutes() {
           <Route path="/licitaciones-dashboard" element={<DashboardLicitacionesPage />} />
           <Route path="/territorio" element={<TerritorioPage />} />
           <Route path="/partes" element={<PartesPage />} />
+          <Route path="/operador" element={<OperadorCampoPage />} />
+          <Route path="/checklist-config" element={<ChecklistConfigPage />} />
+          <Route path="/ordenes" element={<OrdenesPage />} />
+          <Route path="/inventario" element={<InventarioPage />} />
+          <Route path="/vehiculos" element={<VehiculosPage />} />
+          <Route path="/calidad" element={<CalidadPage />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

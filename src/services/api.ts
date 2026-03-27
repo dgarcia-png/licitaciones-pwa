@@ -1,4 +1,4 @@
-const API_BASE = 'https://script.google.com/macros/s/AKfycbwSlHbaZMFoAxkx6BbKzBDzwkEWnxGj_TJfatj5r-IQDmQ2y5DDrqEobUnwc5A4wDaC5g/exec'
+const API_BASE = 'https://script.google.com/macros/s/AKfycbwtYN4EGKee8TKORidpVp8ginxjRg4r6abJX0jKRVhW5oOLm--wc0V5GPO_wzjZ_je-xQ/exec'
 
 function getToken(): string { return localStorage.getItem('auth_token') || '' }
 
@@ -301,4 +301,62 @@ export const api = {
   eliminarParte:          (id: string) => postAPI({ action: 'eliminar_parte', id }),
   crearIncidencia:        (data: any) => postAPI({ action: 'crear_incidencia', ...data }),
   resolverIncidencia:     (data: any) => postAPI({ action: 'resolver_incidencia', ...data }),
+  // ═══ OPERACIONES V2 ═══
+  partesV2:              (filtros?: any) => fetchAPI('partes_v2', filtros || {}),
+  parteCompleto:         (id: string) => fetchAPI('parte_completo', { id }),
+  checklistCentro:       (id: string) => fetchAPI('checklist_centro', { id }),
+  checklistEjecucion:    (id: string) => fetchAPI('checklist_ejecucion', { id }),
+  fotosParte:            (id: string) => fetchAPI('fotos_parte', { id }),
+  materialesParte:       (id: string) => fetchAPI('materiales_parte', { id }),
+  maquinariaParte:       (id: string) => fetchAPI('maquinaria_parte', { id }),
+  catalogoMateriales:    () => fetchAPI('catalogo_materiales'),
+  catalogoMaquinaria:    () => fetchAPI('catalogo_maquinaria'),
+  plContrato:            (id: string, meses?: number) => fetchAPI('pl_contrato', { id, meses: String(meses || 6) }),
+  asistenciaDia:         (id: string, fecha?: string) => fetchAPI('asistencia_dia', { id, ...(fecha ? { fecha } : {}) }),
+  tareasDia:             (id: string) => fetchAPI('tareas_dia', { id }),
+  iniciarParte:          (data: any) => postAPI({ action: 'iniciar_parte', ...data }),
+  finalizarParte:        (data: any) => postAPI({ action: 'finalizar_parte', ...data }),
+  actualizarChecklistExec:(data: any) => postAPI({ action: 'actualizar_checklist_exec', ...data }),
+  registrarFotoParte:    (data: any) => postAPI({ action: 'registrar_foto_parte', ...data }),
+  registrarFirma:        (data: any) => postAPI({ action: 'registrar_firma', ...data }),
+  registrarMaterialParte:(data: any) => postAPI({ action: 'registrar_material_parte', ...data }),
+  eliminarMaterialParte: (id: string) => postAPI({ action: 'eliminar_material_parte', id }),
+  registrarMaquinariaParte:(data: any) => postAPI({ action: 'registrar_maquinaria_parte', ...data }),
+  crearChecklistItem:    (data: any) => postAPI({ action: 'crear_checklist_item', ...data }),
+  actualizarChecklistItem:(data: any) => postAPI({ action: 'actualizar_checklist_item', ...data }),
+  eliminarChecklistItem: (id: string) => postAPI({ action: 'eliminar_checklist_item', id }),
+  copiarChecklist:       (origen_id: string, destino_id: string) => postAPI({ action: 'copiar_checklist', origen_id, destino_id }),
+  crearMaterialCatalogo: (data: any) => postAPI({ action: 'crear_material_catalogo', ...data }),
+  crearMaquinariaCatalogo:(data: any) => postAPI({ action: 'crear_maquinaria_catalogo', ...data }),
+  generarInformeMensual: (data: any) => postAPI({ action: 'generar_informe_mensual', ...data }),
+  // ═══ T-23 ÓRDENES ═══
+  ordenes:                  (filtros?: any) => fetchAPI('ordenes', filtros || {}),
+  crearOrden:               (data: any) => postAPI({ action: 'crear_orden', ...data }),
+  actualizarEstadoOrden:    (data: any) => postAPI({ action: 'actualizar_estado_orden', ...data }),
+  eliminarOrden:            (id: string) => postAPI({ action: 'eliminar_orden', id }),
+  // ═══ T-26 INVENTARIO ═══
+  stockCentro:              (id: string) => fetchAPI('stock_centro', { id }),
+  pedidos:                  (id?: string) => fetchAPI('pedidos', id ? { id } : {}),
+  ajustarStock:             (data: any) => postAPI({ action: 'ajustar_stock', ...data }),
+  crearPedido:              (data: any) => postAPI({ action: 'crear_pedido', ...data }),
+  actualizarEstadoPedido:   (data: any) => postAPI({ action: 'actualizar_estado_pedido', ...data }),
+  // ═══ T-27 MAQUINARIA ═══
+  mantenimientos:           (id?: string) => fetchAPI('mantenimientos', id ? { id } : {}),
+  crearMantenimiento:       (data: any) => postAPI({ action: 'crear_mantenimiento', ...data }),
+  registrarMantRealizado:   (data: any) => postAPI({ action: 'registrar_mant_realizado', ...data }),
+  // ═══ T-28 VEHÍCULOS ═══
+  vehiculos:                () => fetchAPI('vehiculos'),
+  combustibleVehiculo:      (id: string) => fetchAPI('combustible_vehiculo', { id }),
+  crearVehiculo:            (data: any) => postAPI({ action: 'crear_vehiculo', ...data }),
+  actualizarVehiculo:       (data: any) => postAPI({ action: 'actualizar_vehiculo', ...data }),
+  registrarRepostaje:       (data: any) => postAPI({ action: 'registrar_repostaje', ...data }),
+  // ═══ T-29 CALIDAD ═══
+  inspecciones:             (filtros?: any) => fetchAPI('inspecciones', filtros || {}),
+  npsCentro:                (id: string) => fetchAPI('nps_centro', { id }),
+  accionesCorrectivas:      (id?: string) => fetchAPI('acciones_correctivas', id ? { id } : {}),
+  dashboardCalidad:         () => fetchAPI('dashboard_calidad'),
+  crearInspeccion:          (data: any) => postAPI({ action: 'crear_inspeccion', ...data }),
+  registrarNPS:             (data: any) => postAPI({ action: 'registrar_nps', ...data }),
+  crearAccionCorrectiva:    (data: any) => postAPI({ action: 'crear_accion_correctiva', ...data }),
+  cerrarAccionCorrectiva:   (data: any) => postAPI({ action: 'cerrar_accion_correctiva', ...data }),
 }

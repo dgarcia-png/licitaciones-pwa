@@ -6,7 +6,8 @@ import {
   LayoutDashboard, FileSearch, PlusCircle, BarChart3,
   Calculator, Gavel, FileText, BookOpen, Settings, Users,
   LogOut, Menu, X, UserCheck, Shield, ClipboardList,
-  Clock, CalendarDays, Map, Activity, Briefcase,
+  Clock, CalendarDays, Map, Activity, Briefcase, CheckSquare,
+  Package, Car, Star,
 } from 'lucide-react'
 
 const RUTA_A_CLAVE: Record<string, string> = {
@@ -16,6 +17,8 @@ const RUTA_A_CLAVE: Record<string, string> = {
   '/convenios': 'convenios', '/documentos': 'documentos', '/personal': 'personal',
   '/subrogacion': 'subrogacion', '/fichajes': 'fichajes', '/ausencias': 'ausencias',
   '/prl': 'prl', '/rgpd': 'rgpd', '/territorio': 'territorio', '/partes': 'partes',
+  '/operador': 'operador', '/checklist-config': 'checklist-config',
+  '/ordenes': 'ordenes', '/inventario': 'inventario', '/vehiculos': 'vehiculos', '/calidad': 'calidad',
   '/configuracion': 'configuracion', '/usuarios': 'usuarios', '/plantillas': 'plantillas', '/portal': 'portal', '/dashboard-rrhh': 'dashboard-rrhh', '/licitaciones-dashboard': 'licitaciones-dashboard',
 }
 
@@ -48,6 +51,11 @@ const NAV = [
   { grupo: 'Territorio', items: [
     { clave: 'territorio', to: '/territorio', label: 'Territorio', icon: Map },
     { clave: 'partes', to: '/partes', label: 'Partes / Incidencias', icon: ClipboardList },
+    { clave: 'checklist-config', to: '/checklist-config', label: 'Config. Checklist', icon: CheckSquare },
+    { clave: 'ordenes',         to: '/ordenes',          label: 'Órdenes de trabajo', icon: ClipboardList },
+    { clave: 'inventario',      to: '/inventario',       label: 'Inventario',         icon: Package },
+    { clave: 'vehiculos',       to: '/vehiculos',        label: 'Vehículos',          icon: Car },
+    { clave: 'calidad',         to: '/calidad',          label: 'Calidad',            icon: Star },
   ]},
   { grupo: 'Administración', items: [
     { clave: 'configuracion', to: '/configuracion', label: 'Configuración', icon: Settings },
@@ -185,10 +193,11 @@ export default function Layout() {
   const location = useLocation()
   const rolInfo = ROL_BADGE[rol || ''] || { label: '', color: '' }
 
-  // Redirigir TRABAJADOR_CAMPO al portal si no está ya ahí
+  // Redirigir TRABAJADOR_CAMPO al operador de campo
   useEffect(() => {
-    if ((rol === 'TRABAJADOR_CAMPO' || rol === 'TRABAJADOR_LECTURA') && location.pathname !== '/portal') {
-      navigate('/portal', { replace: true })
+    if ((rol === 'TRABAJADOR_CAMPO' || rol === 'TRABAJADOR_LECTURA') &&
+        location.pathname !== '/operador' && location.pathname !== '/portal') {
+      navigate('/operador', { replace: true })
     }
   }, [rol, location.pathname])
 
