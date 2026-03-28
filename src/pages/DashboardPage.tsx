@@ -31,6 +31,7 @@ export default function DashboardPage() {
   const [licit, setLicit] = useState<any>(null)
   const [rrhh, setRrhh] = useState<any>(null)
   const [oportunidades, setOportunidades] = useState<any[]>([])
+  const [territorio, setTerritorio] = useState<any>(null)
   const [cargando, setCargando] = useState(true)
   const [recargando, setRecargando] = useState(false)
   const [ultimaAct, setUltimaAct] = useState<Date | null>(null)
@@ -39,19 +40,27 @@ export default function DashboardPage() {
     if (silencioso) setRecargando(true)
     else setCargando(true)
     try {
-      const [l, r, opos] = await Promise.all([
+      const [l, r, opos, terr] = await Promise.all([
         api.dashboard(),
         (api as any).dashboardRRHH(),
-        api.oportunidades()
+        api.oportunidades(),
+        (api as any).dashboardTerritorio().catch(() => null)
       ])
       setLicit(l); setRrhh(r)
       setOportunidades(opos.oportunidades || [])
+      setTerritorio(terr)
       setUltimaAct(new Date())
     } catch (e) { console.error(e) }
     finally { setCargando(false); setRecargando(false) }
   }
 
   useEffect(() => { cargar() }, [])
+
+  // Auto-refresh cada 5 minutos
+  useEffect(() => {
+    const interval = setInterval(() => cargar(true), 5 * 60 * 1000)
+    return () => clearInterval(interval)
+  }, [])
 
   if (cargando) return <SkeletonPage />
 
@@ -279,6 +288,54 @@ export default function DashboardPage() {
           </div>
         </div>
       </div>
+
+      {/* TERRITORIO — datos operativos del día */}
+      {territorio && (
+        <div className="bg-white border border-slate-200 rounded-2xl p-5">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+              🗺️ Territorio — operativo hoy
+            </h3>
+            <span className="text-[10px] text-slate-400">Act. {territorio.ultima_actualizacion}</span>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+            {[
+              { l: 'Centros activos', v: territorio.activos || 0, c: 'text-[#1a3c34]', bg: 'bg-[#1a3c34]/5' },
+              { l: 'Partes hoy', v: territorio.partes_hoy || 0, c: 'text-blue-700', bg: 'bg-blue-50',
+                sub: territorio.partes_en_curso > 0 ? `${territorio.partes_en_curso} en curso` : '' },
+              { l: 'Horas trabajadas', v: (territorio.horas_hoy || 0) + 'h', c: 'text-emerald-700', bg: 'bg-emerald-50' },
+              { l: 'Calidad mes', v: (territorio.calidad_media_mes || 0) + '/5', 
+                c: (territorio.calidad_media_mes || 0) >= 4 ? 'text-emerald-700' : (territorio.calidad_media_mes || 0) >= 3 ? 'text-amber-700' : 'text-red-700',
+                bg: (territorio.calidad_media_mes || 0) >= 4 ? 'bg-emerald-50' : (territorio.calidad_media_mes || 0) >= 3 ? 'bg-amber-50' : 'bg-red-50' },
+            ].map((k: any, i: number) => (
+              <div key={i} className={`${k.bg} rounded-xl p-3 text-center`}>
+                <p className={`text-xl font-black ${k.c}`}>{k.v}</p>
+                <p className="text-[9px] text-slate-500 uppercase mt-0.5">{k.l}</p>
+                {k.sub && <p className="text-[9px] text-slate-400">{k.sub}</p>}
+              </div>
+            ))}
+          </div>
+          {((territorio.incidencias_abiertas || 0) > 0 || (territorio.ordenes_pendientes || 0) > 0 || (territorio.acciones_correctivas || 0) > 0) && (
+            <div className="flex flex-wrap gap-2">
+              {(territorio.incidencias_abiertas || 0) > 0 && (
+                <div className="flex items-center gap-1.5 px-3 py-1.5 bg-red-50 border border-red-200 rounded-xl">
+                  <span className="text-[10px] font-bold text-red-700">⚠️ {territorio.incidencias_abiertas} incidencia{territorio.incidencias_abiertas > 1 ? 's' : ''} abierta{territorio.incidencias_abiertas > 1 ? 's' : ''}</span>
+                </div>
+              )}
+              {(territorio.ordenes_pendientes || 0) > 0 && (
+                <div className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-50 border border-amber-200 rounded-xl">
+                  <span className="text-[10px] font-bold text-amber-700">📋 {territorio.ordenes_pendientes} orden{territorio.ordenes_pendientes > 1 ? 'es' : ''} pendiente{territorio.ordenes_pendientes > 1 ? 's' : ''}</span>
+                </div>
+              )}
+              {(territorio.acciones_correctivas || 0) > 0 && (
+                <div className="flex items-center gap-1.5 px-3 py-1.5 bg-orange-50 border border-orange-200 rounded-xl">
+                  <span className="text-[10px] font-bold text-orange-700">🔧 {territorio.acciones_correctivas} acción{territorio.acciones_correctivas > 1 ? 'es' : ''} correctiva{territorio.acciones_correctivas > 1 ? 's' : ''}</span>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Accesos rápidos */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
