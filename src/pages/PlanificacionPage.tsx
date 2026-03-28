@@ -76,6 +76,17 @@ export default function PlanificacionPage() {
 
   const handleCrearServicio = async () => {
     if (!form.centro_id || !form.empleado_id) { showMsg('Centro y empleado son obligatorios', true); return }
+    // Verificar si el empleado tiene ausencia aprobada en ese día de la semana
+    if (form.empleado_id && form.dia_semana && cuadrante) {
+      const fila = cuadrante.cuadrante?.find((f: any) => f.empleado_id === form.empleado_id)
+      if (fila) {
+        const diaServs = fila.dias[form.dia_semana] || []
+        const tieneAusencia = diaServs.some((s: any) => s.ausencia)
+        if (tieneAusencia) {
+          showMsg('⚠️ Este empleado tiene una ausencia aprobada ese día', true); return
+        }
+      }
+    }
     setGuardando(true)
     try {
       const r = await (api as any).crearServicioProgramado(form)
@@ -323,19 +334,22 @@ export default function PlanificacionPage() {
                 const ausencia = servicios.find((s: any) => s.ausencia)
                 const svcs = servicios.filter((s: any) => !s.ausencia)
                 return (
-                  <div key={dia} className="px-1 py-1.5 border-l border-slate-100 min-h-16">
+                  <div key={dia} className={`px-1 py-1.5 border-l border-slate-100 min-h-16 ${ausencia ? 'bg-red-50' : ''}`}>
                     {ausencia && (
-                      <div className="rounded-lg px-2 py-1 mb-1 bg-red-50 border border-red-200">
-                        <p className="text-[9px] font-bold text-red-600 uppercase">Ausencia</p>
-                        <p className="text-[9px] text-red-500">{ausencia.motivo}</p>
+                      <div className="rounded-lg px-2 py-1.5 bg-red-100 border border-red-300 text-center">
+                        <p className="text-[9px] font-black text-red-700 uppercase">🚫 Ausencia</p>
+                        <p className="text-[9px] text-red-600 capitalize">{ausencia.motivo}</p>
                       </div>
                     )}
-                    {svcs.map((s: any, si: number) => (
+                    {!ausencia && svcs.map((s: any, si: number) => (
                       <div key={si} className={`rounded-lg px-2 py-1 mb-1 border text-[9px] font-semibold truncate ${TIPO_COLOR[s.tipo_servicio] || 'bg-slate-100 text-slate-600 border-slate-200'}`}>
                         <p className="font-bold truncate">{s.centro}</p>
                         <p className="opacity-70">{s.hora_inicio}–{s.hora_fin}</p>
                       </div>
                     ))}
+                    {ausencia && svcs.length > 0 && (
+                      <p className="text-[8px] text-red-400 mt-1 text-center">({svcs.length} servicio(s) bloqueado(s))</p>
+                    )}
                   </div>
                 )
               })}
