@@ -297,7 +297,8 @@ export default function OperadorCampoV2Page() {
           nombre: file.name, base64: base64, mime: file.type, centro_id: centroSel?.id || centroSel?.centro_id
         })
         if (r.ok) {
-          setFotos(prev => [...prev, { tipo: tipoFoto, url: r.url, nombre: file.name }])
+          const localUrl = URL.createObjectURL(file)
+          setFotos(prev => [...prev, { tipo: tipoFoto, url: r.url || '', localUrl, nombre: file.name }])
           showMsg('✅ Foto añadida')
         } else showMsg('Error al subir foto', 'err')
         setProcesando(false)
@@ -675,7 +676,7 @@ export default function OperadorCampoV2Page() {
                     <div className="grid grid-cols-2 gap-2">
                       {fotos.map((f, i) => (
                         <div key={i} className="relative bg-slate-100 rounded-xl overflow-hidden aspect-square">
-                          {f.url ? <img src={f.url} alt="" className="w-full h-full object-cover" /> :
+                          {(f.localUrl || f.url) ? <img src={f.localUrl || f.url} alt="" className="w-full h-full object-cover" /> :
                             <div className="w-full h-full flex items-center justify-center"><Camera size={24} className="text-slate-400" /></div>}
                           <span className={`absolute top-1 left-1 text-[9px] font-black px-1.5 py-0.5 rounded-full ${f.tipo === 'antes' ? 'bg-blue-500 text-white' : 'bg-emerald-500 text-white'}`}>
                             {f.tipo}

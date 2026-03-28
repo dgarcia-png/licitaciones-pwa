@@ -133,9 +133,11 @@ export default function PortalClientePage() {
                           {f.tipo}
                         </span>
                         {f.url ? (
-                          <img src={f.url} alt={f.tipo}
-                            className="w-full h-32 object-cover rounded-xl border border-slate-200"
-                            onError={(e: any) => { e.target.style.display='none' }} />
+                          <a href={f.url} target="_blank" rel="noopener noreferrer"
+                            className="block w-full h-32 bg-slate-100 rounded-xl border border-slate-200 flex flex-col items-center justify-center hover:bg-slate-200 transition-colors">
+                            <Camera size={20} className="text-slate-400 mb-1" />
+                            <span className="text-xs text-blue-600 font-medium">Ver foto</span>
+                          </a>
                         ) : (
                           <div className="w-full h-32 bg-slate-100 rounded-xl flex items-center justify-center">
                             <Camera size={20} className="text-slate-300" />
@@ -179,7 +181,11 @@ export default function PortalClientePage() {
               {parteSel.firma_url && (
                 <div>
                   <p className="text-xs font-semibold text-slate-500 uppercase mb-2">Firma digital</p>
-                  <img src={parteSel.firma_url} alt="Firma" className="w-full max-h-32 object-contain bg-white border border-slate-200 rounded-xl p-2" />
+                  <a href={parteSel.firma_url} target="_blank" rel="noopener noreferrer"
+                    className="flex items-center gap-2 p-3 bg-slate-50 border border-slate-200 rounded-xl hover:bg-slate-100 transition-colors">
+                    <PenTool size={14} className="text-slate-400" />
+                    <span className="text-sm text-blue-600 font-medium">Ver firma digital</span>
+                  </a>
                 </div>
               )}
 
