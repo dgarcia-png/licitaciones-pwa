@@ -69,6 +69,7 @@ export default function OperadorCampoV2Page() {
   // ── Estado Tareas ──────────────────────────────────────────────────────────
   const [paso, setPaso] = useState<PasoTarea>('inicio')
   const [centros, setCentros] = useState<any[]>([])
+  const [ordenesDia, setOrdenesDia] = useState<any[]>([])
   const [centroSel, setCentroSel] = useState<any>(null)
   const [parteActual, setParteActual] = useState<any>(null)
   const [checklist, setChecklist] = useState<any[]>([])
@@ -141,12 +142,14 @@ export default function OperadorCampoV2Page() {
         if (emp) {
           setEmpleado(emp)
           // 2. Datos del empleado en paralelo
-          const [tareas, est, aus] = await Promise.all([
+          const [tareas, est, aus, ords] = await Promise.all([
             (api as any).tareasDia(emp.id),
             api.estadoFichaje(emp.id),
-            api.ausencias({ id_empleado: emp.id })
+            api.ausencias({ id_empleado: emp.id }),
+            (api as any).ordenes({ empleado_id: emp.id, estado: 'pendiente' }).catch(() => ({ ordenes: [] }))
           ])
           setCentros(tareas.centros || [])
+          setOrdenesDia(ords.ordenes || [])
           setEstadoFichaje(est)
           setAusencias(aus.ausencias || [])
           setTiposAusencia(aus.tipos || [])
@@ -223,7 +226,8 @@ export default function OperadorCampoV2Page() {
         empleado_id: empleado.id,
         nombre_empleado: `${empleado.nombre} ${empleado.apellidos}`,
         dni: empleado.dni, tipo_servicio: centro.tipo_servicio,
-        lat: gps?.lat, lng: gps?.lng
+        lat: gps?.lat, lng: gps?.lng,
+        orden_id: centro.orden_id || ''
       })
       if (r.ok || r.id) {
         setCentroSel(centro)
@@ -254,7 +258,8 @@ export default function OperadorCampoV2Page() {
         empleado_id: empleado?.id,
         nombre_empleado: `${empleado?.nombre} ${empleado?.apellidos}`,
         observaciones, firma_nombre: firmaNombre,
-        firma_data: firmaData, lat: gps?.lat, lng: gps?.lng
+        firma_data: firmaData, lat: gps?.lat, lng: gps?.lng,
+        orden_id: centroSel?.orden_id || ''
       })
       if (r.ok) { showMsg('✅ Parte finalizado'); setPaso('resumen') }
       else showMsg(r.error || 'Error al finalizar', 'err')
@@ -493,6 +498,42 @@ export default function OperadorCampoV2Page() {
                     <p className="text-sm font-bold text-slate-900">Mis centros de trabajo</p>
                     <span className="text-xs text-slate-400">{new Date().toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'short' })}</span>
                   </div>
+
+                  {/* Órdenes del día */}
+                  {ordenesDia.length > 0 && (
+                    <div>
+                      <p className="text-xs font-bold text-amber-600 uppercase mb-2 flex items-center gap-1.5">
+                        📋 Órdenes asignadas hoy ({ordenesDia.length})
+                      </p>
+                      <div className="space-y-2">
+                        {ordenesDia.map((ot: any) => {
+                          const centro = centros.find((c: any) => c.centro_id === ot.centro_id)
+                          return (
+                            <div key={ot.id} className="bg-amber-50 border border-amber-200 rounded-xl p-3">
+                              <div className="flex items-start justify-between gap-2">
+                                <div className="flex-1">
+                                  <p className="text-sm font-bold text-slate-900">{ot.titulo}</p>
+                                  <p className="text-xs text-slate-500">{ot.centro_nombre} · {ot.hora_inicio || 'Sin hora'}</p>
+                                  {ot.descripcion && <p className="text-xs text-slate-400 mt-0.5">{ot.descripcion}</p>}
+                                </div>
+                                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 ${
+                                  ot.prioridad === 'urgente' ? 'bg-red-100 text-red-700' :
+                                  ot.prioridad === 'alta' ? 'bg-orange-100 text-orange-700' :
+                                  'bg-amber-100 text-amber-700'
+                                }`}>{ot.prioridad}</span>
+                              </div>
+                              <button
+                                onClick={() => centro && handleIniciarParte({ ...centro, orden_id: ot.id })}
+                                disabled={procesando || !centro}
+                                className="mt-2 w-full flex items-center justify-center gap-2 py-2 bg-amber-600 hover:bg-amber-700 disabled:bg-slate-300 text-white text-xs font-bold rounded-xl">
+                                <Play size={13} /> Iniciar parte de esta orden
+                              </button>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  )}
 
                   {centros.length === 0 ? (
                     <div className="flex flex-col items-center py-16 bg-white rounded-2xl border border-slate-200">
