@@ -59,6 +59,8 @@ export default function PersonalPage() {
 
   // Asignaciones
   const [asignaciones, setAsignaciones] = useState<any[]>([])
+  const [historialCentros, setHistorialCentros] = useState<any>(null)
+  const [cargandoCentros, setCargandoCentros] = useState(false)
   const [mostrarAddAsig, setMostrarAddAsig] = useState(false)
   const [capacidad, setCapacidad] = useState<any>(null)
   const [oportunidades, setOportunidades] = useState<any[]>([])
@@ -175,12 +177,21 @@ export default function PersonalPage() {
     cargarDetalleFondo(emp.id)
   }
 
-  const cargarDetalleFondo = (id: string) => {
-    api.batch(['empleado', 'asignaciones_emp'], id)
-      .then((data: any) => {
-        if (data.empleado?.ok) setEmpleadoSel(data.empleado.empleado)
-        setAsignaciones(data.asignaciones?.asignaciones || [])
-      }).catch(() => {})
+  const cargarDetalleFondo = async (id: string) => {
+    // Cargar empleado y asignaciones
+    try {
+      const data = await api.batch(['empleado', 'asignaciones_emp'], id)
+      if (data.empleado?.ok) setEmpleadoSel(data.empleado.empleado)
+      setAsignaciones(data.asignaciones?.asignaciones || [])
+    } catch(e) {}
+
+    // Cargar historial centros territorio
+    setCargandoCentros(true)
+    try {
+      const hist = await (api as any).historialCentrosEmpleado(id)
+      setHistorialCentros(hist)
+    } catch(e) { console.warn('historial centros no disponible', e) }
+    finally { setCargandoCentros(false) }
     api.batch(['capacidad', 'prl_epis_emp', 'prl_reco_emp', 'prl_form_emp', 'prl_acc_emp'], id)
       .then((extra: any) => {
         setCapacidad(extra.capacidad || null)
@@ -812,6 +823,47 @@ export default function PersonalPage() {
                 )
               })}
             </div>
+          </div>
+
+          {/* Historial de centros de territorio */}
+          <div className="bg-white border-2 border-slate-200 rounded-2xl p-5 mb-4">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                🏢 Centros de trabajo asignados
+              </h3>
+              {historialCentros && (
+                <div className="flex items-center gap-2 text-xs text-slate-500">
+                  <span className="bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full font-semibold">{historialCentros.activos} activo(s)</span>
+                  {historialCentros.finalizados > 0 && <span className="bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full">{historialCentros.finalizados} anterior(es)</span>}
+                </div>
+              )}
+            </div>
+            {cargandoCentros ? (
+              <div className="flex justify-center py-4"><Loader2 size={18} className="animate-spin text-slate-400" /></div>
+            ) : !historialCentros?.centros?.length ? (
+              <p className="text-xs text-slate-400 text-center py-4">Sin centros asignados en Territorio</p>
+            ) : (
+              <div className="space-y-2">
+                {historialCentros.centros.map((c: any) => (
+                  <div key={c.id} className={`flex items-center gap-3 p-3 rounded-xl border ${c.estado === 'activo' ? 'bg-emerald-50 border-emerald-200' : 'bg-slate-50 border-slate-200 opacity-70'}`}>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-0.5">
+                        <p className="text-xs font-bold text-slate-900 truncate">{c.nombre_centro}</p>
+                        <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full shrink-0 ${c.estado === 'activo' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}>
+                          {c.estado}
+                        </span>
+                      </div>
+                      <p className="text-[10px] text-slate-500">{c.organismo} · {c.tipo_servicio} · {c.turno}</p>
+                      <p className="text-[10px] text-slate-400">
+                        {c.horas_semanales}h/sem · {c.categoria}
+                        {c.fecha_inicio && ` · desde ${c.fecha_inicio}`}
+                        {c.fecha_fin && ` → ${c.fecha_fin}`}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Historial */}
