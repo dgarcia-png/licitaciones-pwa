@@ -105,14 +105,10 @@ export default function FichajesPage() {
   const cargarResumenMensual = async (m: number, a: number) => {
     setCargando(true)
     try {
-      const [data, prov, extra] = await Promise.all([
-        api.resumenMensualFichajes(String(m), String(a)),
-        (api as any).fichajes({ estado: 'provisional' }).catch(() => ({ fichajes: [] })),
-        (api as any).horasExtra({ estado: 'pendiente' }).catch(() => ({ horas_extra: [] }))
-      ])
-      setResumenMensual(data)
-      setFichajesProvisionales(prov.fichajes || [])
-      setHorasExtraList(extra.horas_extra || [])
+      const batch = await (api as any).batchSupervisionFichajes(m, a)
+      setResumenMensual(batch.resumen_mensual || {})
+      setFichajesProvisionales(batch.fichajes_provisionales?.fichajes || [])
+      setHorasExtraList(batch.horas_extra?.horas_extra || [])
     } catch(e) { console.error(e) }
     finally { setCargando(false) }
   }

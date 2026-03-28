@@ -1,4 +1,4 @@
-const API_BASE = 'https://script.google.com/macros/s/AKfycbwsW4YdER-gCZm5Rh2Dql7496ALT3Z4Wy6xSsK9YE83404C4Cz0o4--HHrmZUZdcrrDgw/exec'
+const API_BASE = 'https://script.google.com/macros/s/AKfycbyb5f4JEBSAqRpE2xjuCt0vRM78z3fKbFQH47wYIIgFzfUOsyQMjul0ZSnCqrBxBVSKaA/exec'
 
 function getToken(): string { return localStorage.getItem('auth_token') || '' }
 

@@ -51,14 +51,10 @@ export default function PlanificacionPage() {
   const cargar = async () => {
     setCargando(true)
     try {
-      const [c, emp] = await Promise.all([
-        (api as any).centros(),
-        api.empleados()
-      ])
-      setCentros(c.centros||[])
-      setEmpleados(emp.empleados||[])
-      const cuad = await (api as any).cuadranteSemanal(semana)
-      setCuadrante(cuad)
+      const batch = await (api as any).batchPlanificacion(semana)
+      setCentros(batch.centros?.centros || [])
+      setEmpleados(batch.empleados?.empleados || [])
+      setCuadrante(batch.cuadrante || {})
     } catch(e) { console.error(e) }
     finally { setCargando(false) }
   }

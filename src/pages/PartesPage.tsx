@@ -64,16 +64,11 @@ export default function PartesPage() {
   const cargar = async () => {
     setCargando(true)
     try {
-      const [p, inc, c, emp] = await Promise.all([
-        (api as any).partesV2(),
-        (api as any).incidencias(),
-        (api as any).centros(),
-        api.empleados()
-      ])
-      setPartes(p.partes || [])
-      setIncidencias(inc.incidencias || [])
-      setCentros(c.centros || [])
-      setEmpleados(emp.empleados || [])
+      const batch = await (api as any).batchPartes()
+      setPartes(batch.partes?.partes || [])
+      setIncidencias(batch.incidencias?.incidencias || [])
+      setCentros(batch.centros?.centros || [])
+      setEmpleados(batch.empleados?.empleados || [])
     } catch(e) { console.error(e) }
     finally { setCargando(false) }
   }
