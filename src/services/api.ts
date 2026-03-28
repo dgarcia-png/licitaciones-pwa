@@ -360,7 +360,7 @@ export const api = {
   crearAccionCorrectiva:    (data: any) => postAPI({ action: 'crear_accion_correctiva', ...data }),
   cerrarAccionCorrectiva:   (data: any) => postAPI({ action: 'cerrar_accion_correctiva', ...data }),
   // ═══ T-30 PORTAL CLIENTE ═══
-  portalCliente:            (token: string) => fetchAPI('portal_cliente', { token }),
+  portalCliente:            (token: string) => fetch(`${API_BASE}?action=portal_cliente&portal_token=${encodeURIComponent(token)}`).then(r => r.json()),
   tokensCliente:            () => fetchAPI('tokens_cliente'),
   generarTokenCliente:      (data: any) => postAPI({ action: 'generar_token_cliente', ...data }),
   revocarToken:             (id: string) => postAPI({ action: 'revocar_token', id }),
