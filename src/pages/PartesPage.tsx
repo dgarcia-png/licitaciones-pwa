@@ -42,6 +42,10 @@ export default function PartesPage() {
   const [busqueda, setBusqueda] = useState('')
   const [filtroCentro, setFiltroCentro] = useState('')
   const [parteDetalle, setParteDetalle] = useState<any>(null)
+  const [fotosDetalle, setFotosDetalle] = useState<any[]>([])
+  const [checklistDetalle, setChecklistDetalle] = useState<any[]>([])
+  const [materialesDetalle, setMaterialesDetalle] = useState<any[]>([])
+  const [cargandoDetalle, setCargandoDetalle] = useState(false)
   const [incSel, setIncSel] = useState<any>(null)
   const [formResolucion, setFormResolucion] = useState('')
   const [confirmEliminar, setConfirmEliminar] = useState<string | null>(null)
@@ -181,20 +185,74 @@ export default function PartesPage() {
                 </div>
               )}
 
-              {(parteDetalle.fotos_antes > 0 || parteDetalle.fotos_despues > 0) && (
-                <div className="bg-slate-50 rounded-xl p-3 flex items-center gap-3">
-                  <Camera size={16} className="text-slate-400" />
-                  <div>
-                    <p className="text-xs font-semibold text-slate-700">Fotografías</p>
-                    <p className="text-xs text-slate-500">
-                      {parteDetalle.fotos_antes > 0 && `${parteDetalle.fotos_antes} antes`}
-                      {parteDetalle.fotos_antes > 0 && parteDetalle.fotos_despues > 0 && ' · '}
-                      {parteDetalle.fotos_despues > 0 && `${parteDetalle.fotos_despues} después`}
-                    </p>
+              {/* Loading */}
+              {cargandoDetalle && (
+                <div className="flex items-center gap-2 p-3 bg-slate-50 rounded-xl">
+                  <Loader2 size={14} className="animate-spin text-slate-400" />
+                  <p className="text-xs text-slate-500">Cargando detalles...</p>
+                </div>
+              )}
+
+              {/* Checklist */}
+              {checklistDetalle.length > 0 && (
+                <div>
+                  <p className="text-xs font-bold text-slate-500 uppercase mb-2">Checklist de tareas</p>
+                  <div className="space-y-1">
+                    {checklistDetalle.map((item: any, i: number) => (
+                      <div key={i} className={`flex items-center gap-2 p-2 rounded-lg text-xs ${item.completado || item.completada ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-50 text-slate-500'}`}>
+                        <span>{item.completado || item.completada ? '✅' : '⬜'}</span>
+                        <span className="flex-1">{item.descripcion || item.tarea || '—'}</span>
+                        {(item.hora || item.completado) && <span className="text-slate-400">{item.hora}</span>}
+                      </div>
+                    ))}
                   </div>
                 </div>
               )}
 
+              {/* Materiales usados */}
+              {materialesDetalle.length > 0 && (
+                <div>
+                  <p className="text-xs font-bold text-slate-500 uppercase mb-2">Materiales utilizados</p>
+                  <div className="space-y-1">
+                    {materialesDetalle.map((m: any, i: number) => (
+                      <div key={i} className="flex items-center justify-between p-2 bg-slate-50 rounded-lg text-xs">
+                        <span className="text-slate-700">{m.nombre || m.material_id}</span>
+                        <span className="font-bold text-slate-600">{m.cantidad} u · {m.coste_total ? m.coste_total.toFixed(2) + ' €' : '—'}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Fotos */}
+              {fotosDetalle.length > 0 && (
+                <div>
+                  <p className="text-xs font-bold text-slate-500 uppercase mb-2 flex items-center gap-1.5">
+                    <Camera size={12} /> Fotografías del servicio
+                  </p>
+                  <div className="grid grid-cols-2 gap-2">
+                    {fotosDetalle.map((f: any, i: number) => (
+                      <div key={i} className="relative">
+                        <span className={`absolute top-1.5 left-1.5 text-[10px] font-bold px-1.5 py-0.5 rounded-full z-10 ${f.tipo === 'antes' ? 'bg-blue-500 text-white' : 'bg-emerald-500 text-white'}`}>
+                          {f.tipo}
+                        </span>
+                        <a href={f.url} target="_blank" rel="noopener noreferrer"
+                          className="block w-full h-28 bg-slate-100 rounded-xl border border-slate-200 flex flex-col items-center justify-center hover:bg-slate-200 transition-colors">
+                          <Camera size={18} className="text-slate-400 mb-1" />
+                          <span className="text-xs text-blue-600 font-medium">Ver foto</span>
+                        </a>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {fotosDetalle.length === 0 && !cargandoDetalle && (parteDetalle.fotos_antes > 0 || parteDetalle.fotos_despues > 0) && (
+                <div className="bg-slate-50 rounded-xl p-3 text-xs text-slate-500 text-center">
+                  {(parteDetalle.fotos_antes || 0) + (parteDetalle.fotos_despues || 0)} fotos registradas (URL no disponible)
+                </div>
+              )}
+
+              {/* Firma */}
               {parteDetalle.firma_cliente === 'si' && (
                 <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 flex items-center gap-3">
                   <PenTool size={16} className="text-emerald-600" />
@@ -204,11 +262,12 @@ export default function PartesPage() {
                   </div>
                   {parteDetalle.firma_url && (
                     <a href={parteDetalle.firma_url} target="_blank" rel="noopener noreferrer"
-                      className="text-xs text-blue-600 font-medium hover:underline">Ver firma</a>
+                      className="text-xs text-blue-600 font-medium hover:underline">Ver firma →</a>
                   )}
                 </div>
               )}
 
+              {/* Observaciones */}
               {parteDetalle.observaciones && (
                 <div className="bg-amber-50 rounded-xl p-3">
                   <p className="text-[10px] text-amber-600 uppercase font-semibold mb-1">Observaciones</p>
@@ -216,6 +275,7 @@ export default function PartesPage() {
                 </div>
               )}
 
+              {/* Informe PDF */}
               {parteDetalle.informe_url && (
                 <a href={parteDetalle.informe_url} target="_blank" rel="noopener noreferrer"
                   className="flex items-center gap-2 p-3 bg-blue-50 border border-blue-200 rounded-xl hover:bg-blue-100 transition-colors">
@@ -406,7 +466,24 @@ export default function PartesPage() {
         ) : (
           <div className="space-y-3">
             {partesFiltrados.map((p: any) => (
-              <div key={p.id} onClick={() => setParteDetalle(p)}
+              <div key={p.id} onClick={async () => {
+                setParteDetalle(p)
+                setFotosDetalle([])
+                setChecklistDetalle([])
+                setMaterialesDetalle([])
+                setCargandoDetalle(true)
+                try {
+                  const [fts, chk, mats] = await Promise.all([
+                    (api as any).fotosParte(p.id).catch(() => ({ fotos: [] })),
+                    (api as any).checklistEjecucion(p.id).catch(() => ({ items: [] })),
+                    (api as any).materialesParte(p.id).catch(() => ({ materiales: [] }))
+                  ])
+                  setFotosDetalle(fts.fotos || [])
+                  setChecklistDetalle(chk.items || [])
+                  setMaterialesDetalle(mats.materiales || [])
+                } catch(e) { console.error(e) }
+                finally { setCargandoDetalle(false) }
+              }}
                 className="bg-white border border-slate-200 rounded-2xl p-4 hover:border-[#1a3c34]/30 hover:shadow-md transition-all cursor-pointer">
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex-1 min-w-0">
