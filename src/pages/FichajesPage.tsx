@@ -4,7 +4,7 @@ import { usePermisos } from '../hooks/usePermisos'
 import {
   Clock, LogIn, LogOut, Users, Calendar, ChevronLeft, ChevronRight,
   AlertTriangle, Loader2, MapPin, CheckCircle2, TrendingUp,
-  Activity, RefreshCw, X, FileText
+  Activity, RefreshCw, X, FileText, ShieldCheck, Edit2, Save, Euro
 } from 'lucide-react'
 
 function fmtDate(d: any) {
@@ -38,6 +38,12 @@ export default function FichajesPage() {
   const [mes, setMes] = useState(new Date().getMonth() + 1)
   const [anio, setAnio] = useState(new Date().getFullYear())
   const [recargando, setRecargando] = useState(false)
+  // Supervisión
+  const [fichajesProvisionales, setFichajesProvisionales] = useState<any[]>([])
+  const [horasExtraList, setHorasExtraList] = useState<any[]>([])
+  const [editFichaje, setEditFichaje] = useState<any>(null)
+  const [horaCorregida, setHoraCorregida] = useState('')
+  const [guardandoVal, setGuardandoVal] = useState(false)
 
   // Ref para evitar doble carga inicial
   const cargadoRef = useRef(false)
@@ -98,9 +104,46 @@ export default function FichajesPage() {
 
   const cargarResumenMensual = async (m: number, a: number) => {
     setCargando(true)
-    Object.keys(localStorage).filter(k => k.startsWith('fc_') && k.includes('resumen_mensual')).forEach(k => localStorage.removeItem(k))
-    try { const data = await api.resumenMensualFichajes(String(m), String(a)); setResumenMensual(data) } catch { }
+    try {
+      const [data, prov, extra] = await Promise.all([
+        api.resumenMensualFichajes(String(m), String(a)),
+        (api as any).fichajes({ estado: 'provisional' }).catch(() => ({ fichajes: [] })),
+        (api as any).horasExtra({ estado: 'pendiente' }).catch(() => ({ horas_extra: [] }))
+      ])
+      setResumenMensual(data)
+      setFichajesProvisionales(prov.fichajes || [])
+      setHorasExtraList(extra.horas_extra || [])
+    } catch(e) { console.error(e) }
     finally { setCargando(false) }
+  }
+
+  const handleValidarFichaje = async (fichaje: any, horaCorr?: string) => {
+    setGuardandoVal(true)
+    try {
+      const r = await (api as any).validarFichaje({
+        id: fichaje.id,
+        hora_corregida: horaCorr || '',
+        validado_por: 'Supervisor'
+      })
+      if (r.ok) {
+        setFichajesProvisionales(prev => prev.filter((f: any) => f.id !== fichaje.id))
+        setEditFichaje(null)
+        showMsg('✅ Fichaje validado')
+      }
+    } catch(e) {} finally { setGuardandoVal(false) }
+  }
+
+  const handleAprobarHorasExtra = async (he: any, compensacion: string) => {
+    setGuardandoVal(true)
+    try {
+      const r = await (api as any).aprobarHorasExtra({
+        id: he.id, estado: 'aprobada', compensacion, aprobado_por: 'Supervisor'
+      })
+      if (r.ok) {
+        setHorasExtraList(prev => prev.filter((h: any) => h.id !== he.id))
+        showMsg('✅ Horas extra aprobadas')
+      }
+    } catch(e) {} finally { setGuardandoVal(false) }
   }
 
   useEffect(() => {
@@ -410,60 +453,163 @@ export default function FichajesPage() {
 
       {/* ══ SUPERVISIÓN ════════════════════════════════════════════════════ */}
       {tab === 'supervision' && (esAdmin || esSupervisor) && (
-        <div>
-          <div className="flex justify-between items-center mb-5">
-            <p className="text-sm text-slate-600">{empleados.length} empleados</p>
-            <div className="flex items-center gap-2">
-              <div className="flex items-center gap-1 bg-white border border-slate-200 rounded-xl p-1">
-                <button onClick={() => { if (mes === 1) { setMes(12); setAnio(anio - 1) } else setMes(mes - 1) }} className="p-2 hover:bg-slate-100 rounded-lg"><ChevronLeft size={16} /></button>
-                <span className="text-sm font-semibold px-3 whitespace-nowrap">{MESES[mes]} {anio}</span>
-                <button onClick={() => { if (mes === 12) { setMes(1); setAnio(anio + 1) } else setMes(mes + 1) }} className="p-2 hover:bg-slate-100 rounded-lg"><ChevronRight size={16} /></button>
-              </div>
-            </div>
-          </div>
+        <div className="space-y-5">
 
-          {cargando ? <div className="text-center py-8"><Loader2 size={24} className="animate-spin text-slate-400 mx-auto" /></div>
-            : !resumenMensual?.resumen?.length ? <div className="text-center py-12 text-slate-400">Sin fichajes en {MESES[mes]} {anio}</div>
-            : (
+          {/* Fichajes provisionales pendientes de validación */}
+          <div className="bg-white border border-slate-200 rounded-2xl p-4">
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                <ShieldCheck size={16} className="text-amber-500" />
+                Fichajes provisionales — pendientes de validación
+                {fichajesProvisionales.length > 0 && (
+                  <span className="bg-amber-100 text-amber-700 text-xs font-bold px-2 py-0.5 rounded-full">{fichajesProvisionales.length}</span>
+                )}
+              </p>
+            </div>
+            {fichajesProvisionales.length === 0 ? (
+              <p className="text-xs text-slate-400 text-center py-4">✅ Sin fichajes provisionales pendientes</p>
+            ) : (
               <div className="space-y-2">
-                {resumenMensual.resumen.map((r: any) => (
-                  <div key={r.id} className="bg-white border border-slate-200 rounded-xl p-4 flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="w-9 h-9 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-bold text-sm">
-                        {(r.nombre || '?')[0]}
+                {fichajesProvisionales.map((f: any) => (
+                  <div key={f.id} className="bg-amber-50 border border-amber-200 rounded-xl p-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <p className="text-sm font-bold text-slate-900">{f.nombre}</p>
+                          <span className="text-[10px] px-2 py-0.5 bg-amber-100 text-amber-700 rounded-full font-bold">
+                            {f.tipo === 'entrada' ? '🟢 Entrada' : '🔴 Salida'} provisional
+                          </span>
+                        </div>
+                        <p className="text-xs text-slate-500">{f.fecha} · {f.hora} · {f.centro || '—'}</p>
+                        <p className="text-[10px] text-slate-400 mt-0.5">{f.notas}</p>
                       </div>
-                      <div>
-                        <p className="text-sm font-bold text-slate-900">{r.nombre}</p>
-                        <p className="text-xs text-slate-500">{r.dni} · {r.centro || '—'}</p>
+                      <div className="flex items-center gap-2 shrink-0">
+                        {editFichaje?.id === f.id ? (
+                          <div className="flex items-center gap-2">
+                            <input type="time" value={horaCorregida}
+                              onChange={e => setHoraCorregida(e.target.value)}
+                              className="px-2 py-1 border border-slate-200 rounded-lg text-xs w-24" />
+                            <button onClick={() => handleValidarFichaje(f, horaCorregida)} disabled={guardandoVal}
+                              className="px-2 py-1 bg-emerald-600 text-white text-xs font-bold rounded-lg flex items-center gap-1">
+                              {guardandoVal ? <Loader2 size={11} className="animate-spin" /> : <Save size={11} />} OK
+                            </button>
+                            <button onClick={() => setEditFichaje(null)} className="px-2 py-1 bg-slate-100 text-slate-600 text-xs rounded-lg">✕</button>
+                          </div>
+                        ) : (
+                          <>
+                            <button onClick={() => { setEditFichaje(f); setHoraCorregida(f.hora.substring(0,5)) }}
+                              className="p-1.5 bg-slate-100 hover:bg-slate-200 rounded-lg" title="Editar hora">
+                              <Edit2 size={13} className="text-slate-500" />
+                            </button>
+                            <button onClick={() => handleValidarFichaje(f)} disabled={guardandoVal}
+                              className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg flex items-center gap-1">
+                              {guardandoVal ? <Loader2 size={12} className="animate-spin" /> : <CheckCircle2 size={12} />} Validar
+                            </button>
+                          </>
+                        )}
                       </div>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <div className="text-right">
-                        <p className="text-sm font-bold font-mono">{r.total_horas}</p>
-                        <p className="text-xs text-slate-500">{r.dias_trabajados} días</p>
-                      </div>
-                      <button
-                        onClick={async () => {
-                          setGenerandoInforme(r.id)
-                          try {
-                            const res = await (api as any).generarInformeFichajes(r.id, String(mes), String(anio))
-                            if (res.ok) window.open(res.url, '_blank')
-                            else alert('Error: ' + (res.error || 'No se pudo generar'))
-                          } catch(e) { alert('Error de conexión') }
-                          finally { setGenerandoInforme(null) }
-                        }}
-                        disabled={generandoInforme === r.id}
-                        title="Generar informe mensual RD-ley 8/2019"
-                        className="flex items-center gap-1.5 px-3 py-2 bg-[#1a3c34] hover:bg-[#2d5a4e] disabled:bg-slate-300 text-white text-xs font-bold rounded-lg">
-                        {generandoInforme === r.id ? <Loader2 size={13} className="animate-spin" /> : <FileText size={13} />}
-                        Informe
-                      </button>
                     </div>
                   </div>
                 ))}
               </div>
-            )
-          }
+            )}
+          </div>
+
+          {/* Horas extra pendientes de aprobación */}
+          <div className="bg-white border border-slate-200 rounded-2xl p-4">
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                <Euro size={16} className="text-purple-500" />
+                Horas extra — pendientes de aprobación
+                {horasExtraList.length > 0 && (
+                  <span className="bg-purple-100 text-purple-700 text-xs font-bold px-2 py-0.5 rounded-full">{horasExtraList.length}</span>
+                )}
+              </p>
+            </div>
+            {horasExtraList.length === 0 ? (
+              <p className="text-xs text-slate-400 text-center py-4">✅ Sin horas extra pendientes</p>
+            ) : (
+              <div className="space-y-2">
+                {horasExtraList.map((he: any) => (
+                  <div key={he.id} className="bg-purple-50 border border-purple-200 rounded-xl p-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex-1">
+                        <p className="text-sm font-bold text-slate-900">{he.nombre}</p>
+                        <p className="text-xs text-slate-500">
+                          {he.fecha} · <span className="font-bold text-purple-700">+{he.horas_extra?.toFixed(2)}h extra</span>
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <button onClick={() => handleAprobarHorasExtra(he, 'pago')} disabled={guardandoVal}
+                          className="px-2 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg">
+                          💶 Pagar
+                        </button>
+                        <button onClick={() => handleAprobarHorasExtra(he, 'descanso')} disabled={guardandoVal}
+                          className="px-2 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-lg">
+                          😴 Descanso
+                        </button>
+                        <button onClick={() => (api as any).aprobarHorasExtra({ id: he.id, estado: 'rechazada', aprobado_por: 'Supervisor' }).then(() => setHorasExtraList(prev => prev.filter((h: any) => h.id !== he.id)))}
+                          className="px-2 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-semibold rounded-lg">
+                          ✕
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Resumen mensual empleados */}
+          <div className="bg-white border border-slate-200 rounded-2xl p-4">
+            <div className="flex justify-between items-center mb-3">
+              <p className="text-sm font-bold text-slate-900">Resumen mensual — {MESES[mes]} {anio}</p>
+              <div className="flex items-center gap-1 bg-white border border-slate-200 rounded-xl p-1">
+                <button onClick={() => { if (mes === 1) { setMes(12); setAnio(anio - 1) } else setMes(mes - 1) }} className="p-1.5 hover:bg-slate-100 rounded-lg"><ChevronLeft size={14} /></button>
+                <span className="text-xs font-semibold px-2">{MESES[mes]} {anio}</span>
+                <button onClick={() => { if (mes === 12) { setMes(1); setAnio(anio + 1) } else setMes(mes + 1) }} className="p-1.5 hover:bg-slate-100 rounded-lg"><ChevronRight size={14} /></button>
+              </div>
+            </div>
+            {cargando ? <div className="text-center py-8"><Loader2 size={24} className="animate-spin text-slate-400 mx-auto" /></div>
+              : !resumenMensual?.resumen?.length ? <div className="text-center py-8 text-slate-400 text-sm">Sin fichajes en {MESES[mes]} {anio}</div>
+              : (
+                <div className="space-y-2">
+                  {resumenMensual.resumen.map((r: any) => (
+                    <div key={r.id} className={`border rounded-xl p-3 flex items-center justify-between ${r.pendiente_validacion ? 'bg-amber-50 border-amber-200' : 'bg-white border-slate-200'}`}>
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-full bg-[#1a3c34]/10 flex items-center justify-center text-[#1a3c34] font-bold text-sm">
+                          {(r.nombre || '?')[0]}
+                        </div>
+                        <div>
+                          <p className="text-sm font-bold text-slate-900">{r.nombre}</p>
+                          <div className="flex items-center gap-2 text-xs text-slate-500">
+                            <span>{r.dias_trabajados} días</span>
+                            {r.total_extra_horas > 0 && <span className="text-purple-600 font-semibold">+{r.total_extra_horas}h extra</span>}
+                            {r.pendiente_validacion && <span className="text-amber-600 font-semibold">⚠️ {r.dias_provisionales} prov.</span>}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <p className="text-sm font-bold font-mono text-[#1a3c34]">{r.total_horas}</p>
+                        <button onClick={async () => {
+                          setGenerandoInforme(r.id)
+                          try {
+                            const res = await (api as any).generarInformeFichajes(r.id, String(mes), String(anio))
+                            if (res.ok) window.open(res.url, '_blank')
+                          } catch(e) {}
+                          finally { setGenerandoInforme(null) }
+                        }} disabled={generandoInforme === r.id}
+                          className="flex items-center gap-1 px-2 py-1.5 bg-[#1a3c34] hover:bg-[#2d5a4e] disabled:bg-slate-300 text-white text-xs font-bold rounded-lg">
+                          {generandoInforme === r.id ? <Loader2 size={12} className="animate-spin" /> : <FileText size={12} />}
+                          Informe
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )
+            }
+          </div>
         </div>
       )}
 
