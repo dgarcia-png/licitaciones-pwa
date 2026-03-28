@@ -91,7 +91,7 @@ export default function SeguimientoPage() {
     try {
       const r = await api.registrarSeguimiento({ ...formMes, oportunidad_id: selectedContrato })
       if (r.ok) {
-        setMensaje(`Mes ${formMes.mes}/${formMes.anio}: Beneficio ${fmt(r.beneficio)} (${fmtPct(r.margen)})`)
+        setMensaje(`Mes ${formMes.mes}/${formMes.anio}: Ingresos ${fmt(r.total_ingresos)} · Costes ${fmt(r.total_costes)} · Beneficio ${fmt(r.beneficio)} (${fmtPct(r.margen)})`)
         setFormMes(null)
         const seg = await api.seguimiento(selectedContrato)
         setSeguimiento(seg)
@@ -320,13 +320,16 @@ export default function SeguimientoPage() {
                         {seguimiento.meses.map((m: any, i: number) => (
                           <tr key={i} className="border-b border-slate-50 hover:bg-slate-50">
                             <td className="px-2 py-1.5 font-medium">{m.periodo}</td>
-                            <td className="px-2 py-1.5 text-right">{fmt(m.ingresos)}</td>
-                            <td className="px-2 py-1.5 text-right">{fmt(m.total_costes)}</td>
-                            <td className={`px-2 py-1.5 text-right font-bold ${m.beneficio >= 0 ? 'text-emerald-700' : 'text-red-700'}`}>{fmt(m.beneficio)}</td>
-                            <td className={`px-2 py-1.5 text-right ${m.margen >= 0 ? 'text-emerald-700' : 'text-red-700'}`}>{fmtPct(m.margen)}</td>
-                            <td className={`px-2 py-1.5 text-right ${m.desviacion <= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
-                              {m.desviacion > 0 ? '+' : ''}{fmtPct(m.desviacion_pct)}
-                            </td>
+                            <td className="px-2 py-1.5 text-right">{fmt(m.ingresos_base||0)}</td>
+                            <td className="px-2 py-1.5 text-right text-emerald-600">{m.ingresos_adicionales > 0 ? '+'+fmt(m.ingresos_adicionales) : '—'}</td>
+                            <td className="px-2 py-1.5 text-right">{fmt(m.coste_personal||0)}</td>
+                            <td className="px-2 py-1.5 text-right">{fmt(m.coste_materiales||0)}</td>
+                            <td className="px-2 py-1.5 text-right text-amber-600">{m.materiales_no_recurrentes > 0 ? fmt(m.materiales_no_recurrentes) : '—'}</td>
+                            <td className="px-2 py-1.5 text-right text-purple-600">{m.servicios_externos > 0 ? fmt(m.servicios_externos) : '—'}</td>
+                            <td className="px-2 py-1.5 text-right text-slate-500">{fmt(m.costes_indirectos||0)} <span className="text-[9px]">({m.pct_indirectos||15}%)</span></td>
+                            <td className="px-2 py-1.5 text-right font-semibold">{fmt(m.total_costes||0)}</td>
+                            <td className={`px-2 py-1.5 text-right font-bold ${(m.beneficio||0) >= 0 ? 'text-emerald-700' : 'text-red-700'}`}>{fmt(m.beneficio||0)}</td>
+                            <td className={`px-2 py-1.5 text-right ${(m.margen||0) >= 0 ? 'text-emerald-700' : 'text-red-700'}`}>{fmtPct(m.margen||0)}</td>
                           </tr>
                         ))}
                       </tbody>
@@ -335,7 +338,15 @@ export default function SeguimientoPage() {
                 )}
 
                 {/* Añadir mes */}
-                <button onClick={() => setFormMes({ mes: new Date().getMonth() + 1, anio: new Date().getFullYear(), ingresos: '', coste_personal: '', coste_materiales: '', coste_maquinaria: '', otros_costes: '', incidencias: '0', penalizaciones: '0', notas: '' })}
+                <button onClick={() => setFormMes({ 
+                    mes: new Date().getMonth() + 1, anio: new Date().getFullYear(),
+                    ingresos_base: '', ingresos_adicionales: '0',
+                    coste_personal: '', ajuste_personal: '0',
+                    coste_materiales: '', materiales_no_recurrentes: '0',
+                    servicios_externos: '0', coste_maquinaria: '',
+                    pct_indirectos: '15',
+                    incidencias: '0', penalizaciones: '0', notas: ''
+                  })}
                   className="flex items-center gap-2 px-4 py-2 text-xs font-medium text-teal-700 bg-teal-50 hover:bg-teal-100 rounded-xl w-full justify-center">
                   <Plus size={14} /> Registrar mes
                 </button>
@@ -343,15 +354,66 @@ export default function SeguimientoPage() {
                 {formMes && (
                   <div className="bg-teal-50 border border-teal-200 rounded-xl p-4">
                     <h4 className="text-xs font-bold text-teal-900 mb-3">Datos del mes</h4>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
-                      <div><label className="text-[10px] text-slate-500">Mes</label><input type="number" min={1} max={12} value={formMes.mes} onChange={e => setFormMes({ ...formMes, mes: e.target.value })} className="w-full px-2 py-1.5 border border-slate-200 rounded-lg text-xs text-center" /></div>
-                      <div><label className="text-[10px] text-slate-500">Año</label><input type="number" value={formMes.anio} onChange={e => setFormMes({ ...formMes, anio: e.target.value })} className="w-full px-2 py-1.5 border border-slate-200 rounded-lg text-xs text-center" /></div>
-                      <div><label className="text-[10px] text-slate-500">Ingresos facturados</label><input type="number" step="any" value={formMes.ingresos} onChange={e => setFormMes({ ...formMes, ingresos: e.target.value })} className="w-full px-2 py-1.5 border border-slate-200 rounded-lg text-xs" /></div>
-                      <div><label className="text-[10px] text-slate-500">Coste personal</label><input type="number" step="any" value={formMes.coste_personal} onChange={e => setFormMes({ ...formMes, coste_personal: e.target.value })} className="w-full px-2 py-1.5 border border-slate-200 rounded-lg text-xs" /></div>
-                      <div><label className="text-[10px] text-slate-500">Coste materiales</label><input type="number" step="any" value={formMes.coste_materiales} onChange={e => setFormMes({ ...formMes, coste_materiales: e.target.value })} className="w-full px-2 py-1.5 border border-slate-200 rounded-lg text-xs" /></div>
-                      <div><label className="text-[10px] text-slate-500">Coste maquinaria</label><input type="number" step="any" value={formMes.coste_maquinaria} onChange={e => setFormMes({ ...formMes, coste_maquinaria: e.target.value })} className="w-full px-2 py-1.5 border border-slate-200 rounded-lg text-xs" /></div>
-                      <div><label className="text-[10px] text-slate-500">Otros costes</label><input type="number" step="any" value={formMes.otros_costes} onChange={e => setFormMes({ ...formMes, otros_costes: e.target.value })} className="w-full px-2 py-1.5 border border-slate-200 rounded-lg text-xs" /></div>
-                      <div><label className="text-[10px] text-slate-500">Penalizaciones</label><input type="number" step="any" value={formMes.penalizaciones} onChange={e => setFormMes({ ...formMes, penalizaciones: e.target.value })} className="w-full px-2 py-1.5 border border-slate-200 rounded-lg text-xs" /></div>
+                    {/* Periodo */}
+                    <div className="grid grid-cols-2 gap-3 mb-3">
+                      <div><label className="text-[10px] text-slate-500 block mb-1">Mes</label><input type="number" min={1} max={12} value={formMes.mes} onChange={e => setFormMes({...formMes, mes: e.target.value})} className="w-full px-2 py-1.5 border border-slate-200 rounded-lg text-xs text-center" /></div>
+                      <div><label className="text-[10px] text-slate-500 block mb-1">Año</label><input type="number" value={formMes.anio} onChange={e => setFormMes({...formMes, anio: e.target.value})} className="w-full px-2 py-1.5 border border-slate-200 rounded-lg text-xs text-center" /></div>
+                    </div>
+                    {/* Ingresos */}
+                    <p className="text-[10px] font-bold text-emerald-700 uppercase mb-1">💶 Ingresos</p>
+                    <div className="grid grid-cols-2 gap-3 mb-3">
+                      <div>
+                        <label className="text-[10px] text-slate-500 block mb-1">Base (adjudicación/meses) <span className="text-emerald-600">auto</span></label>
+                        <input type="number" step="any" value={formMes.ingresos_base} onChange={e => setFormMes({...formMes, ingresos_base: e.target.value})} placeholder="Calculado automáticamente" className="w-full px-2 py-1.5 border border-slate-200 rounded-lg text-xs" />
+                      </div>
+                      <div>
+                        <label className="text-[10px] text-slate-500 block mb-1">Ingresos adicionales</label>
+                        <input type="number" step="any" value={formMes.ingresos_adicionales} onChange={e => setFormMes({...formMes, ingresos_adicionales: e.target.value})} placeholder="0.00" className="w-full px-2 py-1.5 border border-slate-200 rounded-lg text-xs" />
+                      </div>
+                    </div>
+                    {/* Costes directos */}
+                    <p className="text-[10px] font-bold text-red-700 uppercase mb-1">📊 Costes directos</p>
+                    <div className="grid grid-cols-2 gap-3 mb-3">
+                      <div>
+                        <label className="text-[10px] text-slate-500 block mb-1">Personal <span className="text-emerald-600">auto desde partes</span></label>
+                        <input type="number" step="any" value={formMes.coste_personal} onChange={e => setFormMes({...formMes, coste_personal: e.target.value})} placeholder="Calculado desde partes" className="w-full px-2 py-1.5 border border-slate-200 rounded-lg text-xs" />
+                      </div>
+                      <div>
+                        <label className="text-[10px] text-slate-500 block mb-1">Ajuste personal (extras, incentivos...)</label>
+                        <input type="number" step="any" value={formMes.ajuste_personal} onChange={e => setFormMes({...formMes, ajuste_personal: e.target.value})} placeholder="0.00" className="w-full px-2 py-1.5 border border-slate-200 rounded-lg text-xs" />
+                      </div>
+                      <div>
+                        <label className="text-[10px] text-slate-500 block mb-1">Materiales recurrentes <span className="text-emerald-600">auto</span></label>
+                        <input type="number" step="any" value={formMes.coste_materiales} onChange={e => setFormMes({...formMes, coste_materiales: e.target.value})} placeholder="Calculado desde partes" className="w-full px-2 py-1.5 border border-slate-200 rounded-lg text-xs" />
+                      </div>
+                      <div>
+                        <label className="text-[10px] text-slate-500 block mb-1">Maquinaria <span className="text-emerald-600">auto</span></label>
+                        <input type="number" step="any" value={formMes.coste_maquinaria} onChange={e => setFormMes({...formMes, coste_maquinaria: e.target.value})} placeholder="Calculado desde partes" className="w-full px-2 py-1.5 border border-slate-200 rounded-lg text-xs" />
+                      </div>
+                      <div>
+                        <label className="text-[10px] text-slate-500 block mb-1">Materiales no recurrentes</label>
+                        <input type="number" step="any" value={formMes.materiales_no_recurrentes} onChange={e => setFormMes({...formMes, materiales_no_recurrentes: e.target.value})} placeholder="0.00" className="w-full px-2 py-1.5 border border-slate-200 rounded-lg text-xs" />
+                      </div>
+                      <div>
+                        <label className="text-[10px] text-slate-500 block mb-1">Servicios externos</label>
+                        <input type="number" step="any" value={formMes.servicios_externos} onChange={e => setFormMes({...formMes, servicios_externos: e.target.value})} placeholder="0.00" className="w-full px-2 py-1.5 border border-slate-200 rounded-lg text-xs" />
+                      </div>
+                    </div>
+                    {/* Costes indirectos */}
+                    <p className="text-[10px] font-bold text-slate-600 uppercase mb-1">⚙️ Costes indirectos</p>
+                    <div className="grid grid-cols-2 gap-3 mb-3">
+                      <div>
+                        <label className="text-[10px] text-slate-500 block mb-1">% sobre costes directos</label>
+                        <input type="number" step="any" min="0" max="100" value={formMes.pct_indirectos} onChange={e => setFormMes({...formMes, pct_indirectos: e.target.value})} className="w-full px-2 py-1.5 border border-slate-200 rounded-lg text-xs" />
+                      </div>
+                      <div>
+                        <label className="text-[10px] text-slate-500 block mb-1">Penalizaciones</label>
+                        <input type="number" step="any" value={formMes.penalizaciones} onChange={e => setFormMes({...formMes, penalizaciones: e.target.value})} placeholder="0.00" className="w-full px-2 py-1.5 border border-slate-200 rounded-lg text-xs" />
+                      </div>
+                    </div>
+                    <div className="mb-3">
+                      <label className="text-[10px] text-slate-500 block mb-1">Notas</label>
+                      <input type="text" value={formMes.notas} onChange={e => setFormMes({...formMes, notas: e.target.value})} placeholder="Observaciones del mes..." className="w-full px-2 py-1.5 border border-slate-200 rounded-lg text-xs" />
                     </div>
                     <div className="flex gap-2">
                       <button onClick={handleRegistrarMes} disabled={guardando === 'mes'}
