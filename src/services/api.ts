@@ -1,4 +1,4 @@
-const API_BASE = 'https://script.google.com/macros/s/AKfycby8g5MXB5AeiDYKqNvrnrSJZZoOfQwcHFXR4n7e3_KPg5pcAV71LbgItBSIL--GZqC80g/exec'
+const API_BASE = 'https://script.google.com/macros/s/AKfycbzMlNH599oZyi9KcnkX1WzislW0Odd-trXFBp277XEof9gFFgJW_AE5QZlZ_Vr-kTSkXg/exec'
 
 function getToken(): string { return localStorage.getItem('auth_token') || '' }
 
@@ -303,6 +303,7 @@ export const api = {
   resolverIncidencia:     (data: any) => postAPI({ action: 'resolver_incidencia', ...data }),
   // ═══ OPERACIONES V2 ═══
   partesV2:              (filtros?: any) => fetchAPI('partes_v2', filtros || {}),
+  eliminarParteV2:       (id: string) => postAPI({ action: 'eliminar_parte_v2', id }),
   parteCompleto:         (id: string) => fetchAPI('parte_completo', { id }),
   checklistCentro:       (id: string) => fetchAPI('checklist_centro', { id }),
   checklistEjecucion:    (id: string) => fetchAPI('checklist_ejecucion', { id }),
