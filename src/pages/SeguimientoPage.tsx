@@ -25,6 +25,7 @@ export default function SeguimientoPage() {
   const [seguimiento, setSeguimiento] = useState<any>(null)
   const [resultadoContrato, setResultadoContrato] = useState<any>(null)
   const [formMes, setFormMes] = useState<any>(null)
+  const [plMesActual, setPlMesActual] = useState<any>(null)
 
   const cargarDatos = async () => {
     setCargando(true)
@@ -42,9 +43,14 @@ export default function SeguimientoPage() {
     if (!selectedContrato) { setSeguimiento(null); setResultadoContrato(null); return }
     const cargar = async () => {
       try {
-        const [res, seg] = await Promise.all([api.resultado(selectedContrato), api.seguimiento(selectedContrato)])
+        const [res, seg, pl] = await Promise.all([
+          api.resultado(selectedContrato),
+          api.seguimiento(selectedContrato),
+          (api as any).plMesActual(selectedContrato).catch(() => null)
+        ])
         setResultadoContrato(res.existe ? res : null)
         setSeguimiento(seg)
+        setPlMesActual(pl?.ok ? pl : null)
       } catch (e) { console.error(e) }
     }
     cargar()
@@ -334,6 +340,37 @@ export default function SeguimientoPage() {
                         ))}
                       </tbody>
                     </table>
+                  </div>
+                )}
+
+                {/* P&L Mes Actual — Tiempo Real */}
+                {plMesActual && (
+                  <div className="bg-gradient-to-br from-[#1a3c34] to-[#2d5a4e] rounded-xl p-4 mb-4">
+                    <div className="flex items-center justify-between mb-3">
+                      <p className="text-xs font-bold text-white uppercase">📊 P&L Mes actual ({plMesActual.periodo}) — Tiempo real</p>
+                      <span className="text-[10px] px-2 py-0.5 bg-white/20 text-white rounded-full">Auto desde partes</span>
+                    </div>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mb-3">
+                      {[
+                        { l: 'Ingresos base', v: fmt(plMesActual.ingresos_base), c: 'text-emerald-300' },
+                        { l: 'Total costes', v: fmt(plMesActual.total_costes), c: 'text-red-300' },
+                        { l: 'Beneficio', v: fmt(plMesActual.beneficio), c: plMesActual.beneficio >= 0 ? 'text-emerald-300 font-black' : 'text-red-300 font-black' },
+                        { l: 'Margen', v: fmtPct(plMesActual.margen), c: plMesActual.margen >= 0 ? 'text-emerald-300 font-black' : 'text-red-300 font-black' },
+                      ].map((k,i) => (
+                        <div key={i} className="bg-white/10 rounded-lg p-2 text-center">
+                          <p className={`text-sm font-bold ${k.c}`}>{k.v}</p>
+                          <p className="text-[9px] text-white/60 uppercase mt-0.5">{k.l}</p>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="grid grid-cols-3 gap-2 text-[10px] text-white/70">
+                      <span>👷 Personal: {fmt(plMesActual.coste_personal)}</span>
+                      <span>🧴 Materiales: {fmt(plMesActual.coste_materiales)}</span>
+                      <span>🔧 Maquinaria: {fmt(plMesActual.coste_maquinaria)}</span>
+                      <span>⚙️ Indirectos ({15}%): {fmt(plMesActual.costes_indirectos)}</span>
+                      <span>📋 Partes: {plMesActual.partes_mes}</span>
+                      <span>⏱️ Horas: {plMesActual.horas_mes}h</span>
+                    </div>
                   </div>
                 )}
 
