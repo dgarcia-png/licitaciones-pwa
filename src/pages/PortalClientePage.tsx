@@ -121,25 +121,45 @@ export default function PortalClientePage() {
               )}
 
               {/* Fotos */}
-              {(parteSel.fotos_antes > 0 || parteSel.fotos_despues > 0) && (
+              {(parteSel.fotos && parteSel.fotos.length > 0) && (
                 <div>
                   <p className="text-xs font-semibold text-slate-500 uppercase mb-2 flex items-center gap-1.5">
                     <Camera size={12} /> Fotografías del servicio
                   </p>
-                  <div className="flex gap-3">
-                    {parteSel.fotos_antes > 0 && (
-                      <div className="flex-1 bg-slate-100 rounded-xl p-3 text-center">
-                        <Camera size={20} className="text-slate-400 mx-auto mb-1" />
-                        <p className="text-xs text-slate-500">{parteSel.fotos_antes} foto{parteSel.fotos_antes > 1 ? 's' : ''} antes</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    {parteSel.fotos.map((f: any, idx: number) => (
+                      <div key={idx} className="relative">
+                        <span className={`absolute top-1.5 left-1.5 text-[10px] font-bold px-1.5 py-0.5 rounded-full z-10 ${f.tipo === 'antes' ? 'bg-blue-500 text-white' : 'bg-emerald-500 text-white'}`}>
+                          {f.tipo}
+                        </span>
+                        {f.url ? (
+                          <img src={f.url} alt={f.tipo}
+                            className="w-full h-32 object-cover rounded-xl border border-slate-200"
+                            onError={(e: any) => { e.target.style.display='none' }} />
+                        ) : (
+                          <div className="w-full h-32 bg-slate-100 rounded-xl flex items-center justify-center">
+                            <Camera size={20} className="text-slate-300" />
+                          </div>
+                        )}
                       </div>
-                    )}
-                    {parteSel.fotos_despues > 0 && (
-                      <div className="flex-1 bg-slate-100 rounded-xl p-3 text-center">
-                        <Camera size={20} className="text-slate-400 mx-auto mb-1" />
-                        <p className="text-xs text-slate-500">{parteSel.fotos_despues} foto{parteSel.fotos_despues > 1 ? 's' : ''} después</p>
-                      </div>
-                    )}
+                    ))}
                   </div>
+                </div>
+              )}
+              {(!parteSel.fotos || parteSel.fotos.length === 0) && (parteSel.fotos_antes > 0 || parteSel.fotos_despues > 0) && (
+                <div className="flex gap-3">
+                  {parteSel.fotos_antes > 0 && (
+                    <div className="flex-1 bg-slate-100 rounded-xl p-3 text-center">
+                      <Camera size={20} className="text-slate-400 mx-auto mb-1" />
+                      <p className="text-xs text-slate-500">{parteSel.fotos_antes} foto{parteSel.fotos_antes > 1 ? 's' : ''} antes</p>
+                    </div>
+                  )}
+                  {parteSel.fotos_despues > 0 && (
+                    <div className="flex-1 bg-slate-100 rounded-xl p-3 text-center">
+                      <Camera size={20} className="text-slate-400 mx-auto mb-1" />
+                      <p className="text-xs text-slate-500">{parteSel.fotos_despues} foto{parteSel.fotos_despues > 1 ? 's' : ''} después</p>
+                    </div>
+                  )}
                 </div>
               )}
 
