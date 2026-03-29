@@ -335,7 +335,7 @@ export default function PlanificacionPage() {
                 const ausencia = servicios.find((s: any) => s.ausencia)
                 const svcs = servicios.filter((s: any) => !s.ausencia)
                 return (
-                  <div key={dia} className={`px-1 py-1.5 border-l border-slate-100 min-h-16 ${ausencia ? 'bg-red-50' : ''}`}>
+                  <div key={dia} className={`px-1 py-1.5 border-l border-slate-100 min-h-16 overflow-hidden ${ausencia ? 'bg-red-50' : ''}`}>
                     {ausencia && (
                       <div className="rounded-lg px-2 py-1.5 bg-red-100 border border-red-300 text-center">
                         <p className="text-[9px] font-black text-red-700 uppercase">🚫 Ausencia</p>
@@ -343,9 +343,9 @@ export default function PlanificacionPage() {
                       </div>
                     )}
                     {!ausencia && svcs.map((s: any, si: number) => (
-                      <div key={si} className={`rounded-lg px-2 py-1 mb-1 border text-[9px] font-semibold truncate ${TIPO_COLOR[s.tipo_servicio] || 'bg-slate-100 text-slate-600 border-slate-200'}`}>
-                        <p className="font-bold truncate">{s.centro}</p>
-                        <p className="opacity-70">{s.hora_inicio}–{s.hora_fin}</p>
+                      <div key={si} className={`rounded-lg px-2 py-1 mb-1 border text-[9px] font-semibold overflow-hidden ${TIPO_COLOR[s.tipo_servicio] || 'bg-slate-100 text-slate-600 border-slate-200'}`}>
+                        <p className="font-bold truncate w-full">{s.centro}</p>
+                        <p className="opacity-70 truncate">{s.hora_inicio}–{s.hora_fin}</p>
                       </div>
                     ))}
                     {ausencia && svcs.length > 0 && (
