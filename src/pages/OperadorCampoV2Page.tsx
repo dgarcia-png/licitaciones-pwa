@@ -152,7 +152,15 @@ export default function OperadorCampoV2Page() {
           setOrdenesDia(ords.ordenes || [])
           setEstadoFichaje(est)
           setAusencias(aus.ausencias || [])
-          setTiposAusencia(aus.tipos || [])
+          setTiposAusencia(aus.tipos?.length > 0 ? aus.tipos : [
+            { id: 'vacaciones', nombre: 'Vacaciones' },
+            { id: 'enfermedad', nombre: 'Enfermedad' },
+            { id: 'at', nombre: 'Accidente de trabajo' },
+            { id: 'permiso_retribuido', nombre: 'Permiso retribuido' },
+            { id: 'permiso_no_retribuido', nombre: 'Permiso no retribuido' },
+            { id: 'maternidad', nombre: 'Maternidad / Paternidad' },
+            { id: 'otros', nombre: 'Otros' }
+          ])
           // 3. Parte en curso si existe
           try {
             const asis = await (api as any).asistenciaDia(emp.id)
@@ -923,9 +931,9 @@ export default function OperadorCampoV2Page() {
           <div className="p-4 space-y-4">
             <div className="flex items-center justify-between">
               <p className="text-sm font-bold text-slate-900">Mis ausencias</p>
-              <button onClick={() => { setMostrarFormAus(true); setFormAus({}) }}
+              <button onClick={() => { setMostrarFormAus(prev => !prev); setFormAus({}) }}
                 className="flex items-center gap-1.5 px-3 py-2 bg-[#1a3c34] text-white text-xs font-bold rounded-xl">
-                <Plus size={13} /> Solicitar
+                <Plus size={13} /> {mostrarFormAus ? 'Cancelar' : 'Solicitar'}
               </button>
             </div>
 
