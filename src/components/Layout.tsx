@@ -29,6 +29,9 @@ const NAV = [
   { grupo: 'Principal', items: [
     { clave: 'dashboard', to: '/', label: 'Dashboard', icon: LayoutDashboard },
   ]},
+  { grupo: 'Principal', items: [
+    { clave: 'informes', to: '/informes', label: 'Informes', icon: BarChart3 },
+  ]},
   { grupo: 'Licitaciones', items: [
     { clave: 'licitaciones-dashboard', to: '/licitaciones-dashboard', label: 'Dashboard', icon: BarChart3 },
     { clave: 'oportunidades', to: '/oportunidades', label: 'Oportunidades', icon: FileSearch },

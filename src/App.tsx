@@ -32,6 +32,7 @@ const DashboardLicitacionesPage = lazy(() => import('./pages/DashboardLicitacion
 const TerritorioPage = lazy(() => import('./pages/TerritorioPage'))
 const PartesPage = lazy(() => import('./pages/PartesPage'))
 const IncidenciasPage = lazy(() => import('./pages/IncidenciasPage'))
+const InformesPage = lazy(() => import('./pages/InformesPage'))
 const Dashboard360Page = lazy(() => import('./pages/Dashboard360Page'))
 const OperadorCampoPage = lazy(() => import('./pages/OperadorCampoV2Page'))
 const ChecklistConfigPage = lazy(() => import('./pages/ChecklistConfigPage'))
@@ -89,6 +90,7 @@ function AppRoutes() {
           <Route path="/territorio" element={<TerritorioPage />} />
           <Route path="/partes" element={<PartesPage />} />
           <Route path="/incidencias" element={<IncidenciasPage />} />
+          <Route path="/informes" element={<InformesPage />} />
           <Route path="/operador" element={<OperadorCampoPage />} />
           <Route path="/checklist-config" element={<ChecklistConfigPage />} />
           <Route path="/ordenes" element={<OrdenesPage />} />

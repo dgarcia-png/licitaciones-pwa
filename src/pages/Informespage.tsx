@@ -74,7 +74,7 @@ export default function InformesPage() {
         (api as any).informeLicitaciones(),
         (api as any).informeRRHH({ mes }),
         (api as any).informeTerritorio({ mes }),
-        api.seguimiento ? (api as any).resumenContratos() : Promise.resolve({ contratos: [] })
+        Promise.resolve({ contratos: [] })
       ])
       setInformeEco(eco)
       setInformeLic(lic)
