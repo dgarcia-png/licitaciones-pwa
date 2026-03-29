@@ -31,8 +31,9 @@ const DashboardRRHHPage = lazy(() => import('./pages/DashboardRRHHPage'))
 const DashboardLicitacionesPage = lazy(() => import('./pages/DashboardLicitacionesPage'))
 const TerritorioPage = lazy(() => import('./pages/TerritorioPage'))
 const PartesPage = lazy(() => import('./pages/PartesPage'))
+const IncidenciasPage = lazy(() => import('./pages/IncidenciasPage'))
 const Dashboard360Page = lazy(() => import('./pages/Dashboard360Page'))
-const OperadorCampoV2Page = lazy(() => import('./pages/OperadorCampoV2Page'))
+const OperadorCampoPage = lazy(() => import('./pages/OperadorCampoV2Page'))
 const ChecklistConfigPage = lazy(() => import('./pages/ChecklistConfigPage'))
 const OrdenesPage = lazy(() => import('./pages/OrdenesPage'))
 const InventarioPage = lazy(() => import('./pages/InventarioPage'))
@@ -87,7 +88,8 @@ function AppRoutes() {
           <Route path="/licitaciones-dashboard" element={<DashboardLicitacionesPage />} />
           <Route path="/territorio" element={<TerritorioPage />} />
           <Route path="/partes" element={<PartesPage />} />
-          <Route path="/operador" element={<OperadorCampoV2Page />} />
+          <Route path="/incidencias" element={<IncidenciasPage />} />
+          <Route path="/operador" element={<OperadorCampoPage />} />
           <Route path="/checklist-config" element={<ChecklistConfigPage />} />
           <Route path="/ordenes" element={<OrdenesPage />} />
           <Route path="/inventario" element={<InventarioPage />} />

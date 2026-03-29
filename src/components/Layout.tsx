@@ -9,6 +9,7 @@ import {
   LogOut, Menu, X, UserCheck, Shield, ClipboardList,
   Clock, CalendarDays, Map, Activity, Briefcase, CheckSquare,
   Package, Car, Star, Link2,
+  AlertTriangle,
 } from 'lucide-react'
 
 const RUTA_A_CLAVE: Record<string, string> = {
@@ -52,7 +53,8 @@ const NAV = [
   ]},
   { grupo: 'Territorio', items: [
     { clave: 'territorio', to: '/territorio', label: 'Territorio', icon: Map },
-    { clave: 'partes', to: '/partes', label: 'Partes / Incidencias', icon: ClipboardList },
+    { clave: 'partes', to: '/partes', label: 'Partes', icon: ClipboardList },
+    { clave: 'incidencias', to: '/incidencias', label: 'Incidencias SLA', icon: AlertTriangle },
     { clave: 'checklist-config', to: '/checklist-config', label: 'Config. Checklist', icon: CheckSquare },
     { clave: 'ordenes',         to: '/ordenes',          label: 'Órdenes de trabajo', icon: ClipboardList },
     { clave: 'inventario',      to: '/inventario',       label: 'Inventario',         icon: Package },
