@@ -37,9 +37,13 @@ export default function InventarioPage() {
     if (!id) return
     setCargando(true)
     try {
-      const [s, p] = await Promise.all([(api as any).stockCentro(id), (api as any).pedidos(id)])
+      const [s, p, al] = await Promise.all([
+        (api as any).stockCentro(id),
+        (api as any).pedidos(id),
+        (api as any).alertasStock(id).catch(() => ({ alertas: [] }))
+      ])
       setStock(s.stock||[])
-      setAlertas(s.alertas||[])
+      setAlertas(al.alertas || s.alertas || [])
       setPedidos(p.pedidos||[])
     } catch(e) {} finally { setCargando(false) }
   }
@@ -111,15 +115,32 @@ export default function InventarioPage() {
 
       {/* Alertas stock */}
       {alertas.length > 0 && (
-        <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 mb-4">
-          <p className="text-sm font-bold text-amber-800 mb-2 flex items-center gap-2">
-            <AlertTriangle size={15}/> {alertas.length} materiales con stock bajo
-          </p>
-          <div className="flex gap-2 flex-wrap">
-            {alertas.map((a:any,i:number) => (
-              <span key={i} className="text-xs bg-amber-100 text-amber-800 px-2 py-1 rounded-lg">
-                {a.material}: {a.stock} (mín: {a.minimo})
-              </span>
+        <div className="bg-amber-50 border-2 border-amber-200 rounded-2xl p-4 mb-4">
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-sm font-bold text-amber-800 flex items-center gap-2">
+              <AlertTriangle size={15}/> {alertas.filter((a:any) => a.urgente).length > 0
+                ? `⛔ ${alertas.filter((a:any) => a.urgente).length} sin stock · ⚠️ ${alertas.filter((a:any) => !a.urgente).length} bajo mínimo`
+                : `⚠️ ${alertas.length} materiales bajo mínimo`}
+            </p>
+          </div>
+          <div className="space-y-2">
+            {alertas.map((a:any, i:number) => (
+              <div key={i} className={`flex items-center justify-between p-2.5 rounded-xl border ${a.urgente ? 'bg-red-50 border-red-200' : 'bg-amber-100 border-amber-200'}`}>
+                <div>
+                  <p className={`text-xs font-bold ${a.urgente ? 'text-red-800' : 'text-amber-800'}`}>
+                    {a.urgente ? '⛔' : '⚠️'} {a.nombre || a.material}
+                  </p>
+                  <p className="text-[10px] text-slate-500">
+                    Stock: <span className={`font-bold ${a.urgente ? 'text-red-600' : 'text-amber-600'}`}>{a.stock_actual ?? a.stock} {a.unidad}</span>
+                    {' '}· Mínimo: {a.stock_minimo ?? a.minimo} {a.unidad}
+                  </p>
+                </div>
+                <button
+                  onClick={() => setFormPedido({ material_id: a.material_id, nombre_material: a.nombre || a.material, cantidad: (a.stock_minimo ?? a.minimo) * 2 })}
+                  className="text-[10px] px-2 py-1 bg-[#1a3c34] text-white font-bold rounded-lg">
+                  + Pedir
+                </button>
+              </div>
             ))}
           </div>
         </div>
