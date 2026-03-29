@@ -83,15 +83,26 @@ export default function OrdenesPage() {
   const abrirDetalle = async (ot: any) => {
     setOtSel(ot)
     setParteOT(null)
-    if (ot.parte_id) {
-      setCargandoParte(true)
-      try {
-        const partes = await (api as any).partesV2({ estado: 'completado' })
+    setCargandoParte(true)
+    try {
+      // Cargar todos los partes de esta orden (1:N)
+      const res = await (api as any).partesDeOrden(ot.id)
+      if (res.partes && res.partes.length > 0) {
+        // Cargar detalles completos de cada parte
+        const partesCompletos = await (api as any).partesV2()
+        const partesOrden = (res.partes || []).map((po: any) => {
+          const detalle = (partesCompletos.partes || []).find((p: any) => p.id === po.parte_id)
+          return detalle || po
+        }).filter(Boolean)
+        setParteOT({ partes: partesOrden, total: res.total, total_horas: res.total_horas, pct_completado: res.pct_completado })
+      } else if (ot.parte_id) {
+        // Fallback: buscar por parte_id si no hay tabla 1:N aún
+        const partes = await (api as any).partesV2()
         const p = (partes.partes || []).find((x: any) => x.id === ot.parte_id)
-        setParteOT(p || null)
-      } catch(e) {}
-      finally { setCargandoParte(false) }
-    }
+        setParteOT(p ? { partes: [p], total: 1, total_horas: p.horas_reales || 0, pct_completado: 100 } : null)
+      }
+    } catch(e) {}
+    finally { setCargandoParte(false) }
   }
 
   const handleCrear = async () => {
@@ -263,51 +274,62 @@ export default function OrdenesPage() {
                 </div>
               )}
 
-              {/* Parte asociado */}
+              {/* Partes asociados (1:N) */}
               {!editando && (
                 <div>
                   <p className="text-xs font-bold text-slate-500 uppercase mb-2 flex items-center gap-1.5">
-                    <FileText size={12} /> Parte de trabajo vinculado
+                    <FileText size={12} /> Partes de trabajo
+                    {parteOT?.total > 0 && (
+                      <span className="bg-emerald-100 text-emerald-700 text-[9px] font-bold px-1.5 py-0.5 rounded-full">
+                        {parteOT.total} parte{parteOT.total > 1 ? 's' : ''} · {parteOT.total_horas}h · {parteOT.pct_completado}%
+                      </span>
+                    )}
                   </p>
                   {cargandoParte ? (
                     <div className="flex items-center gap-2 p-3 bg-slate-50 rounded-xl">
                       <Loader2 size={14} className="animate-spin text-slate-400" />
-                      <p className="text-xs text-slate-500">Cargando parte...</p>
+                      <p className="text-xs text-slate-500">Cargando partes...</p>
                     </div>
-                  ) : parteOT ? (
-                    <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3">
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-[10px] font-bold px-2 py-0.5 bg-emerald-100 text-emerald-700 rounded-full">Completado</span>
-                        <span className="text-xs text-slate-400">{parteOT.fecha}</span>
-                      </div>
-                      <div className="grid grid-cols-3 gap-2 text-xs">
-                        <div>
-                          <p className="text-slate-400">Entrada</p>
-                          <p className="font-bold text-slate-700">{fmtHora(parteOT.hora_inicio)}</p>
+                  ) : parteOT?.partes?.length > 0 ? (
+                    <div className="space-y-2">
+                      {/* Barra progreso horas */}
+                      {otSel.horas_estimadas > 0 && (
+                        <div className="mb-2">
+                          <div className="flex justify-between text-[10px] text-slate-500 mb-1">
+                            <span>{parteOT.total_horas}h realizadas</span>
+                            <span>{otSel.horas_estimadas}h estimadas</span>
+                          </div>
+                          <div className="h-1.5 bg-slate-100 rounded-full">
+                            <div className={`h-full rounded-full transition-all ${parteOT.pct_completado >= 100 ? 'bg-emerald-500' : 'bg-blue-500'}`}
+                              style={{ width: Math.min(100, parteOT.pct_completado) + '%' }} />
+                          </div>
                         </div>
-                        <div>
-                          <p className="text-slate-400">Salida</p>
-                          <p className="font-bold text-slate-700">{fmtHora(parteOT.hora_fin)}</p>
+                      )}
+                      {parteOT.partes.map((p: any, idx: number) => (
+                        <div key={p.id || idx} className="bg-emerald-50 border border-emerald-200 rounded-xl p-3">
+                          <div className="flex items-center justify-between mb-1.5">
+                            <span className="text-[10px] font-bold text-emerald-700">Parte {idx + 1}</span>
+                            <span className="text-xs text-slate-400">{p.fecha || p.fecha_real || '—'}</span>
+                          </div>
+                          <div className="grid grid-cols-3 gap-2 text-xs">
+                            <div><p className="text-slate-400">Entrada</p><p className="font-bold">{fmtHora(p.hora_inicio)}</p></div>
+                            <div><p className="text-slate-400">Salida</p><p className="font-bold">{fmtHora(p.hora_fin)}</p></div>
+                            <div><p className="text-slate-400">Horas</p><p className="font-bold text-emerald-700">{p.horas_reales || p.horas_real || 0}h</p></div>
+                          </div>
+                          {(p.checklist_total > 0 || p.firma_cliente) && (
+                            <div className="flex items-center gap-3 mt-1.5 text-[10px] text-slate-500">
+                              {p.checklist_total > 0 && <span>✓ {p.checklist_ok}/{p.checklist_total}</span>}
+                              {p.firma_cliente === 'si' && <span className="text-emerald-600 font-semibold">Firmado ✓</span>}
+                              {p.coste_total > 0 && <span className="text-emerald-600">{p.coste_total.toFixed(2)} €</span>}
+                            </div>
+                          )}
                         </div>
-                        <div>
-                          <p className="text-slate-400">Horas</p>
-                          <p className="font-bold text-slate-700">{parteOT.horas_reales || 0}h</p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-3 mt-2 text-xs text-slate-500">
-                        <span>✓ {parteOT.checklist_ok}/{parteOT.checklist_total} tareas</span>
-                        {parteOT.firma_cliente === 'si' && <span className="text-emerald-600 font-semibold">Firmado ✓</span>}
-                        {parteOT.coste_total > 0 && <span className="text-emerald-600 font-semibold">{parteOT.coste_total.toFixed(2)} €</span>}
-                      </div>
-                    </div>
-                  ) : otSel.parte_id ? (
-                    <div className="p-3 bg-slate-50 rounded-xl">
-                      <p className="text-xs text-slate-500">Parte ID: {otSel.parte_id}</p>
+                      ))}
                     </div>
                   ) : (
                     <div className="p-3 bg-slate-50 rounded-xl text-center">
-                      <p className="text-xs text-slate-400">Sin parte asociado aún</p>
-                      <p className="text-[10px] text-slate-300 mt-0.5">Se vinculará cuando el operario inicie el parte</p>
+                      <p className="text-xs text-slate-400">Sin partes asociados aún</p>
+                      <p className="text-[10px] text-slate-300 mt-0.5">Se vincularán cuando el operario inicie partes de esta orden</p>
                     </div>
                   )}
                 </div>
