@@ -949,7 +949,7 @@ export default function OperadorCampoV2Page() {
                     <select value={formAus.tipo || ''} onChange={(e: any) => setFormAus({ ...formAus, tipo: e.target.value })}
                       className="w-full mt-1 px-3 py-2.5 border border-slate-200 rounded-xl text-sm bg-white">
                       <option value="">— Seleccionar —</option>
-                      {tiposAusencia.map((t: any) => <option key={t.id || t} value={t.id || t}>{t.nombre || t}</option>)}
+                      {tiposAusencia.map((t: any) => <option key={t.id || t.bid || String(t)} value={t.id || t.bid || String(t)}>{t.nombre || t.label || String(t)}</option>)}
                     </select>
                   </div>
                   <div className="grid grid-cols-2 gap-3">
