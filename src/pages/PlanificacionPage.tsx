@@ -48,18 +48,23 @@ export default function PlanificacionPage() {
     setTimeout(()=>{ setMsg(''); setError('') },3000)
   }
 
-  const cargar = async () => {
+  const cargar = async (sem?: string) => {
+    const semActual = sem || semana
     setCargando(true)
     try {
-      const batch = await (api as any).batchPlanificacion(semana)
-      setCentros(batch.centros?.centros || [])
-      setEmpleados(batch.empleados?.empleados || [])
-      setCuadrante(batch.cuadrante || {})
+      const [cuad, c, emp] = await Promise.all([
+        (api as any).cuadranteSemanal(semActual),
+        (api as any).centros(),
+        api.empleados()
+      ])
+      setCentros(c.centros || [])
+      setEmpleados(emp.empleados || [])
+      setCuadrante(cuad || null)
     } catch(e) { console.error(e) }
     finally { setCargando(false) }
   }
 
-  useEffect(() => { cargar() }, [semana])
+  useEffect(() => { cargar(semana) }, [semana])
 
   const cambiarSemana = (dir: number) => {
     const [anio, wNum] = semana.split('-W').map(Number)
@@ -138,7 +143,7 @@ export default function PlanificacionPage() {
           </div>
         </div>
         <div className="flex gap-2">
-          <button onClick={cargar} className="p-2 text-slate-400 hover:bg-slate-100 rounded-xl"><RefreshCw size={16}/></button>
+          <button onClick={() => cargar(semana)} className="p-2 text-slate-400 hover:bg-slate-100 rounded-xl"><RefreshCw size={16}/></button>
           <button onClick={()=>setMostrarSust(true)}
             className="flex items-center gap-2 px-3 py-2 bg-amber-100 hover:bg-amber-200 text-amber-800 text-sm font-semibold rounded-xl">
             <Users size={14}/> Sustitución
