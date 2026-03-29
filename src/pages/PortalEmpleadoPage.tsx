@@ -5,7 +5,7 @@ import {
   LogIn, LogOut, Clock, MapPin, Calendar, User, Shield,
   Loader2, CheckCircle2, XCircle, AlertTriangle, Plus,
   ChevronLeft, ChevronRight, Sun, Stethoscope, Save, X,
-  FileText, Bell, Home
+  FileText, Bell, Home, ClipboardList
 } from 'lucide-react'
 
 function fmtDate(d: any) {
@@ -31,7 +31,7 @@ const ESTADO_COLOR: Record<string, string> = {
 
 export default function PortalEmpleadoPage() {
   const { usuario } = useAuth()
-  const [tab, setTab] = useState<'inicio' | 'ausencias' | 'prl' | 'perfil'>('inicio')
+  const [tab, setTab] = useState<'inicio' | 'ausencias' | 'prl' | 'perfil' | 'partes'>('inicio')
   const [cargando, setCargando] = useState(true)
   const [empInfo, setEmpInfo] = useState<any>(null)
   const [estado, setEstado] = useState<any>(null)
@@ -47,6 +47,9 @@ export default function PortalEmpleadoPage() {
   const [guardandoAus, setGuardandoAus] = useState(false)
   const [formAus, setFormAus] = useState<any>({})
   const [resumen, setResumen] = useState<any>(null)
+  const [misPartes, setMisPartes] = useState<any[]>([])
+  const [cargandoPartes, setCargandoPartes] = useState(false)
+  const [parteDetalle, setParteDetalle] = useState<any>(null)
   const [mes, setMes] = useState(new Date().getMonth() + 1)
   const [anio, setAnio] = useState(new Date().getFullYear())
   const MESES = ['', 'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre']
@@ -102,6 +105,17 @@ export default function PortalEmpleadoPage() {
         .catch(() => {})
     }
   }, [tab, empInfo, mes, anio])
+
+  // Cargar partes del empleado
+  useEffect(() => {
+    if (tab === 'partes' && empInfo && misPartes.length === 0) {
+      setCargandoPartes(true)
+      ;(api as any).partesV2({ empleado_id: empInfo.id })
+        .then((d: any) => setMisPartes(d.partes || []))
+        .catch(() => {})
+        .finally(() => setCargandoPartes(false))
+    }
+  }, [tab, empInfo])
 
   // GPS
   const obtenerGPS = () => {
@@ -425,6 +439,100 @@ export default function PortalEmpleadoPage() {
         )}
 
         {/* ══ PERFIL ══ */}
+        {/* ══ MIS PARTES ══ */}
+        {tab === 'partes' && (
+          <div className="pb-24">
+            {/* Modal detalle parte */}
+            {parteDetalle && (
+              <div className="fixed inset-0 z-50 flex items-end justify-center p-0">
+                <div className="absolute inset-0 bg-black/50" onClick={() => setParteDetalle(null)} />
+                <div className="relative bg-white rounded-t-2xl w-full max-w-md z-10 max-h-[85vh] overflow-y-auto">
+                  <div className="flex items-center justify-between p-4 border-b border-slate-100">
+                    <div>
+                      <p className="text-sm font-bold text-slate-900">{parteDetalle.centro_nombre || 'Centro'}</p>
+                      <p className="text-xs text-slate-400">{parteDetalle.fecha}</p>
+                    </div>
+                    <button onClick={() => setParteDetalle(null)} className="p-1.5 hover:bg-slate-100 rounded-lg">✕</button>
+                  </div>
+                  <div className="p-4 space-y-3">
+                    <div className="grid grid-cols-2 gap-2">
+                      {[
+                        ['Entrada', parteDetalle.hora_inicio || '—'],
+                        ['Salida', parteDetalle.hora_fin || '—'],
+                        ['Horas', (parteDetalle.horas_reales || 0) + 'h'],
+                        ['Checklist', (parteDetalle.pct_completitud || 0) + '%'],
+                      ].map(([l, v]) => (
+                        <div key={String(l)} className="bg-slate-50 rounded-xl p-3 text-center">
+                          <p className="text-[10px] text-slate-400 uppercase">{l}</p>
+                          <p className="text-sm font-bold text-slate-800">{String(v)}</p>
+                        </div>
+                      ))}
+                    </div>
+                    {parteDetalle.observaciones && (
+                      <div className="bg-amber-50 rounded-xl p-3">
+                        <p className="text-[10px] text-amber-600 uppercase font-bold mb-1">Observaciones</p>
+                        <p className="text-xs text-amber-800">{parteDetalle.observaciones}</p>
+                      </div>
+                    )}
+                    {parteDetalle.firma_cliente === 'si' && (
+                      <div className="bg-emerald-50 rounded-xl p-3 flex items-center gap-2">
+                        <span className="text-emerald-600">✓</span>
+                        <p className="text-xs font-bold text-emerald-700">Firmado por el cliente</p>
+                        {parteDetalle.nombre_firmante && <p className="text-xs text-emerald-600">— {parteDetalle.nombre_firmante}</p>}
+                      </div>
+                    )}
+                    {parteDetalle.informe_url && (
+                      <a href={parteDetalle.informe_url} target="_blank" rel="noopener noreferrer"
+                        className="flex items-center justify-center gap-2 p-3 bg-[#1a3c34] text-white rounded-xl text-sm font-bold">
+                        📄 Descargar informe PDF
+                      </a>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <div className="px-4 pt-4 pb-2">
+              <p className="text-sm font-bold text-slate-900">Mis partes de trabajo</p>
+              <p className="text-xs text-slate-500">{misPartes.length} partes registrados</p>
+            </div>
+
+            {cargandoPartes ? (
+              <div className="flex justify-center py-12">
+                <div className="w-8 h-8 border-4 border-[#1a3c34] border-t-transparent rounded-full animate-spin" />
+              </div>
+            ) : misPartes.length === 0 ? (
+              <div className="flex flex-col items-center py-16 mx-4 bg-white rounded-2xl border border-slate-200">
+                <p className="text-3xl mb-2">📋</p>
+                <p className="text-slate-500 font-medium text-sm">Sin partes registrados</p>
+              </div>
+            ) : (
+              <div className="px-4 space-y-2">
+                {misPartes.map((p: any) => (
+                  <div key={p.id} onClick={() => setParteDetalle(p)}
+                    className="bg-white border border-slate-200 rounded-2xl p-4 cursor-pointer active:scale-[0.98] transition-transform">
+                    <div className="flex items-center justify-between mb-1">
+                      <p className="text-sm font-bold text-slate-900 truncate flex-1">{p.centro_nombre || '—'}</p>
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ml-2 shrink-0 ${
+                        p.estado === 'completado' ? 'bg-emerald-100 text-emerald-700' :
+                        p.estado === 'en_curso' ? 'bg-amber-100 text-amber-700' :
+                        'bg-slate-100 text-slate-600'
+                      }`}>{p.estado}</span>
+                    </div>
+                    <p className="text-xs text-slate-400 mb-2">{p.fecha}</p>
+                    <div className="flex items-center gap-3 text-xs text-slate-500">
+                      <span>⏱ {p.hora_inicio || '—'} → {p.hora_fin || '—'}</span>
+                      <span>({p.horas_reales || 0}h)</span>
+                      <span>✓ {p.checklist_ok || 0}/{p.checklist_total || 0}</span>
+                      {p.firma_cliente === 'si' && <span className="text-emerald-600 font-bold">Firmado</span>}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
         {tab === 'perfil' && (
           <div className="p-4 space-y-4">
             <p className="text-sm font-bold text-slate-900">Mi ficha</p>
@@ -470,6 +578,7 @@ export default function PortalEmpleadoPage() {
       <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-md bg-white border-t border-slate-200 flex">
         {[
           { id: 'inicio',    label: 'Inicio',    icon: Home },
+          { id: 'partes',    label: 'Mis partes', icon: ClipboardList },
           { id: 'ausencias', label: 'Ausencias', icon: Calendar },
           { id: 'prl',       label: 'PRL',       icon: Shield },
           { id: 'perfil',    label: 'Mi ficha',  icon: User },
