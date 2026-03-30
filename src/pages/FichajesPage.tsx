@@ -105,7 +105,7 @@ export default function FichajesPage() {
   const cargarResumenMensual = async (m: number, a: number) => {
     setCargando(true)
     try {
-      const batch = await (api as any).batchSupervisionFichajes(m, a)
+      const batch = await api.batchSupervisionFichajes(m, a)
       setResumenMensual(batch.resumen_mensual || {})
       setFichajesProvisionales(batch.fichajes_provisionales?.fichajes || [])
       setHorasExtraList(batch.horas_extra?.horas_extra || [])
@@ -116,7 +116,7 @@ export default function FichajesPage() {
   const handleValidarFichaje = async (fichaje: any, horaCorr?: string) => {
     setGuardandoVal(true)
     try {
-      const r = await (api as any).validarFichaje({
+      const r = await api.validarFichaje({
         id: fichaje.id,
         hora_corregida: horaCorr || '',
         validado_por: 'Supervisor'
@@ -132,7 +132,7 @@ export default function FichajesPage() {
   const handleAprobarHorasExtra = async (he: any, compensacion: string) => {
     setGuardandoVal(true)
     try {
-      const r = await (api as any).aprobarHorasExtra({
+      const r = await api.aprobarHorasExtra({
         id: he.id, estado: 'aprobada', compensacion, aprobado_por: 'Supervisor'
       })
       if (r.ok) {
@@ -544,7 +544,7 @@ export default function FichajesPage() {
                           className="px-2 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-lg">
                           😴 Descanso
                         </button>
-                        <button onClick={() => (api as any).aprobarHorasExtra({ id: he.id, estado: 'rechazada', aprobado_por: 'Supervisor' }).then(() => setHorasExtraList(prev => prev.filter((h: any) => h.id !== he.id)))}
+                        <button onClick={() => api.aprobarHorasExtra({ id: he.id, estado: 'rechazada', aprobado_por: 'Supervisor' }).then(() => setHorasExtraList(prev => prev.filter((h: any) => h.id !== he.id)))}
                           className="px-2 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-semibold rounded-lg">
                           ✕
                         </button>
@@ -590,7 +590,7 @@ export default function FichajesPage() {
                         <button onClick={async () => {
                           setGenerandoInforme(r.id)
                           try {
-                            const res = await (api as any).generarInformeFichajes(r.id, String(mes), String(anio))
+                            const res = await api.generarInformeFichajes(r.id, String(mes), String(anio))
                             if (res.ok) window.open(res.url, '_blank')
                           } catch(e) {}
                           finally { setGenerandoInforme(null) }

@@ -30,7 +30,7 @@ export default function CalidadPage() {
   useEffect(() => {
     const cargar = async () => {
       const [c, emp, dash] = await Promise.all([
-        (api as any).centros(), api.empleados(), (api as any).dashboardCalidad()
+        api.centros(), api.empleados(), api.dashboardCalidad()
       ])
       setCentros(c.centros||[])
       setEmpleados(emp.empleados||[])
@@ -44,9 +44,9 @@ export default function CalidadPage() {
     setCargando(true)
     try {
       const [ins, nps, acc] = await Promise.all([
-        (api as any).inspecciones({ centro_id: id }),
-        (api as any).npsCentro(id),
-        (api as any).accionesCorrectivas(id)
+        api.inspecciones({ centro_id: id }),
+        api.npsCentro(id),
+        api.accionesCorrectivas(id)
       ])
       setInspecciones(ins.inspecciones||[])
       setNpsData(nps)
@@ -61,7 +61,7 @@ export default function CalidadPage() {
     setGuardando(true)
     try {
       const centro = centros.find(c=>c.id===centroSel)
-      const r = await (api as any).crearInspeccion({
+      const r = await api.crearInspeccion({
         centro_id: centroSel, centro_nombre: centro?.nombre||'',
         fecha: new Date().toISOString().split('T')[0],
         tipo: 'rutina', ...formInsp
@@ -79,7 +79,7 @@ export default function CalidadPage() {
     setGuardando(true)
     try {
       const centro = centros.find(c=>c.id===centroSel)
-      const r = await (api as any).registrarNPS({
+      const r = await api.registrarNPS({
         centro_id: centroSel, centro_nombre: centro?.nombre||'', ...formNPS
       })
       if (r.ok) { showMsg('✅ NPS registrado'); setMostrarFormNPS(false); cargarDatosCentro(centroSel) }
@@ -90,14 +90,14 @@ export default function CalidadPage() {
     if (!formAccion?.descripcion_problema) { showMsg('Describe el problema', true); return }
     setGuardando(true)
     try {
-      const r = await (api as any).crearAccionCorrectiva({ centro_id: centroSel, ...formAccion })
+      const r = await api.crearAccionCorrectiva({ centro_id: centroSel, ...formAccion })
       if (r.ok) { showMsg('✅ Acción creada'); setFormAccion(null); cargarDatosCentro(centroSel) }
     } catch(e) { showMsg('Error', true) } finally { setGuardando(false) }
   }
 
   const handleCerrarAccion = async (id: string, resultado: string) => {
     try {
-      const r = await (api as any).cerrarAccionCorrectiva({ id, resultado })
+      const r = await api.cerrarAccionCorrectiva({ id, resultado })
       if (r.ok) { showMsg('Acción cerrada'); cargarDatosCentro(centroSel) }
     } catch(e) {}
   }

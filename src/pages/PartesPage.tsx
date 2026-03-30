@@ -64,7 +64,7 @@ export default function PartesPage() {
   const cargar = async () => {
     setCargando(true)
     try {
-      const batch = await (api as any).batchPartes()
+      const batch = await api.batchPartes()
       setPartes(batch.partes?.partes || [])
       setIncidencias(batch.incidencias?.incidencias || [])
       setCentros(batch.centros?.centros || [])
@@ -81,7 +81,7 @@ export default function PartesPage() {
     }
     setGuardando(true)
     try {
-      const r = await (api as any).crearIncidencia(formInc)
+      const r = await api.crearIncidencia(formInc)
       if (r.ok) {
         showMsg('✅ Incidencia registrada')
         setMostrarForm(false)
@@ -95,7 +95,7 @@ export default function PartesPage() {
   const handleResolver = async (inc: any) => {
     setGuardando(true)
     try {
-      const r = await (api as any).resolverIncidencia({ id: inc.id, estado: 'resuelta', resolucion: formResolucion })
+      const r = await api.resolverIncidencia({ id: inc.id, estado: 'resuelta', resolucion: formResolucion })
       if (r.ok) {
         showMsg('✅ Incidencia resuelta')
         setIncSel(null); setFormResolucion('')
@@ -314,7 +314,7 @@ export default function PartesPage() {
         titulo="¿Eliminar parte?"
         mensaje="Se eliminará este parte permanentemente."
         labelOk="Sí, eliminar" peligroso cargando={guardando}
-        onConfirm={() => confirmEliminar && (api as any).eliminarParteV2(confirmEliminar).then(() => { showMsg('Eliminado'); cargar() })}
+        onConfirm={() => confirmEliminar && api.eliminarParteV2(confirmEliminar).then(() => { showMsg('Eliminado'); cargar() })}
         onCancel={() => setConfirmEliminar(null)}
       />
 
@@ -469,9 +469,9 @@ export default function PartesPage() {
                 setCargandoDetalle(true)
                 try {
                   const [fts, chk, mats] = await Promise.all([
-                    (api as any).fotosParte(p.id).catch(() => ({ fotos: [] })),
-                    (api as any).checklistEjecucion(p.id).catch(() => ({ items: [] })),
-                    (api as any).materialesParte(p.id).catch(() => ({ materiales: [] }))
+                    api.fotosParte(p.id).catch(() => ({ fotos: [] })),
+                    api.checklistEjecucion(p.id).catch(() => ({ items: [] })),
+                    api.materialesParte(p.id).catch(() => ({ materiales: [] }))
                   ])
                   setFotosDetalle(fts.fotos || [])
                   setChecklistDetalle(chk.items || [])

@@ -42,9 +42,9 @@ export default function DashboardPage() {
     try {
       const [l, r, opos, terr] = await Promise.all([
         api.dashboard(),
-        (api as any).dashboardRRHH(),
+        api.dashboardRRHH(),
         api.oportunidades(),
-        (api as any).dashboardTerritorio().catch(() => null)
+        api.dashboardTerritorio().catch(() => null)
       ])
       setLicit(l); setRrhh(r)
       setOportunidades(opos.oportunidades || [])

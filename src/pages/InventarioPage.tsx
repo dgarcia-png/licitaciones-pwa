@@ -26,7 +26,7 @@ export default function InventarioPage() {
 
   useEffect(() => {
     const cargar = async () => {
-      const [c, mats] = await Promise.all([(api as any).centros(), (api as any).catalogoMateriales()])
+      const [c, mats] = await Promise.all([api.centros(), api.catalogoMateriales()])
       setCentros(c.centros||[])
       setCatalogoMats(mats.materiales||[])
     }
@@ -38,9 +38,9 @@ export default function InventarioPage() {
     setCargando(true)
     try {
       const [s, p, al] = await Promise.all([
-        (api as any).stockCentro(id),
-        (api as any).pedidos(id),
-        (api as any).alertasStock(id).catch(() => ({ alertas: [] }))
+        api.stockCentro(id),
+        api.pedidos(id),
+        api.alertasStock(id).catch(() => ({ alertas: [] }))
       ])
       setStock(s.stock||[])
       setAlertas(al.alertas || s.alertas || [])
@@ -54,7 +54,7 @@ export default function InventarioPage() {
     if (!formAjuste) return
     setGuardando(true)
     try {
-      const r = await (api as any).ajustarStock({ centro_id: centroSel, ...formAjuste })
+      const r = await api.ajustarStock({ centro_id: centroSel, ...formAjuste })
       if (r.ok) { showMsg(`✅ Stock actualizado: ${r.stock_nuevo}`); setFormAjuste(null); cargarStock(centroSel) }
       else showMsg(r.error||'Error', true)
     } catch(e) { showMsg('Error', true) } finally { setGuardando(false) }
@@ -64,7 +64,7 @@ export default function InventarioPage() {
     if (!formPedido?.nombre_material) { showMsg('Selecciona un material', true); return }
     setGuardando(true)
     try {
-      const r = await (api as any).crearPedido({ centro_id: centroSel, ...formPedido })
+      const r = await api.crearPedido({ centro_id: centroSel, ...formPedido })
       if (r.ok) { showMsg('✅ Pedido creado'); setFormPedido(null); cargarStock(centroSel) }
       else showMsg(r.error||'Error', true)
     } catch(e) { showMsg('Error', true) } finally { setGuardando(false) }
@@ -72,7 +72,7 @@ export default function InventarioPage() {
 
   const handleEstadoPedido = async (id: string, estado: string) => {
     try {
-      await (api as any).actualizarEstadoPedido({ id, estado })
+      await api.actualizarEstadoPedido({ id, estado })
       cargarStock(centroSel)
     } catch(e) {}
   }

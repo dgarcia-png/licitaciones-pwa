@@ -47,7 +47,7 @@ export default function LotesPanel({
   const handleCrearLotes = async () => {
     setCreandoLotes(true)
     try {
-      const r = await (api as any).crearLotesDesdeAnalisis(oportunidadId)
+      const r = await api.crearLotesDesdeAnalisis(oportunidadId)
       if (r.ok) {
         showMsg(`✅ ${r.lotes_creados} lote${r.lotes_creados !== 1 ? 's' : ''} creado${r.lotes_creados !== 1 ? 's' : ''}`)
         onRecargar()
@@ -58,7 +58,7 @@ export default function LotesPanel({
 
   const handleDecision = async (lote: any, decision: string) => {
     try {
-      await (api as any).actualizarLote({ id: lote.id, decision })
+      await api.actualizarLote({ id: lote.id, decision })
       onRecargar()
 
       // Actualizar estado de la oportunidad según decisión de lotes
@@ -78,7 +78,7 @@ export default function LotesPanel({
   const handleGuardarEdit = async () => {
     setGuardando(true)
     try {
-      const r = await (api as any).actualizarLote({ id: editandoId, ...formEdit })
+      const r = await api.actualizarLote({ id: editandoId, ...formEdit })
       if (r.ok) { showMsg('✅ Actualizado'); setEditandoId(null); onRecargar() }
       else showMsg('❌ ' + (r.error || 'Error'))
     } catch { showMsg('❌ Error') }

@@ -38,7 +38,7 @@ export default function Dashboard360Page() {
     if (silencioso) setRecargando(true)
     else setCargando(true)
     try {
-      const d = await (api as any).dashboard360()
+      const d = await api.dashboard360()
       setData(d)
       setUltimaAct(new Date())
     } catch(e) { console.error(e) }

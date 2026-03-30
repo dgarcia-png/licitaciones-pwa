@@ -35,9 +35,9 @@ export default function ChecklistConfigPage() {
   useEffect(() => {
     const cargar = async () => {
       const [c, mats, maqs] = await Promise.all([
-        (api as any).centros(),
-        (api as any).catalogoMateriales(),
-        (api as any).catalogoMaquinaria()
+        api.centros(),
+        api.catalogoMateriales(),
+        api.catalogoMaquinaria()
       ])
       setCentros(c.centros || [])
       setMateriales(mats.materiales || [])
@@ -50,7 +50,7 @@ export default function ChecklistConfigPage() {
     if (!id) return
     setCargando(true)
     try {
-      const d = await (api as any).checklistCentro(id)
+      const d = await api.checklistCentro(id)
       setChecklist(d.items || [])
     } catch(e) {} finally { setCargando(false) }
   }
@@ -59,7 +59,7 @@ export default function ChecklistConfigPage() {
     if (!id) return
     setCargando(true)
     try {
-      const d = await (api as any).plContrato(id, 6)
+      const d = await api.plContrato(id, 6)
       setPlData(d)
     } catch(e) {} finally { setCargando(false) }
   }
@@ -81,7 +81,7 @@ export default function ChecklistConfigPage() {
     if (!newItem?.tarea) { showMsg('La tarea es obligatoria', true); return }
     setGuardando(true)
     try {
-      const r = await (api as any).crearChecklistItem({ centro_id: centroSel, ...newItem })
+      const r = await api.crearChecklistItem({ centro_id: centroSel, ...newItem })
       if (r.ok) {
         showMsg('✅ Tarea añadida')
         setNewItem(null)
@@ -95,7 +95,7 @@ export default function ChecklistConfigPage() {
     if (!editItem) return
     setGuardando(true)
     try {
-      const r = await (api as any).actualizarChecklistItem(editItem)
+      const r = await api.actualizarChecklistItem(editItem)
       if (r.ok) { showMsg('✅ Guardado'); setEditItem(null); cargarChecklist(centroSel) }
       else showMsg(r.error||'Error', true)
     } catch(e) { showMsg('Error', true) }
@@ -105,7 +105,7 @@ export default function ChecklistConfigPage() {
   const handleEliminarItem = async (id: string) => {
     setGuardando(true)
     try {
-      const r = await (api as any).eliminarChecklistItem(id)
+      const r = await api.eliminarChecklistItem(id)
       if (r.ok) { showMsg('Tarea eliminada'); cargarChecklist(centroSel) }
     } catch(e) {} finally { setGuardando(false); setConfirmDel(null) }
   }
@@ -114,11 +114,11 @@ export default function ChecklistConfigPage() {
     if (!newMat?.nombre) { showMsg('Nombre obligatorio', true); return }
     setGuardando(true)
     try {
-      const r = await (api as any).crearMaterialCatalogo(newMat)
+      const r = await api.crearMaterialCatalogo(newMat)
       if (r.ok) {
         showMsg('✅ Material creado')
         setNewMat(null)
-        const d = await (api as any).catalogoMateriales()
+        const d = await api.catalogoMateriales()
         setMateriales(d.materiales||[])
       }
     } catch(e) { showMsg('Error', true) }
@@ -129,11 +129,11 @@ export default function ChecklistConfigPage() {
     if (!newMaq?.nombre) { showMsg('Nombre obligatorio', true); return }
     setGuardando(true)
     try {
-      const r = await (api as any).crearMaquinariaCatalogo(newMaq)
+      const r = await api.crearMaquinariaCatalogo(newMaq)
       if (r.ok) {
         showMsg('✅ Maquinaria creada')
         setNewMaq(null)
-        const d = await (api as any).catalogoMaquinaria()
+        const d = await api.catalogoMaquinaria()
         setMaquinaria(d.maquinaria||[])
       }
     } catch(e) { showMsg('Error', true) }
@@ -144,7 +144,7 @@ export default function ChecklistConfigPage() {
     if (!centroSel || !mesInforme) { showMsg('Selecciona centro y mes', true); return }
     setGenerandoInforme(true)
     try {
-      const r = await (api as any).generarInformeMensual({ centro_id: centroSel, mes: mesInforme })
+      const r = await api.generarInformeMensual({ centro_id: centroSel, mes: mesInforme })
       if (r.ok) {
         showMsg(`✅ Informe generado · ${r.partes} partes · ${r.horas}h`)
         if (r.url) window.open(r.url, '_blank')

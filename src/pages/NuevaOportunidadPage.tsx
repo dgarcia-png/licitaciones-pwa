@@ -78,7 +78,7 @@ export default function NuevaOportunidadPage() {
         docsBase64.push({ nombre: file.name, base64: b64, mime: file.type || 'application/pdf' })
       }
 
-      const result = await (api as any).extraerDatosPliego({ docs: docsBase64 })
+      const result = await api.extraerDatosPliego({ docs: docsBase64 })
       if (!result?.ok) throw new Error(result?.error || 'Sin respuesta de IA')
 
       const d = result.datos

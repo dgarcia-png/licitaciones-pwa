@@ -68,8 +68,8 @@ export default function TerritorioPage() {
     setCargando(true)
     try {
       const [c, d] = await Promise.all([
-        (api as any).centros(),
-        (api as any).dashboardTerritorio()
+        api.centros(),
+        api.dashboardTerritorio()
       ])
       setCentros(c.centros || [])
       setDashboard(d)
@@ -84,8 +84,8 @@ export default function TerritorioPage() {
     setGuardando(true)
     try {
       const r = editando
-        ? await (api as any).actualizarCentro({ id: centroSel.id, ...form })
-        : await (api as any).crearCentro(form)
+        ? await api.actualizarCentro({ id: centroSel.id, ...form })
+        : await api.crearCentro(form)
       if (r.ok) {
         showMsg(editando ? '✅ Centro actualizado' : '✅ Centro creado')
         setForm(FORM_VACIO); setEditando(false); setVista('lista')
@@ -99,7 +99,7 @@ export default function TerritorioPage() {
     if (!centroSel) return
     setGuardando(true)
     try {
-      const r = await (api as any).eliminarCentro(centroSel.id)
+      const r = await api.eliminarCentro(centroSel.id)
       if (r.ok) { showMsg('Centro eliminado'); setVista('lista'); setCentroSel(null); await cargar() }
       else showMsg(r.error || 'Error', true)
     } catch (e) { showMsg('Error', true) }
@@ -109,7 +109,7 @@ export default function TerritorioPage() {
   const abrirDetalle = async (centro: any) => {
     setCentroSel(centro); setVista('detalle')
     try {
-      const d = await (api as any).centro(centro.id)
+      const d = await api.centro(centro.id)
       if (!d.error) setCentroSel(d)
     } catch {}
   }
@@ -131,7 +131,7 @@ export default function TerritorioPage() {
     setGuardando(true)
     try {
       const emp = empleadosDisp.find((e: any) => e.id === formAsig.empleado_id)
-      const r = await (api as any).asignarPersonalCentro({
+      const r = await api.asignarPersonalCentro({
         centro_id: centroSel.id,
         empleado_id: formAsig.empleado_id,
         nombre_empleado: emp ? `${emp.nombre} ${emp.apellidos}` : '',
@@ -143,7 +143,7 @@ export default function TerritorioPage() {
       if (r.ok) {
         showMsg('✅ Empleado asignado')
         setModalAsignar(false)
-        const d = await (api as any).centro(centroSel.id)
+        const d = await api.centro(centroSel.id)
         if (!d.error) setCentroSel(d)
         await cargar()
       } else showMsg(r.error || 'Error', true)
@@ -154,11 +154,11 @@ export default function TerritorioPage() {
   const handleDesasignar = async (asigId: string) => {
     setGuardando(true)
     try {
-      const r = await (api as any).desasignarPersonalCentro(asigId)
+      const r = await api.desasignarPersonalCentro(asigId)
       if (r.ok) {
         showMsg('✅ Empleado desasignado')
         setConfirmDesasignar(null)
-        const d = await (api as any).centro(centroSel.id)
+        const d = await api.centro(centroSel.id)
         if (!d.error) setCentroSel(d)
         await cargar()
       } else showMsg(r.error || 'Error', true)

@@ -29,7 +29,7 @@ export default function HistorialActividad({ oportunidadId }: Props) {
     if (silencioso) setRecargando(true)
     else setCargando(true)
     try {
-      const data = await (api as any).actividad(oportunidadId)
+      const data = await api.actividad(oportunidadId)
       setActividad(data.actividad || [])
     } catch (e) { console.error(e) }
     finally { setCargando(false); setRecargando(false) }

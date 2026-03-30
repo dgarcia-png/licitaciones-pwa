@@ -39,7 +39,7 @@ export default function PortalClientePage() {
     const cargar = async () => {
       if (!token) { setError('Token requerido'); setCargando(false); return }
       try {
-        const r = await (api as any).portalCliente(token)
+        const r = await api.portalCliente(token)
         if (r.error) setError(r.error)
         else setData(r)
       } catch (e) { setError('Error cargando datos') }

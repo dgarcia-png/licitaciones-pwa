@@ -143,10 +143,10 @@ export default function OperadorCampoV2Page() {
           setEmpleado(emp)
           // 2. Datos del empleado en paralelo
           const [tareas, est, aus, ords] = await Promise.all([
-            (api as any).tareasDia(emp.id),
+            api.tareasDia(emp.id),
             api.estadoFichaje(emp.id),
             api.ausencias({ id_empleado: emp.id }),
-            (api as any).ordenes({ empleado_id: emp.id, estado: 'pendiente' }).catch(() => ({ ordenes: [] }))
+            api.ordenes({ empleado_id: emp.id, estado: 'pendiente' }).catch(() => ({ ordenes: [] }))
           ])
           setCentros(tareas.centros || [])
           setOrdenesDia(ords.ordenes || [])
@@ -163,7 +163,7 @@ export default function OperadorCampoV2Page() {
           ])
           // 3. Parte en curso si existe
           try {
-            const asis = await (api as any).asistenciaDia(emp.id)
+            const asis = await api.asistenciaDia(emp.id)
             if (asis?.en_curso) {
               setParteActual(asis.en_curso)
               const centro = (tareas.centros || []).find((c: any) => c.centro_id === asis.en_curso.centro_id)
@@ -177,8 +177,8 @@ export default function OperadorCampoV2Page() {
         // 4. Catálogos — no críticos, fallan sin romper nada
         try {
           const [cats, catm] = await Promise.all([
-            (api as any).catalogoMateriales(),
-            (api as any).catalogoMaquinaria()
+            api.catalogoMateriales(),
+            api.catalogoMaquinaria()
           ])
           setCatalogoMats(cats?.materiales || [])
           setCatalogoMaqui(catm?.maquinaria || [])
@@ -213,10 +213,10 @@ export default function OperadorCampoV2Page() {
   const cargarDatosParte = async (parteId: string) => {
     try {
       const [chk, mats, maqs, fts] = await Promise.all([
-        (api as any).checklistEjecucion(parteId),
-        (api as any).materialesParte(parteId),
-        (api as any).maquinariaParte(parteId),
-        (api as any).fotosParte(parteId)
+        api.checklistEjecucion(parteId),
+        api.materialesParte(parteId),
+        api.maquinariaParte(parteId),
+        api.fotosParte(parteId)
       ])
       setChecklist(chk.items || [])
       setMateriales(mats.materiales || [])
@@ -229,7 +229,7 @@ export default function OperadorCampoV2Page() {
     if (!empleado) return
     setProcesando(true)
     try {
-      const r = await (api as any).iniciarParte({
+      const r = await api.iniciarParte({
         centro_id: centro.id || centro.centro_id,
         empleado_id: empleado.id,
         nombre_empleado: `${empleado.nombre} ${empleado.apellidos}`,
@@ -252,7 +252,7 @@ export default function OperadorCampoV2Page() {
     const nuevo = !item.completado
     setChecklist(prev => prev.map(i => i.id === item.id ? { ...i, completado: nuevo } : i))
     try {
-      await (api as any).actualizarChecklistExec({ id: item.id, completada: nuevo, parte_id: parteActual?.id })
+      await api.actualizarChecklistExec({ id: item.id, completada: nuevo, parte_id: parteActual?.id })
     } catch (e) { setChecklist(prev => prev.map(i => i.id === item.id ? { ...i, completado: !nuevo } : i)) }
   }
 
@@ -261,7 +261,7 @@ export default function OperadorCampoV2Page() {
     const firmaData = canvasRef.current?.toDataURL('image/png') || ''
     setProcesando(true)
     try {
-      const r = await (api as any).finalizarParte({
+      const r = await api.finalizarParte({
         id: parteActual.id,
         empleado_id: empleado?.id,
         nombre_empleado: `${empleado?.nombre} ${empleado?.apellidos}`,
@@ -279,7 +279,7 @@ export default function OperadorCampoV2Page() {
     if (!addMat?.id) return
     setProcesando(true)
     try {
-      await (api as any).registrarMaterialParte({ parte_id: parteActual?.id, material_id: addMat.id, cantidad: addMat.cantidad || 1 })
+      await api.registrarMaterialParte({ parte_id: parteActual?.id, material_id: addMat.id, cantidad: addMat.cantidad || 1 })
       setMateriales(prev => [...prev, { ...addMat, cantidad: addMat.cantidad || 1 }])
       setAddMat(null)
     } catch (e) { showMsg('Error', 'err') }
@@ -290,7 +290,7 @@ export default function OperadorCampoV2Page() {
     if (!addMaq?.id) return
     setProcesando(true)
     try {
-      await (api as any).registrarMaquinariaParte({ parte_id: parteActual?.id, maquinaria_id: addMaq.id, horas: addMaq.horas || 1 })
+      await api.registrarMaquinariaParte({ parte_id: parteActual?.id, maquinaria_id: addMaq.id, horas: addMaq.horas || 1 })
       setMaquinaria(prev => [...prev, { ...addMaq, horas: addMaq.horas || 1 }])
       setAddMaq(null)
     } catch (e) { showMsg('Error', 'err') }
@@ -305,7 +305,7 @@ export default function OperadorCampoV2Page() {
       const reader = new FileReader()
       reader.onload = async (ev) => {
         const base64 = (ev.target?.result as string)?.split(',')[1]
-        const r = await (api as any).registrarFotoParte({
+        const r = await api.registrarFotoParte({
           parte_id: parteActual.id, tipo: tipoFoto,
           nombre: file.name, base64: base64, mime: file.type, centro_id: centroSel?.id || centroSel?.centro_id
         })
@@ -324,7 +324,7 @@ export default function OperadorCampoV2Page() {
     if (!incidenciaForm.tipo || !incidenciaForm.descripcion) { showMsg('Rellena tipo y descripción', 'err'); return }
     setProcesando(true)
     try {
-      await (api as any).crearIncidencia({
+      await api.crearIncidencia({
         centro_id: centroSel?.id || centroSel?.centro_id,
         parte_id: parteActual?.id,
         empleado_id: empleado?.id,

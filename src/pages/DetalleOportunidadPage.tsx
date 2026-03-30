@@ -173,7 +173,7 @@ export default function DetalleOportunidadPage() {
     if (!id) return
     setCargandoLotes(true)
     try {
-      const data = await (api as any).obtenerLotes(id)
+      const data = await api.obtenerLotes(id)
       setLotes(data.lotes || [])
     } catch (e) {}
     finally { setCargandoLotes(false) }

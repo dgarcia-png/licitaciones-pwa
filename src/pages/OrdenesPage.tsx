@@ -70,7 +70,7 @@ export default function OrdenesPage() {
   const cargar = async () => {
     setCargando(true)
     try {
-      const batch = await (api as any).batchOrdenes()
+      const batch = await api.batchOrdenes()
       setOrdenes(batch.ordenes?.ordenes || [])
       setCentros(batch.centros?.centros || [])
       setEmpleados(batch.empleados?.empleados || [])
@@ -86,10 +86,10 @@ export default function OrdenesPage() {
     setCargandoParte(true)
     try {
       // Cargar todos los partes de esta orden (1:N)
-      const res = await (api as any).partesDeOrden(ot.id)
+      const res = await api.partesDeOrden(ot.id)
       if (res.partes && res.partes.length > 0) {
         // Cargar detalles completos de cada parte
-        const partesCompletos = await (api as any).partesV2()
+        const partesCompletos = await api.partesV2()
         const partesOrden = (res.partes || []).map((po: any) => {
           const detalle = (partesCompletos.partes || []).find((p: any) => p.id === po.parte_id)
           return detalle || po
@@ -97,7 +97,7 @@ export default function OrdenesPage() {
         setParteOT({ partes: partesOrden, total: res.total, total_horas: res.total_horas, pct_completado: res.pct_completado })
       } else if (ot.parte_id) {
         // Fallback: buscar por parte_id si no hay tabla 1:N aún
-        const partes = await (api as any).partesV2()
+        const partes = await api.partesV2()
         const p = (partes.partes || []).find((x: any) => x.id === ot.parte_id)
         setParteOT(p ? { partes: [p], total: 1, total_horas: p.horas_reales || 0, pct_completado: 100 } : null)
       }
@@ -109,7 +109,7 @@ export default function OrdenesPage() {
     if (!form.titulo || !form.centro_id) { showMsg('Título y centro son obligatorios', true); return }
     setGuardando(true)
     try {
-      const r = await (api as any).crearOrden(form)
+      const r = await api.crearOrden(form)
       if (r.ok) {
         showMsg('✅ Orden creada' + (r.alerta_prl ? ' · ⚠️ ' + r.alerta_prl : ''))
         setMostrarForm(false); setForm(FORM_VACIO); await cargar()
@@ -122,7 +122,7 @@ export default function OrdenesPage() {
     if (!otSel) return
     setGuardando(true)
     try {
-      const r = await (api as any).actualizarEstadoOrden({
+      const r = await api.actualizarEstadoOrden({
         id: otSel.id, estado: otSel.estado,
         empleado_id: otSel.empleado_id,
         nombre_empleado: otSel.nombre_empleado,
@@ -142,7 +142,7 @@ export default function OrdenesPage() {
   const handleCambiarEstado = async (ot: any, estado: string) => {
     setCambiandoEstado(ot.id)
     try {
-      const r = await (api as any).actualizarEstadoOrden({ id: ot.id, estado })
+      const r = await api.actualizarEstadoOrden({ id: ot.id, estado })
       if (r.ok) { showMsg('Estado actualizado'); await cargar() }
     } catch(e) {}
     finally { setCambiandoEstado(null) }
@@ -151,7 +151,7 @@ export default function OrdenesPage() {
   const handleEliminar = async (id: string) => {
     setGuardando(true)
     try {
-      const r = await (api as any).eliminarOrden(id)
+      const r = await api.eliminarOrden(id)
       if (r.ok) { showMsg('Orden eliminada'); setOtSel(null); await cargar() }
     } catch(e) {}
     finally { setGuardando(false); setConfirmDel(null) }

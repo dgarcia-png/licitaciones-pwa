@@ -41,7 +41,7 @@ export default function PlantillasPage() {
   const cargar = async () => {
     setCargando(true)
     try {
-      const data = await (api as any).plantillas(filtroModulo || undefined)
+      const data = await api.plantillas(filtroModulo || undefined)
       setPlantillas(data.plantillas || [])
       setEtiquetas(data.etiquetas || {})
       setModulos(data.modulos || [])
@@ -62,7 +62,7 @@ export default function PlantillasPage() {
     setGuardando(true)
     try {
       const idLimpio = extraerIdDoc(formUrl.id_doc)
-      const r = await (api as any).registrarPlantilla({ ...formUrl, id_doc: idLimpio })
+      const r = await api.registrarPlantilla({ ...formUrl, id_doc: idLimpio })
       if (r.ok) {
         showMsg('✅ Plantilla registrada — ' + (r.etiquetas_detectadas?.length || 0) + ' etiquetas detectadas')
         setModo('lista'); setFormUrl({ id_doc: '', nombre: '', modulo: '', descripcion: '' }); cargar()
@@ -75,7 +75,7 @@ export default function PlantillasPage() {
     if (!formVacia.nombre || !formVacia.modulo) { showMsg('❌ Nombre y módulo obligatorios'); return }
     setGuardando(true)
     try {
-      const r = await (api as any).crearPlantillaVacia(formVacia)
+      const r = await api.crearPlantillaVacia(formVacia)
       if (r.ok) {
         showMsg('✅ Plantilla creada en Drive — ya puedes editarla')
         if (r.url) window.open(r.url, '_blank')
@@ -88,7 +88,7 @@ export default function PlantillasPage() {
   const handleDesactivar = async (p: any) => {
     if (!confirm(`¿${p.activa ? 'Desactivar' : 'Activar'} la plantilla "${p.nombre}"?`)) return
     try {
-      const r = await (api as any).actualizarPlantilla({ id: p.id, activa: !p.activa })
+      const r = await api.actualizarPlantilla({ id: p.id, activa: !p.activa })
       if (r.ok) { showMsg('✅ Actualizado'); cargar() }
     } catch (e: any) { showMsg('❌ Error') }
   }
@@ -112,7 +112,7 @@ export default function PlantillasPage() {
         const clave = k.replace(/[{}]/g, '')
         datosLimpios[clave] = v || 'VALOR_DE_PRUEBA'
       })
-      const r = await (api as any).generarDesdePlantilla({ id_plantilla: plantillaSel.id, datos: datosLimpios, nombre_archivo: 'PRUEBA — ' + plantillaSel.nombre })
+      const r = await api.generarDesdePlantilla({ id_plantilla: plantillaSel.id, datos: datosLimpios, nombre_archivo: 'PRUEBA — ' + plantillaSel.nombre })
       if (r.ok) { showMsg('✅ Documento generado'); window.open(r.url, '_blank') }
       else showMsg('❌ ' + (r.error || 'Error'))
     } catch (e: any) { showMsg('❌ Error') }

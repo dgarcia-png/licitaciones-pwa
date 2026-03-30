@@ -28,8 +28,8 @@ export default function PortalTokensPage() {
     setCargando(true)
     try {
       const [t, c] = await Promise.all([
-        (api as any).tokensCliente(),
-        (api as any).centros()
+        api.tokensCliente(),
+        api.centros()
       ])
       setTokens(t.tokens || [])
       setCentros(c.centros || [])
@@ -47,7 +47,7 @@ export default function PortalTokensPage() {
     if (!form.centro_id) { showMsg('Selecciona un centro', true); return }
     setGuardando(true)
     try {
-      const r = await (api as any).generarTokenCliente(form)
+      const r = await api.generarTokenCliente(form)
       if (r.ok) {
         setTokenGenerado({ token: r.token, url: r.url })
         showMsg('✅ Token generado' + (form.enviar_email && form.email_contacto ? ' · Email enviado' : ''))
@@ -62,7 +62,7 @@ export default function PortalTokensPage() {
   const handleRevocar = async (id: string) => {
     setGuardando(true)
     try {
-      const r = await (api as any).revocarToken(id)
+      const r = await api.revocarToken(id)
       if (r.ok) { showMsg('Token revocado'); await cargar() }
     } catch (e) { }
     finally { setGuardando(false); setConfirmRevocar(null) }

@@ -34,8 +34,8 @@ export default function ModalPlantilla({ modulo, datos, onCerrar, onGenerado, ti
       try {
         // Cargar plantillas del módulo actual + GENERAL
         const [r1, r2] = await Promise.all([
-          (api as any).plantillas(modulo),
-          (api as any).plantillas('GENERAL'),
+          api.plantillas(modulo),
+          api.plantillas('GENERAL'),
         ])
         const todas = [
           ...(r1.plantillas || []).filter((p: any) => p.activa),
@@ -78,7 +78,7 @@ export default function ModalPlantilla({ modulo, datos, onCerrar, onGenerado, ti
         datosCompletos[clave] = String(v || '')
       })
 
-      const r = await (api as any).generarDesdePlantilla({
+      const r = await api.generarDesdePlantilla({
         id_plantilla: plantillaSel.id,
         datos: datosCompletos,
       })

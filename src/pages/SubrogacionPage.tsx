@@ -97,7 +97,7 @@ export default function SubrogacionPage() {
     setCargando(true)
     try {
       // 1 llamada batch en lugar de 3
-      const batch = await (api as any).batchSubrogacion()
+      const batch = await api.batchSubrogacion()
       setSubrogaciones(batch.subrogaciones?.subrogaciones || [])
       setOportunidades((batch.oportunidades?.oportunidades || []).filter((o: any) =>
         ['go', 'go_aprobado', 'presentada', 'adjudicada'].includes(o.estado)))
@@ -144,7 +144,7 @@ export default function SubrogacionPage() {
     if (estado === 'pendiente_datos') {
       // Contactar → marcar como contactado
       try {
-        const r = await (api as any).marcarContactadoSubrogado({ id: p.id })
+        const r = await api.marcarContactadoSubrogado({ id: p.id })
         if (r.ok) {
           setPersonal(prev => prev.map(x => x.id === p.id ? { ...x, estado: 'contactado' } : x))
           showMsg('📞 Marcado como contactado — Ahora rellena sus datos personales con el lápiz ✏️')
@@ -175,7 +175,7 @@ export default function SubrogacionPage() {
     try {
       // Excluir campos que no son datos personales para que el backend pueda auto-avanzar el estado
       const { estado: _e, id: _i, id_subrogacion: _s, id_empleado_rrhh: _r, ...datosPersonales } = formPersona as any
-      const r = await (api as any).actualizarDatosPersonalesSubrogado({ id, ...datosPersonales })
+      const r = await api.actualizarDatosPersonalesSubrogado({ id, ...datosPersonales })
       if (r.ok) {
         const nuevoEstado = normalizarEstado(r.estado_nuevo || 'datos_recibidos')
         setPersonal(prev => prev.map(p => p.id === id
@@ -215,7 +215,7 @@ export default function SubrogacionPage() {
         )
         if (opcion) {
           // Crear ficha sin check DNI
-          const rf = await (api as any).incorporarSubrogadoSinDniCheck({ id: p.id })
+          const rf = await api.incorporarSubrogadoSinDniCheck({ id: p.id })
           if (rf?.ok) {
             setPersonal(prev => prev.map(x => x.id === p.id
               ? { ...x, estado: 'incorporado', id_empleado_rrhh: rf.id_empleado } : x))
@@ -259,7 +259,7 @@ export default function SubrogacionPage() {
   const rechazar = async (id: string) => {
     if (!confirm('¿Marcar como rechazado? El trabajador no se incorporará a la plantilla.')) return
     try {
-      const r = await (api as any).actualizarDatosPersonalesSubrogado({ id, estado: 'rechazado' })
+      const r = await api.actualizarDatosPersonalesSubrogado({ id, estado: 'rechazado' })
       if (r.ok) setPersonal(prev => prev.map(p => p.id === id ? { ...p, estado: 'rechazado' } : p))
     } catch { showMsg('❌ Error') }
   }
@@ -277,7 +277,7 @@ export default function SubrogacionPage() {
 
   const abrirExpediente = async (idEmpleado: string) => {
     try {
-      const exp = await (api as any).expediente(idEmpleado)
+      const exp = await api.expediente(idEmpleado)
       if (exp?.carpeta_raiz_url) window.open(exp.carpeta_raiz_url, '_blank')
       else showMsg('⚠️ Expediente Drive no disponible aún')
     } catch { showMsg('❌ Error') }

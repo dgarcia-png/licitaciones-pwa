@@ -27,7 +27,7 @@ export default function DashboardRRHHPage() {
     if (silencioso) setRecargando(true)
     else setCargando(true)
     try {
-      const d = await (api as any).dashboardRRHH()
+      const d = await api.dashboardRRHH()
       setData(d)
       setUltimaActualizacion(new Date())
     } catch (e) { console.error(e) }

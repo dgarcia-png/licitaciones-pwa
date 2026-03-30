@@ -110,7 +110,7 @@ export default function PortalEmpleadoPage() {
   useEffect(() => {
     if (tab === 'partes' && empInfo && misPartes.length === 0) {
       setCargandoPartes(true)
-      ;(api as any).partesV2({ empleado_id: empInfo.id })
+      ;api.partesV2({ empleado_id: empInfo.id })
         .then((d: any) => setMisPartes(d.partes || []))
         .catch(() => {})
         .finally(() => setCargandoPartes(false))

@@ -130,7 +130,7 @@ export default function PersonalPage() {
 
   const cargarExpediente = async (id: string) => {
     setCargandoExpediente(true)
-    try { const data = await (api as any).expediente(id); setExpediente(data) }
+    try { const data = await api.expediente(id); setExpediente(data) }
     catch (e) { console.error(e) }
     finally { setCargandoExpediente(false) }
   }

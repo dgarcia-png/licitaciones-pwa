@@ -61,10 +61,10 @@ export default function IncidenciasPage() {
     setCargando(true)
     try {
       const [inc, c, emp, dash] = await Promise.all([
-        (api as any).incidencias(),
-        (api as any).centros(),
+        api.incidencias(),
+        api.centros(),
         api.empleados(),
-        (api as any).dashboardSLA().catch(() => null)
+        api.dashboardSLA().catch(() => null)
       ])
       setIncidencias(inc.incidencias || [])
       setCentros(c.centros || [])
@@ -80,7 +80,7 @@ export default function IncidenciasPage() {
     if (!form.descripcion || !form.centro_id) { showMsg('Centro y descripción son obligatorios', true); return }
     setGuardando(true)
     try {
-      const r = await (api as any).crearIncidencia(form)
+      const r = await api.crearIncidencia(form)
       if (r.ok) {
         showMsg(`✅ Incidencia creada — SLA: ${r.sla_limite || '—'}`)
         setMostrarForm(false)
@@ -93,14 +93,14 @@ export default function IncidenciasPage() {
 
   const handleResolver = async (id: string, resolucion: string) => {
     try {
-      const r = await (api as any).resolverIncidencia({ id, estado: 'resuelta', resolucion })
+      const r = await api.resolverIncidencia({ id, estado: 'resuelta', resolucion })
       if (r.ok) { showMsg('✅ Incidencia resuelta'); cargar() }
     } catch(e) {}
   }
 
   const handleCambiarEstado = async (id: string, estado: string) => {
     try {
-      await (api as any).resolverIncidencia({ id, estado })
+      await api.resolverIncidencia({ id, estado })
       cargar()
     } catch(e) {}
   }

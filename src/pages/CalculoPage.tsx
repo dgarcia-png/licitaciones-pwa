@@ -186,7 +186,7 @@ export default function CalculoPage() {
         }
         // Cargar lotes de esta oportunidad
         try {
-          const lotesData = await (api as any).obtenerLotes(selectedId)
+          const lotesData = await api.obtenerLotes(selectedId)
           setLotes(lotesData.lotes || [])
           // Si viene un lote por URL, cargarlo
           if (selectedLoteId) {
@@ -200,7 +200,7 @@ export default function CalculoPage() {
         // Cargar cálculo: por lote si hay lote, sino por oportunidad
         try {
           const calc = selectedLoteId
-            ? await (api as any).cargarCalculoLote(selectedId, selectedLoteId)
+            ? await api.cargarCalculoLote(selectedId, selectedLoteId)
             : await api.cargarCalculo(selectedId)
           if (calc.existe && calc.datos) {
             const d = typeof calc.datos === 'string' ? JSON.parse(calc.datos) : calc.datos
@@ -274,7 +274,7 @@ export default function CalculoPage() {
         fechaCalculo: new Date().toISOString(),
       }
       if (selectedLoteId) {
-        await (api as any).guardarCalculoLote({ oportunidad_id: selectedId, id_lote: selectedLoteId, json_datos: JSON.stringify(datos) })
+        await api.guardarCalculoLote({ oportunidad_id: selectedId, id_lote: selectedLoteId, json_datos: JSON.stringify(datos) })
       } else {
         await api.guardarCalculo(selectedId, JSON.stringify(datos))
       }

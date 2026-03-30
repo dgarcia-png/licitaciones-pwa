@@ -46,7 +46,7 @@ export default function SeguimientoPage() {
         const [res, seg, pl] = await Promise.all([
           api.resultado(selectedContrato),
           api.seguimiento(selectedContrato),
-          (api as any).plMesActual(selectedContrato).catch(() => null)
+          api.plMesActual(selectedContrato).catch(() => null)
         ])
         setResultadoContrato(res.existe ? res : null)
         setSeguimiento(seg)
