@@ -8,7 +8,7 @@
 //   3. API_BASE: VERIFICAR que es la URL activa de tu deployment GAS
 // ═══════════════════════════════════════════════════════════════════════════
 
-const API_BASE = 'https://script.google.com/macros/s/AKfycbwZ-0OQqrTwBN4oGUTTeuUDVhTE_sKocddW6J82VdosBIpERQPzAZHjvfmz1fR-GEtObA/exec'
+const API_BASE = 'https://script.google.com/macros/s/AKfycbzkJElembdarQWjd5H8zreSaOdLZZPbG9h_eVvlMbW0Npk8k_A37Guqm_GZv7v_8S1kkw/exec'
 
 function getToken(): string { return localStorage.getItem('auth_token') || '' }
 
@@ -399,7 +399,16 @@ export const api = {
   crearServicioProgramado:  (data: any) => postAPI({ action: 'crear_servicio_programado', ...data }),
   eliminarServicioProgramado:(id: string) => postAPI({ action: 'eliminar_servicio_programado', id }),
   crearSustitucion:         (data: any) => postAPI({ action: 'crear_sustitucion', ...data }),
-  // ═══ INFORMES ═══ — ANTES FALTABAN (usaban (api as any))
+  // ═══ CALENDARIO LABORAL ═══
+  festivos:                 (anio?: string, tipo?: string) => fetchAPI('festivos', { ...(anio ? { anio } : {}), ...(tipo ? { tipo } : {}) }),
+  crearFestivo:             (data: any) => postAPI({ action: 'crear_festivo', ...data }),
+  actualizarFestivo:        (data: any) => postAPI({ action: 'actualizar_festivo', ...data }),
+  eliminarFestivo:          (id: string) => postAPI({ action: 'eliminar_festivo', id }),
+  cargarFestivosNacionales: (anio: number) => postAPI({ action: 'cargar_festivos_nacionales', anio }),
+  diaLaborable:             (fecha: string, municipio?: string, convenioId?: string) => fetchAPI('dia_laborable', { fecha, ...(municipio ? { municipio } : {}), ...(convenioId ? { convenio_id: convenioId } : {}) }),
+  diasLaborables:           (desde: string, hasta: string, municipio?: string) => fetchAPI('dias_laborables', { desde, hasta, ...(municipio ? { municipio } : {}) }),
+  programarServicioRango:   (data: any) => postAPI({ action: 'programar_servicio_rango', ...data }),
+  // ═══ INFORMES ═══
   informeEconomicoGlobal:   (filtros?: any) => fetchAPI('informe_economico_global', filtros || {}),
   informeLicitaciones:      (filtros?: any) => fetchAPI('informe_licitaciones', filtros || {}),
   informeRRHH:              (filtros?: any) => fetchAPI('informe_rrhh', filtros || {}),
