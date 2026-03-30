@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { usePermisos } from '../hooks/usePermisos'
+import { useConfigListas } from '../hooks/useConfigListas'
 import { api } from '../services/api'
 import ConfirmModal from '../components/ConfirmModal'
 import {
@@ -8,8 +9,8 @@ import {
   Edit3, X, Save, Clock, FileText, ExternalLink, UserMinus, Shield, FolderOpen, FolderArchive, RefreshCw
 } from 'lucide-react'
 
-const TIPOS_CONTRATO = ['Indefinido', 'Temporal', 'Obra y servicio', 'Interinidad', 'Formación', 'Prácticas']
-const TURNOS = ['Mañana', 'Tarde', 'Noche', 'Rotativo', 'Partido', 'Completo']
+const _DEFAULT_TIPOS_CONTRATO = ['Indefinido', 'Temporal', 'Obra y servicio', 'Interinidad', 'Formación', 'Prácticas']
+const _DEFAULT_TURNOS = ['Mañana', 'Tarde', 'Noche', 'Rotativo', 'Partido', 'Completo']
 const ESTADOS = ['activo', 'baja', 'excedencia', 'suspendido']
 
 const DOCS_OBLIGATORIOS = [
@@ -37,6 +38,7 @@ function fmtDate(d: any) {
 
 export default function PersonalPage() {
   const { puedeVerTodaPlantilla, puedeGestionarRRHH, centrosAsignados } = usePermisos()
+  const { tiposContrato: TIPOS_CONTRATO, turnos: TURNOS } = useConfigListas()
 
   const [empleados, setEmpleados] = useState<any[]>([])
   const [stats, setStats] = useState<any>({})

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { api } from '../services/api'
+import { useConfigListas } from '../hooks/useConfigListas'
 import { usePermisos } from '../hooks/usePermisos'
 import {
   AlertTriangle, CheckCircle2, Clock, Plus, X, Save,
@@ -22,7 +23,7 @@ const SLA_LABEL: Record<string, string> = {
   proximo_vencer: '⚠️ Próximo a vencer',
   en_plazo:       '✅ En plazo',
 }
-const TIPOS = ['limpieza','mantenimiento','seguridad','averias','suministros','quejas','accidente','general']
+const _DEFAULT_TIPOS = ['limpieza','mantenimiento','seguridad','averias','suministros','quejas','accidente','general']
 
 function fmtDate(d: any) {
   if (!d) return '—'
@@ -31,6 +32,7 @@ function fmtDate(d: any) {
 
 export default function IncidenciasPage() {
   const permisos = usePermisos()
+  const { tiposIncidencia: TIPOS } = useConfigListas()
   const { esAdmin, esSupervisor } = permisos
 
   const [incidencias, setIncidencias] = useState<any[]>([])

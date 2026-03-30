@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react'
 import { api } from '../services/api'
+import { useConfigListas } from '../hooks/useConfigListas'
 import { Car, Plus, RefreshCw, Loader2, CheckCircle2, AlertTriangle,
   X, Save, Fuel, Calendar, User, Settings } from 'lucide-react'
 
-const TIPO_VEH = ['furgoneta','turismo','camion','moto','otro']
 const COMBUSTIBLE_TIPOS = ['diesel','gasolina','electrico','hibrido','gnc']
 
 const FORM_VACIO = {
@@ -14,6 +14,8 @@ const FORM_VACIO = {
 }
 
 export default function VehiculosPage() {
+  const { tiposVehiculo: TIPO_VEH } = useConfigListas()
+
   const [vehiculos, setVehiculos] = useState<any[]>([])
   const [alertas, setAlertas] = useState<any[]>([])
   const [empleados, setEmpleados] = useState<any[]>([])
@@ -35,7 +37,7 @@ export default function VehiculosPage() {
   const cargar = async () => {
     setCargando(true)
     try {
-      const [v, emp] = await Promise.all([(api as any).vehiculos(), api.empleados()])
+      const [v, emp] = await Promise.all([api.vehiculos(), api.empleados()])
       setVehiculos(v.vehiculos||[])
       setAlertas(v.alertas||[])
       setEmpleados(emp.empleados||[])
@@ -45,7 +47,7 @@ export default function VehiculosPage() {
   useEffect(() => { cargar() }, [])
 
   const cargarCombustible = async (id: string) => {
-    const r = await (api as any).combustibleVehiculo(id)
+    const r = await api.combustibleVehiculo(id)
     setCombustible(r)
   }
 
@@ -53,7 +55,7 @@ export default function VehiculosPage() {
     if (!form.matricula) { showMsg('Matrícula obligatoria', true); return }
     setGuardando(true)
     try {
-      const r = await (api as any).crearVehiculo(form)
+      const r = await api.crearVehiculo(form)
       if (r.ok) { showMsg('✅ Vehículo registrado'); setMostrarForm(false); setForm(FORM_VACIO); await cargar() }
       else showMsg(r.error||'Error', true)
     } catch(e) { showMsg('Error', true) } finally { setGuardando(false) }
@@ -63,7 +65,7 @@ export default function VehiculosPage() {
     if (!formRepostaje || !vehSel) return
     setGuardando(true)
     try {
-      const r = await (api as any).registrarRepostaje({ vehiculo_id: vehSel.id, matricula: vehSel.matricula, ...formRepostaje })
+      const r = await api.registrarRepostaje({ vehiculo_id: vehSel.id, matricula: vehSel.matricula, ...formRepostaje })
       if (r.ok) { showMsg(`✅ Repostaje registrado · ${r.importe}€`); setFormRepostaje(null); cargarCombustible(vehSel.id) }
     } catch(e) { showMsg('Error', true) } finally { setGuardando(false) }
   }
