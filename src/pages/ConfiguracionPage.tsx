@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react'
 import { api } from '../services/api'
+import FestivosManager from '../components/FestivosManager'
 import {
   Settings, Upload, Trash2, Loader2, CheckCircle2, AlertCircle,
-  ChevronDown, ChevronUp, BookOpen, Euro, ExternalLink, Plus, Save, X,
+  ChevronDown, ChevronUp, BookOpen, CalendarDays, Euro, ExternalLink, Plus, Save, X,
   ToggleLeft, ToggleRight, Filter, MapPin, Tag, Hash, Globe,
   Building2, Users, Map, AlertTriangle, Star, TrendingUp, List
 } from 'lucide-react'
@@ -173,7 +174,7 @@ function CosteRow({ bloque, item, guardando, onToggle, onUpdateValor, onDelete }
 }
 
 export default function ConfiguracionPage() {
-  const [tab, setTab] = useState<'filtros'|'convenios'|'costes'|'sistema'>('filtros')
+  const [tab, setTab] = useState<'filtros'|'convenios'|'costes'|'sistema'|'festivos'>('filtros')
 
   // Estados originales
   const [convenios, setConvenios] = useState<any[]>([])
@@ -359,6 +360,7 @@ export default function ConfiguracionPage() {
           { id: 'convenios', label: `Convenios (${convenios.length})`, icon: BookOpen },
           { id: 'costes',    label: 'Costes ref.',               icon: Euro     },
           { id: 'sistema',   label: 'Sistema',                   icon: Settings },
+          { id: 'festivos',  label: 'Festivos',                   icon: CalendarDays },
         ].map(t => (
           <button key={t.id} onClick={() => setTab(t.id as any)}
             className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-colors ${tab === t.id ? 'bg-[#1a3c34] text-white' : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'}`}>
@@ -573,6 +575,9 @@ export default function ConfiguracionPage() {
           )}
         </div>
       )}
+
+      {/* TAB FESTIVOS */}
+      {tab === 'festivos' && <FestivosManager />}
     </div>
   )
 }
