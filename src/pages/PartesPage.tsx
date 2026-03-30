@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { api } from '../services/api'
+import { useConfigListas } from '../hooks/useConfigListas'
 import ConfirmModal from '../components/ConfirmModal'
 import {
   ClipboardList, AlertTriangle, Plus, RefreshCw, Search,
@@ -18,7 +19,7 @@ const ESTADO_INC: Record<string, { label: string; color: string }> = {
   resuelta:   { label: 'Resuelta',   color: 'bg-emerald-100 text-emerald-700' },
   cerrada:    { label: 'Cerrada',    color: 'bg-slate-100 text-slate-600' },
 }
-const TIPO_INC = ['general', 'material', 'maquinaria', 'personal', 'cliente', 'seguridad', 'calidad', 'otro']
+const _DEFAULT_TIPO_INC = ['general', 'material', 'maquinaria', 'personal', 'cliente', 'seguridad', 'calidad', 'otro']
 
 function fmtHora(h: string) {
   if (!h) return '—'
@@ -30,6 +31,7 @@ function fmtHora(h: string) {
 
 export default function PartesPage() {
   const [tab, setTab] = useState<'partes' | 'incidencias'>('partes')
+  const { tiposIncidencia: TIPO_INC } = useConfigListas()
   const [partes, setPartes] = useState<any[]>([])
   const [incidencias, setIncidencias] = useState<any[]>([])
   const [centros, setCentros] = useState<any[]>([])
