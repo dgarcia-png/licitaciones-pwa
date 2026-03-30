@@ -219,7 +219,7 @@ export default function ConfiguracionPage() {
 
   const cargarConfigGlobal = async () => {
     try {
-      const r = await (api as any).configGlobal()
+      const r = await api.configGlobal()
       if (r.ok) { setConfigGlobal(r.config||{}); setEditadoGlobal(JSON.parse(JSON.stringify(r.config||{}))) }
     } catch(e) {}
   }
@@ -309,7 +309,7 @@ export default function ConfiguracionPage() {
           if (val !== undefined) cambios.push({ modulo: mod, clave: campo.clave, valor: val })
         }
       }
-      const r = await (api as any).guardarConfigGlobal({ cambios })
+      const r = await api.guardarConfigGlobal({ cambios })
       if (r.ok) { showMsg(`✅ ${r.cambios_guardados} parámetros guardados`); setCambiosPendientes(false); setConfigGlobal(JSON.parse(JSON.stringify(editadoGlobal))) }
       else showMsg('Error al guardar', true)
     } catch(e) { showMsg('Error de conexión', true) }

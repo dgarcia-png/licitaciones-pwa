@@ -70,10 +70,10 @@ export default function InformesPage() {
     setCargando(true)
     try {
       const [eco, lic, rrhh, terr, conts] = await Promise.all([
-        (api as any).informeEconomicoGlobal(),
-        (api as any).informeLicitaciones(),
-        (api as any).informeRRHH({ mes }),
-        (api as any).informeTerritorio({ mes }),
+        api.informeEconomicoGlobal(),
+        api.informeLicitaciones(),
+        api.informeRRHH({ mes }),
+        api.informeTerritorio({ mes }),
         Promise.resolve({ contratos: [] })
       ])
       setInformeEco(eco)
@@ -88,7 +88,7 @@ export default function InformesPage() {
 
   const cargarInformeContrato = async (id: string) => {
     try {
-      const r = await (api as any).informeCostesContrato({ id })
+      const r = await api.informeCostesContrato({ id })
       setInformeContrato(r)
     } catch(e) {}
   }

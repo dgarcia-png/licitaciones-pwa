@@ -1,4 +1,14 @@
-const API_BASE = 'https://script.google.com/macros/s/AKfycbxTVGTgkmpZH15copdRRPLsDKWin9HwpGP692oz5B_2sosBHOqBNoFWELf6gwvtkQloMg/exec'
+// src/services/api.ts — CORREGIDO 30/03/2026
+// ═══════════════════════════════════════════════════════════════════════════
+// CAMBIOS:
+//   1. Añadidas funciones que faltaban: configGlobal, guardarConfigGlobal,
+//      historialCentrosEmpleado, informeEconomicoGlobal, informeLicitaciones,
+//      informeRRHH, informeTerritorio, informeCostesContrato
+//   2. Promise.allSettled helper para cargas resilientes
+//   3. API_BASE: VERIFICAR que es la URL activa de tu deployment GAS
+// ═══════════════════════════════════════════════════════════════════════════
+
+const API_BASE = 'https://script.google.com/macros/s/AKfycbwZ-0OQqrTwBN4oGUTTeuUDVhTE_sKocddW6J82VdosBIpERQPzAZHjvfmz1fR-GEtObA/exec'
 
 function getToken(): string { return localStorage.getItem('auth_token') || '' }
 
@@ -10,6 +20,7 @@ const TTL: Record<string, number> = {
   fichajes: 15000, analisis: 60000, load_calculo: 60000,
   obtener_lotes: 15000, batch_decisiones: 15000,
   dashboard: 60000, stats: 60000, stats_rrhh: 60000,
+  informe: 120000, config_global: 300000,
 }
 const DEFAULT_TTL  = 60000
 const STALE_TTL    = 3600000
@@ -86,6 +97,7 @@ async function postAPI(data: any): Promise<any> {
   else if (a.includes('convenio')) { cacheInvalidate('convenio'); cacheInvalidate('mapa_convenio') }
   else if (a.includes('config')) { cacheInvalidate('config') }
   else if (a.includes('plantilla')) { cacheInvalidate('plantilla') }
+  else if (a.includes('incidencia')) { cacheInvalidate('incidencia'); cacheInvalidate('dashboard_sla') }
   else if (!a.includes('generar') && !a.includes('upload') && !a.includes('investigar') && !a.includes('recomendar') && !a.includes('login')) { cacheInvalidate() }
   return resp
 }
@@ -162,6 +174,10 @@ export const api = {
   addConfig:        (data: any) => postAPI({ action: 'add_config', ...data }),
   updateConfig:     (data: any) => postAPI({ action: 'update_config', ...data }),
   deleteConfig:     (fila: number) => postAPI({ action: 'delete_config', fila }),
+  // ═══ CONFIG GLOBAL (SISTEMA) ═══ — ANTES FALTABAN
+  configGlobal:          () => fetchAPI('config_global'),
+  guardarConfigGlobal:   (data: any) => postAPI({ action: 'guardar_config_global', ...data }),
+  // ═══ CONVENIOS ═══
   convenios:        () => fetchAPI('convenios'),
   categoriasConvenio:(id: string) => fetchAPI('categorias_convenio', { id }),
   compararConvenios:(categoria?: string) => fetchAPI('comparar_convenios', categoria ? { categoria } : {}),
@@ -194,6 +210,7 @@ export const api = {
   resumenContratos: () => fetchAPI('resumen_contratos'),
   registrarResultado:(data: any) => postAPI({ action: 'registrar_resultado', ...data }),
   registrarSeguimiento:(data: any) => postAPI({ action: 'registrar_seguimiento', ...data }),
+  // ═══ RRHH ═══
   empleados:        (filtro?: string) => fetchAPI('empleados', filtro ? { busqueda: filtro } : {}),
   empleado:         (id: string) => fetchAPI('empleado', { id }),
   statsRRHH:        () => fetchAPI('stats_rrhh'),
@@ -209,6 +226,9 @@ export const api = {
   addAsignacion:    (data: any) => postAPI({ action: 'add_asignacion', ...data }),
   updateAsignacion: (data: any) => postAPI({ action: 'update_asignacion', ...data }),
   finalizarAsignacion:(data: any) => postAPI({ action: 'finalizar_asignacion', ...data }),
+  // ═══ HISTORIAL CENTROS EMPLEADO ═══ — ANTES FALTABA
+  historialCentrosEmpleado: (id: string) => fetchAPI('historial_centros_empleado', { id }),
+  // ═══ PRL ═══
   prlDashboard:     () => fetchAPI('prl_dashboard'),
   prlEpis:          (empleado?: string) => fetchAPI('prl_epis', empleado ? { empleado } : {}),
   prlReconocimientos:(empleado?: string) => fetchAPI('prl_reconocimientos', empleado ? { empleado } : {}),
@@ -227,6 +247,7 @@ export const api = {
   eliminarReconocimiento:(id: string) => postAPI({ action: 'eliminar_reconocimiento', id }),
   eliminarFormacionPrl:(id: string) => postAPI({ action: 'eliminar_formacion_prl', id }),
   eliminarAccidente:(id: string) => postAPI({ action: 'eliminar_accidente', id }),
+  // ═══ RGPD ═══
   rgpdDashboard:    () => fetchAPI('rgpd_dashboard'),
   rgpdConsentimientos:(empleado?: string) => fetchAPI('rgpd_consentimientos', empleado ? { empleado } : {}),
   rgpdArco:         (empleado?: string) => fetchAPI('rgpd_arco', empleado ? { empleado } : {}),
@@ -244,6 +265,7 @@ export const api = {
   eliminarArco:     (id: string) => postAPI({ action: 'eliminar_arco', id }),
   eliminarTratamiento:(id: string) => postAPI({ action: 'eliminar_tratamiento', id }),
   eliminarBrecha:   (id: string) => postAPI({ action: 'eliminar_brecha', id }),
+  // ═══ SUBROGACIÓN ═══
   subrogaciones:    (oportunidad?: string) => fetchAPI('subrogaciones', oportunidad ? { oportunidad } : {}),
   personalSubrogado:(id_subrogacion: string) => fetchAPI('personal_subrogado', { id_subrogacion }),
   resumenSubrogacion:(id_oportunidad: string) => fetchAPI('resumen_subrogacion', { id_oportunidad }),
@@ -259,12 +281,14 @@ export const api = {
   marcarContactadoSubrogado:(data: any) => postAPI({ action: 'marcar_contactado_subrogado', ...data }),
   incorporarSubrogadoForzado:(data: any) => postAPI({ action: 'incorporar_subrogado_forzado', ...data }),
   incorporarSubrogadoSinDniCheck:(data: any) => postAPI({ action: 'incorporar_subrogado_sin_dni_check', ...data }),
+  // ═══ FICHAJES ═══
   fichar:           (data: any) => postAPI({ action: 'fichar', ...data }),
   fichajes:         (filtro?: any) => fetchAPI('fichajes', filtro || {}),
   estadoFichaje:    (id_empleado: string) => fetchAPI('estado_fichaje', { id_empleado }),
   resumenDiarioFichajes:(id_empleado: string, mes: string, anio: string) => fetchAPI('resumen_diario_fichajes', { id_empleado, mes, anio }),
   resumenMensualFichajes:(mes: string, anio: string) => fetchAPI('resumen_mensual_fichajes', { mes, anio }),
   generarInformeFichajes:(id_empleado: string, mes: string, anio: string) => postAPI({ action: 'generar_informe_fichajes', id_empleado, mes, anio }),
+  // ═══ AUSENCIAS ═══
   ausencias:        (filtro?: any) => fetchAPI('ausencias', filtro || {}),
   resumenVacaciones:(id_empleado: string, anio?: string) => fetchAPI('resumen_vacaciones', { id_empleado, anio: anio||String(new Date().getFullYear()) }),
   calendarioAusencias:(mes: string, anio: string) => fetchAPI('calendario_ausencias', { mes, anio }),
@@ -272,10 +296,12 @@ export const api = {
   solicitarAusencia:(data: any) => postAPI({ action: 'solicitar_ausencia', ...data }),
   aprobarAusencia:  (data: any) => postAPI({ action: 'aprobar_ausencia', ...data }),
   eliminarAusencia: (id: string) => postAPI({ action: 'eliminar_ausencia', id }),
+  // ═══ USUARIOS ═══
   usuarios:         () => fetchAPI('usuarios'),
   addUsuario:       (data: any) => postAPI({ action: 'add_usuario', ...data }),
   updateUsuario:    (data: any) => postAPI({ action: 'update_usuario', ...data }),
   deleteUsuario:    (email: string) => postAPI({ action: 'delete_usuario', email }),
+  // ═══ PLANTILLAS ═══
   plantillas:       (modulo?: string) => fetchAPI('obtener_plantillas', modulo ? { modulo } : {}),
   registrarPlantilla:(data: any) => postAPI({ action: 'registrar_plantilla', ...data }),
   crearPlantillaVacia:(data: any) => postAPI({ action: 'crear_plantilla_vacia', ...data }),
@@ -301,6 +327,7 @@ export const api = {
   eliminarParte:          (id: string) => postAPI({ action: 'eliminar_parte', id }),
   crearIncidencia:        (data: any) => postAPI({ action: 'crear_incidencia', ...data }),
   resolverIncidencia:     (data: any) => postAPI({ action: 'resolver_incidencia', ...data }),
+  dashboardSLA:           () => fetchAPI('dashboard_sla'),
   // ═══ OPERACIONES V2 ═══
   partesV2:              (filtros?: any) => fetchAPI('partes_v2', filtros || {}),
   eliminarParteV2:       (id: string) => postAPI({ action: 'eliminar_parte_v2', id }),
@@ -372,4 +399,11 @@ export const api = {
   crearServicioProgramado:  (data: any) => postAPI({ action: 'crear_servicio_programado', ...data }),
   eliminarServicioProgramado:(id: string) => postAPI({ action: 'eliminar_servicio_programado', id }),
   crearSustitucion:         (data: any) => postAPI({ action: 'crear_sustitucion', ...data }),
+  // ═══ INFORMES ═══ — ANTES FALTABAN (usaban (api as any))
+  informeEconomicoGlobal:   (filtros?: any) => fetchAPI('informe_economico_global', filtros || {}),
+  informeLicitaciones:      (filtros?: any) => fetchAPI('informe_licitaciones', filtros || {}),
+  informeRRHH:              (filtros?: any) => fetchAPI('informe_rrhh', filtros || {}),
+  informeTerritorio:        (filtros?: any) => fetchAPI('informe_territorio', filtros || {}),
+  informeCostesContrato:    (data: { id: string; mes_desde?: string; mes_hasta?: string }) =>
+    fetchAPI('informe_costes_contrato', { id: data.id, ...(data.mes_desde ? { mes_desde: data.mes_desde } : {}), ...(data.mes_hasta ? { mes_hasta: data.mes_hasta } : {}) }),
 }

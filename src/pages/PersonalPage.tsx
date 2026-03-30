@@ -188,7 +188,7 @@ export default function PersonalPage() {
     // Cargar historial centros territorio
     setCargandoCentros(true)
     try {
-      const hist = await (api as any).historialCentrosEmpleado(id)
+      const hist = await api.historialCentrosEmpleado(id)
       setHistorialCentros(hist)
     } catch(e) { console.warn('historial centros no disponible', e) }
     finally { setCargandoCentros(false) }
