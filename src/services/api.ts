@@ -8,7 +8,7 @@
 //   3. API_BASE: VERIFICAR que es la URL activa de tu deployment GAS
 // ═══════════════════════════════════════════════════════════════════════════
 
-const API_BASE = 'https://script.google.com/macros/s/AKfycbzkJElembdarQWjd5H8zreSaOdLZZPbG9h_eVvlMbW0Npk8k_A37Guqm_GZv7v_8S1kkw/exec'
+const API_BASE = 'https://script.google.com/macros/s/AKfycbx2vOSeQrChSGXORe1fO5oBPN0n7wr7zC2Zqw-0TLYTkjTgVoWFmCiq5PUFHMCg9Q9o/exec'
 
 function getToken(): string { return localStorage.getItem('auth_token') || '' }
 
