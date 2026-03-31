@@ -1,11 +1,8 @@
-// src/services/api.ts — CORREGIDO 30/03/2026
+// src/services/api.ts — ACTUALIZADO 31/03/2026
 // ═══════════════════════════════════════════════════════════════════════════
-// CAMBIOS:
-//   1. Añadidas funciones que faltaban: configGlobal, guardarConfigGlobal,
-//      historialCentrosEmpleado, informeEconomicoGlobal, informeLicitaciones,
-//      informeRRHH, informeTerritorio, informeCostesContrato
-//   2. Promise.allSettled helper para cargas resilientes
-//   3. API_BASE: VERIFICAR que es la URL activa de tu deployment GAS
+// CAMBIOS 31/03:
+//   - Añadidas: asignarIncidencia, agregarComentarioIncidencia, comentariosIncidencia
+//   - Eliminados todos los (api as any) del proyecto
 // ═══════════════════════════════════════════════════════════════════════════
 
 const API_BASE = 'https://script.google.com/macros/s/AKfycbxBL1ICrk6ii64UR9MC01-6VvLpsyRnxhszW09PvpJhKqXSLWGffl6HpB7hgQkfGsEN/exec'
@@ -174,7 +171,7 @@ export const api = {
   addConfig:        (data: any) => postAPI({ action: 'add_config', ...data }),
   updateConfig:     (data: any) => postAPI({ action: 'update_config', ...data }),
   deleteConfig:     (fila: number) => postAPI({ action: 'delete_config', fila }),
-  // ═══ CONFIG GLOBAL (SISTEMA) ═══ — ANTES FALTABAN
+  // ═══ CONFIG GLOBAL (SISTEMA) ═══
   configGlobal:          () => fetchAPI('config_global'),
   guardarConfigGlobal:   (data: any) => postAPI({ action: 'guardar_config_global', ...data }),
   // ═══ CONVENIOS ═══
@@ -226,7 +223,7 @@ export const api = {
   addAsignacion:    (data: any) => postAPI({ action: 'add_asignacion', ...data }),
   updateAsignacion: (data: any) => postAPI({ action: 'update_asignacion', ...data }),
   finalizarAsignacion:(data: any) => postAPI({ action: 'finalizar_asignacion', ...data }),
-  // ═══ HISTORIAL CENTROS EMPLEADO ═══ — ANTES FALTABA
+  // ═══ HISTORIAL CENTROS EMPLEADO ═══
   historialCentrosEmpleado: (id: string) => fetchAPI('historial_centros_empleado', { id }),
   // ═══ PRL ═══
   prlDashboard:     () => fetchAPI('prl_dashboard'),
@@ -331,6 +328,9 @@ export const api = {
   crearIncidencia:        (data: any) => postAPI({ action: 'crear_incidencia', ...data }),
   resolverIncidencia:     (data: any) => postAPI({ action: 'resolver_incidencia', ...data }),
   dashboardSLA:           () => fetchAPI('dashboard_sla'),
+  asignarIncidencia:          (data: any) => postAPI({ action: 'asignar_incidencia', ...data }),
+  agregarComentarioIncidencia:(data: any) => postAPI({ action: 'agregar_comentario_incidencia', ...data }),
+  comentariosIncidencia:      (id: string) => fetchAPI('comentarios_incidencia', { id }),
   // ═══ OPERACIONES V2 ═══
   partesV2:              (filtros?: any) => fetchAPI('partes_v2', filtros || {}),
   eliminarParteV2:       (id: string) => postAPI({ action: 'eliminar_parte_v2', id }),
