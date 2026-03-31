@@ -43,6 +43,7 @@ const CalidadPage = lazy(() => import('./pages/CalidadPage'))
 const PortalClientePage = lazy(() => import('./pages/PortalClientePage'))
 const PortalTokensPage = lazy(() => import('./pages/PortalTokensPage'))
 const PlanificacionPage = lazy(() => import('./pages/PlanificacionPage'))
+const CertificacionesPage = lazy(() => import('./pages/CertificacionesPage'))
 
 function PageLoader() {
   return <div className="flex flex-col items-center justify-center py-20"><Loader2 size={28} className="text-[#1a3c34] animate-spin mb-2" /><p className="text-sm text-slate-400">Cargando...</p></div>
@@ -80,6 +81,7 @@ function AppRoutes() {
           <Route path="/subrogacion" element={<SubrogacionPage />} />
           <Route path="/fichajes" element={<FichajesPage />} />
           <Route path="/ausencias" element={<AusenciasPage />} />
+          <Route path="/certificaciones" element={<Suspense fallback={<Cargando/>}><CertificacionesPage/></Suspense>}/>
           <Route path="/conocimiento" element={<ConocimientoPage />} />
           <Route path="/configuracion" element={<ConfiguracionPage />} />
           <Route path="/usuarios" element={<UsuariosPage />} />

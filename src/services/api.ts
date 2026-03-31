@@ -8,7 +8,7 @@
 //   3. API_BASE: VERIFICAR que es la URL activa de tu deployment GAS
 // ═══════════════════════════════════════════════════════════════════════════
 
-const API_BASE = 'https://script.google.com/macros/s/AKfycbx2vOSeQrChSGXORe1fO5oBPN0n7wr7zC2Zqw-0TLYTkjTgVoWFmCiq5PUFHMCg9Q9o/exec'
+const API_BASE = 'https://script.google.com/macros/s/AKfycbxBL1ICrk6ii64UR9MC01-6VvLpsyRnxhszW09PvpJhKqXSLWGffl6HpB7hgQkfGsEN/exec'
 
 function getToken(): string { return localStorage.getItem('auth_token') || '' }
 
@@ -420,6 +420,14 @@ export const api = {
   diaLaborable:             (fecha: string, municipio?: string, convenioId?: string) => fetchAPI('dia_laborable', { fecha, ...(municipio ? { municipio } : {}), ...(convenioId ? { convenio_id: convenioId } : {}) }),
   diasLaborables:           (desde: string, hasta: string, municipio?: string) => fetchAPI('dias_laborables', { desde, hasta, ...(municipio ? { municipio } : {}) }),
   programarServicioRango:   (data: any) => postAPI({ action: 'programar_servicio_rango', ...data }),
+  // ═══ CERTIFICACIONES / CARNETS ═══
+  certificaciones:          (filtros?: any) => fetchAPI('certificaciones', filtros || {}),
+  certificacionesEmpleado:  (id: string) => fetchAPI('certificaciones_empleado', { id }),
+  dashboardCertificaciones: () => fetchAPI('dashboard_certificaciones'),
+  batchCertificaciones:     () => fetchAPI('batch_certificaciones'),
+  agregarCertificacion:     (data: any) => postAPI({ action: 'agregar_certificacion', ...data }),
+  actualizarCertificacion:  (data: any) => postAPI({ action: 'actualizar_certificacion', ...data }),
+  eliminarCertificacion:    (id: string) => postAPI({ action: 'eliminar_certificacion', id }),
   // ═══ INFORMES ═══
   informeEconomicoGlobal:   (filtros?: any) => fetchAPI('informe_economico_global', filtros || {}),
   informeLicitaciones:      (filtros?: any) => fetchAPI('informe_licitaciones', filtros || {}),

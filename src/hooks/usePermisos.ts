@@ -52,7 +52,7 @@ export const MENU_POR_ROL: Record<Rol, string[]> = {
     // Licitaciones (lectura)
     'licitaciones-dashboard', 'oportunidades', 'seguimiento',
     // RRHH
-    'dashboard-rrhh', 'personal', 'ausencias', 'fichajes',
+    'dashboard-rrhh', 'personal', 'ausencias', 'certificaciones', 'fichajes',
     // Cumplimiento
     'prl', 'rgpd',
     // Territorio (lectura)
@@ -69,14 +69,14 @@ export const MENU_POR_ROL: Record<Rol, string[]> = {
 
   ADMIN_RRHH: [
     'dashboard', 'informes',
-    'dashboard-rrhh', 'personal', 'subrogacion', 'fichajes', 'ausencias',
+    'dashboard-rrhh', 'personal', 'subrogacion', 'fichajes', 'ausencias', 'certificaciones',
     'prl', 'rgpd', 'plantillas', 'usuarios',
   ],
 
   ADMIN_TERRITORIO: [
     'dashboard', 'informes',
     // RRHH básico
-    'personal', 'fichajes', 'ausencias',
+    'personal', 'fichajes', 'ausencias', 'certificaciones',
     // Territorio completo
     'territorio', 'planificacion', 'ordenes', 'partes', 'incidencias',
     'inventario', 'vehiculos', 'calidad', 'checklist-config', 'portal-tokens',
@@ -99,21 +99,21 @@ export const MENU_POR_ROL: Record<Rol, string[]> = {
 
   SUPERVISOR_TERRITORIO: [
     'dashboard',
-    'personal', 'fichajes', 'ausencias',
+    'personal', 'fichajes', 'ausencias', 'certificaciones',
     // Territorio (su zona)
     'territorio', 'planificacion', 'ordenes', 'partes', 'incidencias',
     'inventario', 'calidad', 'operador',
   ],
 
   ENCARGADO_ZONA: [
-    'dashboard', 'fichajes', 'ausencias',
+    'dashboard', 'fichajes', 'ausencias', 'certificaciones',
     // Territorio (su zona, limitado)
     'territorio', 'partes', 'incidencias', 'ordenes', 'inventario',
     'operador',
   ],
 
   TRABAJADOR_CAMPO: [
-    'operador', 'portal', 'fichajes', 'ausencias',
+    'operador', 'portal', 'fichajes', 'ausencias', 'certificaciones',
   ],
 
   TRABAJADOR_LECTURA: [
