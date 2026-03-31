@@ -1,14 +1,3 @@
-// src/hooks/usePermisos.ts — CORREGIDO 30/03/2026
-// ═══════════════════════════════════════════════════════════════════════════
-// CAMBIOS:
-//   1. ADMIN_TERRITORIO: añadidas todas las sub-páginas de territorio
-//   2. DIRECTOR_GERENTE: añadidos dashboards y territorio
-//   3. 'informes' añadido a roles de gestión y admin
-//   4. ENCARGADO_ZONA: añadidas páginas de territorio que necesita
-//   5. SUPERVISOR_TERRITORIO: añadidas páginas de territorio + operador
-//   6. Nivel de ENCARGADO_ZONA corregido a 4 (igual que SUPERVISOR)
-// ═══════════════════════════════════════════════════════════════════════════
-
 import { useAuth, Rol } from '../context/AuthContext'
 
 // ── Niveles jerárquicos ──────────────────────────────────────────────────────
@@ -21,7 +10,7 @@ const NIVELES: Record<Rol, number> = {
   RESPONSABLE_COMERCIAL: 3,
   RESPONSABLE_PRL:       3,
   RESPONSABLE_RGPD:      3,
-  ENCARGADO_ZONA:        4,
+  ENCARGADO_ZONA:        3,
   SUPERVISOR_TERRITORIO: 4,
   TRABAJADOR_CAMPO:      5,
   TRABAJADOR_LECTURA:    5,
@@ -30,15 +19,15 @@ const NIVELES: Record<Rol, number> = {
 // ── Permisos por módulo ──────────────────────────────────────────────────────
 const PERMISOS: Record<Rol, string[]> = {
   SUPER_ADMIN:           ['*'],
-  DIRECTOR_GERENTE:      ['VER_LICIT', 'VER_RRHH', 'VER_TERRITORIO', 'VER_DASHBOARD', 'VER_INFORMES'],
-  ADMIN_LICITACIONES:    ['LICIT_TOTAL', 'VER_RRHH_BASICO', 'VER_INFORMES'],
-  ADMIN_RRHH:            ['RRHH_TOTAL', 'PRL_TOTAL', 'RGPD_TOTAL', 'VER_LICIT', 'VER_INFORMES'],
-  ADMIN_TERRITORIO:      ['TERRITORIO_TOTAL', 'VER_RRHH_BASICO', 'VER_INFORMES'],
+  DIRECTOR_GERENTE:      ['VER_LICIT', 'VER_RRHH', 'VER_TERRITORIO', 'VER_DASHBOARD'],
+  ADMIN_LICITACIONES:    ['LICIT_TOTAL', 'VER_RRHH_BASICO'],
+  ADMIN_RRHH:            ['RRHH_TOTAL', 'PRL_TOTAL', 'RGPD_TOTAL', 'VER_LICIT'],
+  ADMIN_TERRITORIO:      ['TERRITORIO_TOTAL', 'VER_RRHH_BASICO'],
   RESPONSABLE_COMERCIAL: ['LICIT_TOTAL', 'VER_RRHH_BASICO'],
   RESPONSABLE_PRL:       ['PRL_TOTAL', 'VER_RRHH_BASICO'],
   RESPONSABLE_RGPD:      ['RGPD_TOTAL', 'VER_RRHH_BASICO'],
-  ENCARGADO_ZONA:        ['VER_MI_ZONA', 'FICHAR', 'VER_MIS_DATOS', 'TERR_SERVICIOS', 'TERR_INCIDENCIAS'],
-  SUPERVISOR_TERRITORIO: ['VER_MI_ZONA', 'VER_MI_EQUIPO_RRHH', 'FICHAR_EQUIPO', 'GESTIONAR_AUSENCIAS_ZONA', 'TERR_SERVICIOS', 'TERR_INCIDENCIAS'],
+  ENCARGADO_ZONA:        ['VER_MI_ZONA', 'FICHAR', 'VER_MIS_DATOS'],
+  SUPERVISOR_TERRITORIO: ['VER_MI_ZONA', 'VER_MI_EQUIPO_RRHH', 'FICHAR_EQUIPO', 'GESTIONAR_AUSENCIAS_ZONA'],
   TRABAJADOR_CAMPO:      ['FICHAR', 'VER_MIS_DATOS', 'SOLICITAR_AUSENCIA'],
   TRABAJADOR_LECTURA:    ['VER_MIS_DATOS'],
 }
@@ -46,78 +35,46 @@ const PERMISOS: Record<Rol, string[]> = {
 // ── Visibilidad del menú por rol ─────────────────────────────────────────────
 export const MENU_POR_ROL: Record<Rol, string[]> = {
   SUPER_ADMIN: ['*'],
-
   DIRECTOR_GERENTE: [
-    'dashboard', 'informes',
-    // Licitaciones (lectura)
-    'licitaciones-dashboard', 'oportunidades', 'seguimiento',
-    // RRHH
-    'dashboard-rrhh', 'personal', 'ausencias', 'certificaciones', 'fichajes',
-    // Cumplimiento
-    'prl', 'rgpd',
-    // Territorio (lectura)
-    'territorio', 'partes', 'incidencias', 'calidad',
-    // Admin
-    'configuracion', 'usuarios',
+    'dashboard', 'oportunidades', 'seguimiento',
+    'personal', 'ausencias', 'fichajes',
+    'prl', 'rgpd', 'configuracion', 'usuarios',
+    'escaneo-documentos'
   ],
-
   ADMIN_LICITACIONES: [
-    'dashboard', 'informes',
-    'licitaciones-dashboard', 'oportunidades', 'nueva', 'analisis', 'calculo',
-    'decisiones', 'oferta', 'seguimiento', 'conocimiento', 'convenios', 'documentos',
+    'dashboard', 'oportunidades', 'nueva', 'analisis', 'calculo',
+    'decisiones', 'oferta', 'seguimiento', 'conocimiento', 'convenios', 'documentos'
   ],
-
   ADMIN_RRHH: [
-    'dashboard', 'informes',
-    'dashboard-rrhh', 'personal', 'subrogacion', 'fichajes', 'ausencias', 'certificaciones',
-    'prl', 'rgpd', 'plantillas', 'usuarios',
+    'dashboard', 'personal', 'subrogacion', 'fichajes', 'ausencias',
+    'prl', 'rgpd', 'plantillas', 'usuarios', 'dashboard-rrhh',
+    'escaneo-documentos', 'certificaciones'
   ],
-
   ADMIN_TERRITORIO: [
-    'dashboard', 'informes',
-    // RRHH básico
-    'personal', 'fichajes', 'ausencias', 'certificaciones',
-    // Territorio completo
-    'territorio', 'planificacion', 'ordenes', 'partes', 'incidencias',
-    'inventario', 'vehiculos', 'calidad', 'checklist-config', 'portal-tokens',
-    'operador',
+    'dashboard', 'personal', 'fichajes', 'ausencias', 'territorio',
+    'escaneo-documentos'
   ],
-
   RESPONSABLE_COMERCIAL: [
-    'dashboard',
-    'licitaciones-dashboard', 'oportunidades', 'nueva', 'analisis', 'calculo',
-    'decisiones', 'oferta', 'seguimiento', 'conocimiento',
+    'dashboard', 'oportunidades', 'nueva', 'analisis', 'calculo',
+    'decisiones', 'oferta', 'seguimiento', 'conocimiento'
   ],
-
   RESPONSABLE_PRL: [
-    'dashboard', 'personal', 'prl',
+    'dashboard', 'personal', 'prl', 'escaneo-documentos'
   ],
-
   RESPONSABLE_RGPD: [
-    'dashboard', 'personal', 'rgpd',
+    'dashboard', 'personal', 'rgpd'
   ],
-
-  SUPERVISOR_TERRITORIO: [
-    'dashboard',
-    'personal', 'fichajes', 'ausencias', 'certificaciones',
-    // Territorio (su zona)
-    'territorio', 'planificacion', 'ordenes', 'partes', 'incidencias',
-    'inventario', 'calidad', 'operador',
-  ],
-
   ENCARGADO_ZONA: [
-    'dashboard', 'fichajes', 'ausencias', 'certificaciones',
-    // Territorio (su zona, limitado)
-    'territorio', 'partes', 'incidencias', 'ordenes', 'inventario',
-    'operador',
+    'dashboard', 'fichajes', 'ausencias'
   ],
-
+  SUPERVISOR_TERRITORIO: [
+    'dashboard', 'personal', 'fichajes', 'ausencias'
+  ],
   TRABAJADOR_CAMPO: [
-    'operador', 'portal', 'fichajes', 'ausencias', 'certificaciones',
+    'portal', 'fichajes', 'ausencias', 'mis-datos'
   ],
-
   TRABAJADOR_LECTURA: [
-    'portal',
+    'portal', 'fichajes', 'mis-datos'
   ],
 }
 
@@ -146,7 +103,6 @@ export function usePermisos() {
   const esAdmin         = nivel <= 2
   const esAdminRRHH     = rol === 'ADMIN_RRHH' || esSuperAdmin
   const esAdminLicit    = rol === 'ADMIN_LICITACIONES' || esSuperAdmin
-  const esAdminTerritorio = rol === 'ADMIN_TERRITORIO' || esSuperAdmin
   const esSupervisor    = rol === 'SUPERVISOR_TERRITORIO' || rol === 'ENCARGADO_ZONA'
   const esTrabajador    = rol === 'TRABAJADOR_CAMPO' || rol === 'TRABAJADOR_LECTURA'
   const esDirector      = rol === 'DIRECTOR_GERENTE' || esSuperAdmin
@@ -162,7 +118,7 @@ export function usePermisos() {
   return {
     rol, nivel, usuario,
     tiene, puedeVerMenu,
-    esSuperAdmin, esAdmin, esAdminRRHH, esAdminLicit, esAdminTerritorio,
+    esSuperAdmin, esAdmin, esAdminRRHH, esAdminLicit,
     esSupervisor, esTrabajador, esDirector,
     puedeGestionarRRHH, puedeVerTodaPlantilla,
     soloSusDatos, puedeAprobarAusencias,

@@ -334,6 +334,12 @@ export const api = {
   asignarIncidencia:          (data: any) => postAPI({ action: 'asignar_incidencia', ...data }),
   agregarComentarioIncidencia:(data: any) => postAPI({ action: 'agregar_comentario_incidencia', ...data }),
   comentariosIncidencia:      (id: string) => fetchAPI('comentarios_incidencia', { id }),
+  // ═══ ESCANEO DOCUMENTOS / EXPEDIENTE ═══
+  procesarDocumentoAutomatico: (data: any) => postAPI({ action: 'procesar_documento_auto', ...data }),
+  bandejaDocs:                () => fetchAPI('bandeja_docs'),
+  dashboardEscaneo:           () => fetchAPI('dashboard_escaneo'),
+  resolverDocBandeja:         (data: any) => postAPI({ action: 'resolver_doc_bandeja', ...data }),
+  descartarDocBandeja:        (id: string) => postAPI({ action: 'descartar_doc_bandeja', id }),
   // ═══ OPERACIONES V2 ═══
   partesV2:              (filtros?: any) => fetchAPI('partes_v2', filtros || {}),
   eliminarParteV2:       (id: string) => postAPI({ action: 'eliminar_parte_v2', id }),
