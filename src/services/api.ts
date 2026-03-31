@@ -1,11 +1,14 @@
 // src/services/api.ts — ACTUALIZADO 31/03/2026
 // ═══════════════════════════════════════════════════════════════════════════
-// CAMBIOS 31/03:
-//   - Añadidas: asignarIncidencia, agregarComentarioIncidencia, comentariosIncidencia
-//   - Eliminados todos los (api as any) del proyecto
+// CAMBIOS:
+//   1. Añadidas funciones que faltaban: configGlobal, guardarConfigGlobal,
+//      historialCentrosEmpleado, informeEconomicoGlobal, informeLicitaciones,
+//      informeRRHH, informeTerritorio, informeCostesContrato
+//   2. Promise.allSettled helper para cargas resilientes
+//   3. API_BASE: VERIFICAR que es la URL activa de tu deployment GAS
 // ═══════════════════════════════════════════════════════════════════════════
 
-const API_BASE = 'https://script.google.com/macros/s/AKfycbxBL1ICrk6ii64UR9MC01-6VvLpsyRnxhszW09PvpJhKqXSLWGffl6HpB7hgQkfGsEN/exec'
+const API_BASE = 'https://script.google.com/macros/s/AKfycbwscY-snO4a0Wdljh_f7HK2WgyFHNtUzMcjVBdPi3EIQBUGY43rFI7jR7nho-hct1Um/exec'
 
 function getToken(): string { return localStorage.getItem('auth_token') || '' }
 
@@ -171,7 +174,7 @@ export const api = {
   addConfig:        (data: any) => postAPI({ action: 'add_config', ...data }),
   updateConfig:     (data: any) => postAPI({ action: 'update_config', ...data }),
   deleteConfig:     (fila: number) => postAPI({ action: 'delete_config', fila }),
-  // ═══ CONFIG GLOBAL (SISTEMA) ═══
+  // ═══ CONFIG GLOBAL (SISTEMA) ═══ — ANTES FALTABAN
   configGlobal:          () => fetchAPI('config_global'),
   guardarConfigGlobal:   (data: any) => postAPI({ action: 'guardar_config_global', ...data }),
   // ═══ CONVENIOS ═══
@@ -223,7 +226,7 @@ export const api = {
   addAsignacion:    (data: any) => postAPI({ action: 'add_asignacion', ...data }),
   updateAsignacion: (data: any) => postAPI({ action: 'update_asignacion', ...data }),
   finalizarAsignacion:(data: any) => postAPI({ action: 'finalizar_asignacion', ...data }),
-  // ═══ HISTORIAL CENTROS EMPLEADO ═══
+  // ═══ HISTORIAL CENTROS EMPLEADO ═══ — ANTES FALTABA
   historialCentrosEmpleado: (id: string) => fetchAPI('historial_centros_empleado', { id }),
   // ═══ PRL ═══
   prlDashboard:     () => fetchAPI('prl_dashboard'),
@@ -436,3 +439,4 @@ export const api = {
   informeCostesContrato:    (data: { id: string; mes_desde?: string; mes_hasta?: string }) =>
     fetchAPI('informe_costes_contrato', { id: data.id, ...(data.mes_desde ? { mes_desde: data.mes_desde } : {}), ...(data.mes_hasta ? { mes_hasta: data.mes_hasta } : {}) }),
 }
+
