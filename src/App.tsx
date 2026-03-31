@@ -108,6 +108,7 @@ function AppRoutes() {
   )
 }
 
+function Cargando() { return <div className="flex flex-col items-center justify-center py-20"><Loader2 size={28} className="text-[#1a3c34] animate-spin mb-2" /><p className="text-sm text-slate-400">Cargando...</p></div> }
 export default function App() {
   return (<AuthProvider><BrowserRouter><AppRoutes /></BrowserRouter></AuthProvider>)
 }
