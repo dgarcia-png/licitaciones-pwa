@@ -101,7 +101,6 @@ export default function DecisionesPage() {
       setCargando(true)
       try {
         // Invalidar caché para obtener datos frescos
-        const url = `${api.baseURL || ''}?action=batch_decisiones&id=${selectedId}`
         const batch = await api.batchDecisiones(selectedId)
         const opos = batch.oportunidades?.oportunidades || []
         if (opos.length > 0) setOportunidades(opos)
