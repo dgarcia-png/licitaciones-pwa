@@ -9,7 +9,7 @@ import {
   LogOut, Menu, X, UserCheck, Shield, ClipboardList,
   Clock, CalendarDays, Map, Activity, Briefcase, CheckSquare,
   Package, Car, Star, Link2,
-  AlertTriangle,
+  AlertTriangle, ScanLine, ShieldCheck,
 } from 'lucide-react'
 
 const RUTA_A_CLAVE: Record<string, string> = {
@@ -21,7 +21,7 @@ const RUTA_A_CLAVE: Record<string, string> = {
   '/prl': 'prl', '/rgpd': 'rgpd', '/territorio': 'territorio', '/partes': 'partes',
   '/operador': 'operador', '/checklist-config': 'checklist-config',
   '/ordenes': 'ordenes', '/inventario': 'inventario', '/vehiculos': 'vehiculos', '/calidad': 'calidad',
-  '/portal-tokens': 'portal-tokens', '/planificacion': 'planificacion',
+  '/portal-tokens': 'portal-tokens', '/planificacion': 'planificacion', '/escaneo-documentos': 'escaneo-documentos', '/certificaciones': 'certificaciones',
   '/configuracion': 'configuracion', '/usuarios': 'usuarios', '/plantillas': 'plantillas', '/portal': 'portal', '/dashboard-rrhh': 'dashboard-rrhh', '/licitaciones-dashboard': 'licitaciones-dashboard',
 }
 
@@ -49,6 +49,8 @@ const NAV = [
     { clave: 'subrogacion', to: '/subrogacion', label: 'Subrogación', icon: UserCheck },
     { clave: 'fichajes', to: '/fichajes', label: 'Fichajes', icon: Clock },
     { clave: 'ausencias', to: '/ausencias', label: 'Ausencias', icon: CalendarDays },
+    { clave: 'certificaciones',      to: '/certificaciones',      label: 'Certificaciones',   icon: ShieldCheck },
+    { clave: 'escaneo-documentos',   to: '/escaneo-documentos',   label: 'Escaneo Docs',      icon: ScanLine },
   ]},
   { grupo: 'Cumplimiento', items: [
     { clave: 'prl', to: '/prl', label: 'PRL', icon: Shield },
