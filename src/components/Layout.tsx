@@ -10,7 +10,7 @@ import {
   LogOut, Menu, X, UserCheck, Shield, ClipboardList,
   Clock, CalendarDays, Map, Activity, Briefcase, CheckSquare,
   Package, Car, Star, Link2, MapPin,
-  AlertTriangle, ScanLine, ShieldCheck, Search,
+  AlertTriangle, ScanLine, ShieldCheck, Search, Euro,
 } from 'lucide-react'
 
 const RUTA_A_CLAVE: Record<string, string> = {
@@ -54,6 +54,7 @@ const NAV = [
     { clave: 'fichajes', to: '/fichajes', label: 'Fichajes', icon: Clock },
     { clave: 'ausencias', to: '/ausencias', label: 'Ausencias', icon: CalendarDays },
     { clave: 'certificaciones', to: '/certificaciones', label: 'Certificaciones', icon: ShieldCheck },
+    { clave: 'horas-extras', to: '/horas-extras', label: 'Horas extras', icon: Euro },
     { clave: 'escaneo-documentos', to: '/escaneo-documentos', label: 'Escaneo Docs', icon: ScanLine },
   ]},
   { grupo: 'Cumplimiento', items: [

@@ -47,6 +47,7 @@ const PlanificacionPage          = lazy(() => import('./pages/PlanificacionPage'
 const CertificacionesPage        = lazy(() => import('./pages/CertificacionesPage'))
 const EscaneoDocumentosPage      = lazy(() => import('./pages/EscaneoDocumentosPage'))
 const MapaSupervisorPage         = lazy(() => import('./pages/MapaSupervisorPage'))
+const HorasExtrasPage            = lazy(() => import('./pages/HorasExtrasPage'))
 
 function PageLoader() {
   return (
@@ -134,6 +135,7 @@ function AppRoutes() {
           <Route path="/subrogacion"        element={<RoleRoute clave="subrogacion"><SubrogacionPage /></RoleRoute>} />
           <Route path="/fichajes"           element={<RoleRoute clave="fichajes"><FichajesPage /></RoleRoute>} />
           <Route path="/ausencias"          element={<RoleRoute clave="ausencias"><AusenciasPage /></RoleRoute>} />
+          <Route path="/horas-extras"       element={<RoleRoute clave="horas-extras"><HorasExtrasPage /></RoleRoute>} />
           <Route path="/certificaciones"    element={<RoleRoute clave="certificaciones"><CertificacionesPage /></RoleRoute>} />
           <Route path="/escaneo-documentos" element={<RoleRoute clave="escaneo-documentos"><EscaneoDocumentosPage /></RoleRoute>} />
 

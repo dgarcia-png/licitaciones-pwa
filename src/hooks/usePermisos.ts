@@ -39,7 +39,7 @@ export const MENU_POR_ROL: Record<Rol, string[]> = {
   DIRECTOR_GERENTE: [
     'dashboard', 'informes',
     'oportunidades', 'seguimiento',
-    'personal', 'ausencias', 'fichajes',
+    'personal', 'ausencias', 'fichajes', 'horas-extras',
     'prl', 'rgpd', 'configuracion', 'usuarios',
     'escaneo-documentos', 'mapa-supervisor',
   ],
@@ -54,7 +54,7 @@ export const MENU_POR_ROL: Record<Rol, string[]> = {
 
   ADMIN_RRHH: [
     'dashboard', 'informes',
-    'personal', 'subrogacion', 'fichajes', 'ausencias',
+    'personal', 'subrogacion', 'fichajes', 'ausencias', 'horas-extras',
     'prl', 'rgpd', 'plantillas', 'usuarios',
     'dashboard-rrhh', 'escaneo-documentos', 'certificaciones',
   ],
@@ -93,7 +93,7 @@ export const MENU_POR_ROL: Record<Rol, string[]> = {
 
   SUPERVISOR_TERRITORIO: [
     'dashboard',
-    'personal', 'fichajes', 'ausencias', 'mapa-supervisor',
+    'personal', 'fichajes', 'ausencias', 'horas-extras', 'mapa-supervisor',
   ],
 
   TRABAJADOR_CAMPO: [
