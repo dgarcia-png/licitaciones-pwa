@@ -58,7 +58,7 @@ export default function BusquedaGlobal({ abierto, onCerrar }: Props) {
     if (q.trim().length < 2) { setResultados([]); return }
     setCargando(true)
     try {
-      const r = await (api as any).busquedaGlobal(q)
+      const r = await api.busquedaGlobal(q)
       setResultados(r.resultados || [])
       setActivo(0)
     } catch { setResultados([]) }

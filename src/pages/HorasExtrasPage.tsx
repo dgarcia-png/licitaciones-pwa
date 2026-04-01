@@ -80,7 +80,7 @@ export default function HorasExtrasPage() {
     setCargando(true)
     try {
       const [heData, empData] = await Promise.all([
-        (api as any).horasExtra({}),
+        api.horasExtra({}),
         api.empleados()
       ])
       const todas: any[] = heData.horas_extra || []
@@ -115,7 +115,6 @@ export default function HorasExtrasPage() {
       if (r.ok) {
         setHorasExtra(prev => prev.map(h => h.id === he.id ? { ...h, estado: 'aprobada', compensacion } : h))
         showMsg(`✅ Aprobadas — compensación por ${compensacion === 'pago' ? 'pago' : 'descanso'}`)
-        // Recalcular stats
         await cargar()
       } else showMsg(r.error || 'Error', true)
     } catch { showMsg('Error', true) }
