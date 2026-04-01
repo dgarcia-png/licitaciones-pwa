@@ -1,6 +1,7 @@
 // ============================================================================
 // 28_incidencias_sla.gs — Módulo Incidencias con SLA y escalado automático
-// Versión: 1.1 | Fecha: 31 Marzo 2026
+// Versión: 1.2 | Fecha: 2 Abril 2026
+// CAMBIOS v1.2: emails de alerta usan getEmailNotificacion_() de config_global
 // CAMBIOS: añadidas asignarIncidencia_, comentarios incidencia (CRUD)
 // ============================================================================
 
@@ -59,7 +60,7 @@ function crearIncidenciaSLA_(data) {
   // Notificar si es crítica o alta
   if (prioridad === 'critica' || prioridad === 'alta') {
     try {
-      var email = Session.getActiveUser().getEmail();
+      var email = getEmailNotificacion_('email_sla_vencida');
       if (email) {
         MailApp.sendEmail(email,
           '🚨 Forgeser — Incidencia ' + prioridad.toUpperCase() + ': ' + data.centro_nombre,
@@ -115,7 +116,7 @@ function verificarSLAIncidencias() {
       // Próximo a vencer — avisar
       hoja.getRange(i+1, 17).setValue('proximo_vencer');
       try {
-        var email2 = Session.getActiveUser().getEmail();
+        var email2 = getEmailNotificacion_('email_sla_vencida');
         if (email2) {
           MailApp.sendEmail(email2,
             '⚠️ Forgeser — SLA próximo a vencer: ' + datos[i][2],
@@ -136,7 +137,7 @@ function verificarSLAIncidencias() {
 
 function escalarIncidencia_(fila, nivel, ahora) {
   try {
-    var email = Session.getActiveUser().getEmail();
+    var email = getEmailNotificacion_('email_sla_escalacion');
     if (!email) return;
     var asunto = '🚨 ESCALACIÓN NIVEL ' + nivel + ' — Incidencia ' + fila[0] + ' (' + fila[8] + ')';
     var cuerpo = 'INCIDENCIA SLA VENCIDA — ESCALACIÓN NIVEL ' + nivel + '\n\n' +

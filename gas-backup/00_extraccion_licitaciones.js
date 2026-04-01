@@ -1,5 +1,6 @@
 // ============================================================================
-// 00_extraccion_licitaciones.gs v5.1 — Extractor PLACSP definitivo
+// 00_extraccion_licitaciones.gs
+// CAMBIOS: enviarResumenEmail_ usa getEmailNotificacion_('email_licitaciones') v5.1 — Extractor PLACSP definitivo
 // API REST v3 devuelve 404 → eliminada
 // Feeds 1044 y 642 devuelven HTML → eliminados
 // Solo sindicacion_643 funciona → se usa con 4 variaciones de parámetros
@@ -608,8 +609,8 @@ function crearHojaConFormato_(nombre, color) {
 
 function enviarResumenEmail_(oportunidades, config) {
   try {
-    var emails = config.emails_notificacion.filter(function(e) { return e; });
-    var dest   = emails.length > 0 ? emails.join(',') : Session.getActiveUser().getEmail();
+    var dest = getEmailNotificacion_('email_licitaciones');
+    if (!dest) return; // Sin email configurado, no enviar
     var asunto = '🔍 ' + oportunidades.length + ' nuevas oportunidades — Forgeser';
     var cuerpo = 'RESUMEN EXTRACTOR PLACSP\n\n';
     for (var i = 0; i < oportunidades.length; i++) {

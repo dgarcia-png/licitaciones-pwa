@@ -3,7 +3,7 @@
 // v1.5: OPTIMIZADO - envía PDFs directamente a Gemini (1 llamada, sin timeout)
 // ============================================================================
 
-var GEMINI_API_KEY = 'AIzaSyCjbxT4sZx7SpqmXyDsX-B0xWMJB8HkpGE';
+var GEMINI_API_KEY = obtenerGeminiKey_();
 var GEMINI_MODEL = 'gemini-3.1-pro-preview';
 var HOJA_ANALISIS = 'ANALISIS_IA';
 

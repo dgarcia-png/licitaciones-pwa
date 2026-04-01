@@ -1,54 +1,40 @@
 // ============================================================================
 // 33_auth_control.gs - SISTEMA DE CONTROL DE ACCESO RBAC
 // Sistema Integrado de Gestión Empresarial
-// Versión: 1.0 | Fecha: Marzo 2026
-// ============================================================================
-// Este módulo implementa el control de acceso basado en roles (RBAC)
-// con 12 roles predefinidos en 5 niveles jerárquicos.
+// Versión: 1.1 | Fecha: 2 Abril 2026
+// CAMBIOS v1.1: + obtenerRolPorEmail_(), tienePermisoEmail_(), tieneNivelEmail_()
 // ============================================================================
 
 // ============================================================================
 // CONSTANTES Y CONFIGURACIÓN
 // ============================================================================
 
-/**
- * Nombre de las hojas del sistema
- */
 const HOJAS = {
   USUARIOS: 'USUARIOS',
   AUDITORIA: 'AUDITORIA',
   CONFIG: 'CONFIG'
 };
 
-/**
- * Columnas de la hoja USUARIOS (índice 0)
- */
 const COL_USUARIOS = {
-  NOMBRE: 0,        // A: Nombre completo
-  EMAIL: 1,         // B: Email (Google Workspace)
-  ROL: 2,           // C: Rol asignado
-  ACTIVO: 3,        // D: TRUE/FALSE
-  ZONAS: 4,         // E: Zonas asignadas (separadas por coma)
-  CENTROS: 5,       // F: Centros asignados (separados por coma)
-  FECHA_ALTA: 6,    // G: Fecha de alta
-  FECHA_BAJA: 7,    // H: Fecha de baja (si aplica)
-  CREADO_POR: 8,    // I: Email del creador
-  NOTAS: 9          // J: Notas adicionales
+  NOMBRE: 0,
+  EMAIL: 1,
+  ROL: 2,
+  ACTIVO: 3,
+  ZONAS: 4,
+  CENTROS: 5,
+  FECHA_ALTA: 6,
+  FECHA_BAJA: 7,
+  CREADO_POR: 8,
+  NOTAS: 9
 };
 
-/**
- * Definición de los 12 roles del sistema organizados por nivel jerárquico
- */
 const ROLES = {
-  // ── NIVEL 1: SUPER ADMINISTRADOR ──
   SUPER_ADMIN: {
     nombre: 'Super Administrador',
     nivel: 1,
     descripcion: 'Acceso total al sistema. IT/Informático.',
     color: '#FF0000'
   },
-
-  // ── NIVEL 2: ADMINISTRADORES POR MÓDULO ──
   ADMIN_LICITACIONES: {
     nombre: 'Administrador de Licitaciones',
     nivel: 2,
@@ -67,8 +53,6 @@ const ROLES = {
     descripcion: 'Control total del módulo de territorio.',
     color: '#FF6600'
   },
-
-  // ── NIVEL 3: GESTIÓN ──
   DIRECTOR_GERENTE: {
     nombre: 'Director / Gerente',
     nivel: 3,
@@ -93,8 +77,6 @@ const ROLES = {
     descripcion: 'Gestión submódulo RGPD + auditorías.',
     color: '#0066CC'
   },
-
-  // ── NIVEL 4: SUPERVISIÓN ──
   SUPERVISOR_TERRITORIO: {
     nombre: 'Supervisor de Territorio',
     nivel: 4,
@@ -107,8 +89,6 @@ const ROLES = {
     descripcion: 'Gestión parcial territorio (solo su zona) + app.',
     color: '#009933'
   },
-
-  // ── NIVEL 5: OPERATIVO ──
   TRABAJADOR_CAMPO: {
     nombre: 'Trabajador de Campo',
     nivel: 5,
@@ -123,15 +103,10 @@ const ROLES = {
   }
 };
 
-/**
- * Matriz completa de permisos por rol
- * Cada permiso es una cadena que identifica una acción específica del sistema
- */
 const PERMISOS_POR_ROL = {
 
-  SUPER_ADMIN: ['*'], // Comodín = todos los permisos
+  SUPER_ADMIN: ['*'],
 
-  // ── ADMINISTRADORES ──
   ADMIN_LICITACIONES: [
     'LICIT_CREAR', 'LICIT_MODIFICAR', 'LICIT_ELIMINAR', 'LICIT_VER',
     'LICIT_ANALISIS_IA', 'LICIT_CALCULO', 'LICIT_INFORME',
@@ -162,7 +137,6 @@ const PERMISOS_POR_ROL = {
     'CONFIG_TERRITORIO'
   ],
 
-  // ── GESTIÓN ──
   DIRECTOR_GERENTE: [
     'LICIT_VER', 'LICIT_INFORME',
     'RRHH_VER_EMPLEADO', 'RRHH_INFORMES',
@@ -174,48 +148,46 @@ const PERMISOS_POR_ROL = {
     'LICIT_CREAR', 'LICIT_MODIFICAR', 'LICIT_VER',
     'LICIT_ANALISIS_IA', 'LICIT_CALCULO', 'LICIT_INFORME',
     'LICIT_HISTORICO', 'LICIT_EXPORTAR',
-    'RRHH_VER_EMPLEADO', // Solo lectura RRHH para consultar disponibilidad
+    'RRHH_VER_EMPLEADO',
     'DASHBOARD_LICITACIONES'
   ],
 
   RESPONSABLE_PRL: [
     'PRL_GESTIONAR', 'PRL_EPIS', 'PRL_RECONOCIMIENTOS', 'PRL_FORMACION',
     'PRL_DOCUMENTOS', 'PRL_INFORMES',
-    'RRHH_VER_EMPLEADO', // Solo lectura de datos básicos empleados
+    'RRHH_VER_EMPLEADO',
     'DASHBOARD_PRL'
   ],
 
   RESPONSABLE_RGPD: [
     'RGPD_GESTIONAR', 'RGPD_CONSENTIMIENTOS', 'RGPD_ARCO', 'RGPD_AUDITORIA',
-    'RRHH_VER_EMPLEADO', // Solo lectura de datos básicos
-    'TERR_VER_CENTRO',   // Solo lectura territorio (auditoría datos)
-    'VER_LOGS_AUDITORIA', // Acceso a logs del sistema
+    'RRHH_VER_EMPLEADO',
+    'TERR_VER_CENTRO',
+    'VER_LOGS_AUDITORIA',
     'DASHBOARD_RGPD'
   ],
 
-  // ── SUPERVISIÓN ──
   SUPERVISOR_TERRITORIO: [
-    'TERR_VER_CENTRO',   // Solo sus centros/zona
-    'TERR_SERVICIOS',    // Gestionar servicios de su zona
+    'TERR_VER_CENTRO',
+    'TERR_SERVICIOS',
     'TERR_INCIDENCIAS', 'TERR_INCIDENCIAS_GESTIONAR',
-    'TERR_INVENTARIO',   // Solicitar material
-    'TERR_MAPA_TIEMPO_REAL', // Solo su zona
-    'TERR_INFORMES_CLIENTE', // Generar informes de sus centros
-    'TERR_ASIGNAR_TAREAS',  // Asignar tareas desde app
-    'RRHH_VER_EMPLEADO',    // Solo lectura de su equipo
+    'TERR_INVENTARIO',
+    'TERR_MAPA_TIEMPO_REAL',
+    'TERR_INFORMES_CLIENTE',
+    'TERR_ASIGNAR_TAREAS',
+    'RRHH_VER_EMPLEADO',
     'APP_ACCESO', 'APP_DASHBOARD_SUPERVISION',
     'DASHBOARD_TERRITORIO'
   ],
 
   ENCARGADO_ZONA: [
-    'TERR_VER_CENTRO',     // Solo sus centros
+    'TERR_VER_CENTRO',
     'TERR_SERVICIOS',
-    'TERR_INCIDENCIAS',    // Reportar incidencias
-    'TERR_INVENTARIO',     // Solicitar material
+    'TERR_INCIDENCIAS',
+    'TERR_INVENTARIO',
     'APP_ACCESO', 'APP_DASHBOARD_SUPERVISION'
   ],
 
-  // ── OPERATIVO ──
   TRABAJADOR_CAMPO: [
     'APP_ACCESO',
     'APP_INICIAR_SERVICIO', 'APP_FINALIZAR_SERVICIO',
@@ -228,50 +200,38 @@ const PERMISOS_POR_ROL = {
   TRABAJADOR_LECTURA: [
     'APP_ACCESO',
     'APP_VER_MI_CENTRO', 'APP_VER_MIS_TAREAS'
-    // Solo consulta, no puede modificar nada
   ]
 };
 
 
 // ============================================================================
-// FUNCIONES PRINCIPALES DE AUTENTICACIÓN
+// FUNCIONES PRINCIPALES DE AUTENTICACIÓN (uso desde UI/menús)
 // ============================================================================
 
-/**
- * Obtiene los datos del usuario actual autenticado
- * @returns {Object|null} Datos del usuario o null si no encontrado
- */
 function obtenerRolUsuario() {
   try {
     const email = Session.getActiveUser().getEmail();
-    
     if (!email) {
       Logger.log('ERROR: No se pudo obtener el email del usuario activo.');
       return null;
     }
-    
     const ss = SpreadsheetApp.getActiveSpreadsheet();
     const hojaUsuarios = ss.getSheetByName(HOJAS.USUARIOS);
-    
     if (!hojaUsuarios) {
       Logger.log('ERROR: No existe la hoja ' + HOJAS.USUARIOS);
       return null;
     }
-    
     const datos = hojaUsuarios.getDataRange().getValues();
-    
-    // Buscar usuario por email (columna B, índice 1)
     for (let i = 1; i < datos.length; i++) {
-      if (datos[i][COL_USUARIOS.EMAIL] && 
+      if (datos[i][COL_USUARIOS.EMAIL] &&
           datos[i][COL_USUARIOS.EMAIL].toString().toLowerCase().trim() === email.toLowerCase().trim()) {
-        
         const usuario = {
-          fila: i + 1, // Fila real en la hoja (1-indexed)
+          fila: i + 1,
           nombre: datos[i][COL_USUARIOS.NOMBRE] || '',
           email: email,
           rol: datos[i][COL_USUARIOS.ROL] || '',
           activo: datos[i][COL_USUARIOS.ACTIVO] === true || datos[i][COL_USUARIOS.ACTIVO] === 'TRUE',
-          zonas_asignadas: datos[i][COL_USUARIOS.ZONAS] 
+          zonas_asignadas: datos[i][COL_USUARIOS.ZONAS]
             ? datos[i][COL_USUARIOS.ZONAS].toString().split(',').map(z => z.trim()).filter(z => z)
             : [],
           centros_asignados: datos[i][COL_USUARIOS.CENTROS]
@@ -280,118 +240,67 @@ function obtenerRolUsuario() {
           fecha_alta: datos[i][COL_USUARIOS.FECHA_ALTA] || '',
           notas: datos[i][COL_USUARIOS.NOTAS] || ''
         };
-        
-        // Verificar que el usuario está activo
         if (!usuario.activo) {
           Logger.log('AVISO: Usuario ' + email + ' está desactivado.');
           return null;
         }
-        
-        // Verificar que el rol existe
         if (!ROLES[usuario.rol]) {
           Logger.log('ERROR: Rol desconocido "' + usuario.rol + '" para usuario ' + email);
           return null;
         }
-        
-        // Añadir información del rol
         usuario.nivel = ROLES[usuario.rol].nivel;
         usuario.nombre_rol = ROLES[usuario.rol].nombre;
-        
         return usuario;
       }
     }
-    
     Logger.log('AVISO: Usuario ' + email + ' no encontrado en la hoja USUARIOS.');
     return null;
-    
   } catch (error) {
     Logger.log('ERROR en obtenerRolUsuario(): ' + error.message);
     return null;
   }
 }
 
-/**
- * Verifica si el usuario actual tiene un permiso específico
- * @param {string} permiso - Código del permiso a verificar
- * @returns {boolean} true si tiene el permiso
- */
 function tienePermiso(permiso) {
   const usuario = obtenerRolUsuario();
-  
   if (!usuario) return false;
-  
   const permisosRol = PERMISOS_POR_ROL[usuario.rol];
-  
   if (!permisosRol) return false;
-  
-  // Comodín: SUPER_ADMIN tiene todos los permisos
   if (permisosRol.includes('*')) return true;
-  
   return permisosRol.includes(permiso);
 }
 
-/**
- * Verifica si el usuario tiene AL MENOS UNO de los permisos indicados
- * @param {string[]} permisos - Array de códigos de permiso
- * @returns {boolean}
- */
 function tieneAlgunPermiso(permisos) {
   const usuario = obtenerRolUsuario();
   if (!usuario) return false;
-  
   const permisosRol = PERMISOS_POR_ROL[usuario.rol];
   if (!permisosRol) return false;
   if (permisosRol.includes('*')) return true;
-  
   return permisos.some(p => permisosRol.includes(p));
 }
 
-/**
- * Verifica si el usuario tiene TODOS los permisos indicados
- * @param {string[]} permisos - Array de códigos de permiso
- * @returns {boolean}
- */
 function tieneTodosPermisos(permisos) {
   const usuario = obtenerRolUsuario();
   if (!usuario) return false;
-  
   const permisosRol = PERMISOS_POR_ROL[usuario.rol];
   if (!permisosRol) return false;
   if (permisosRol.includes('*')) return true;
-  
   return permisos.every(p => permisosRol.includes(p));
 }
 
-/**
- * Verifica si el usuario tiene un nivel jerárquico igual o superior al indicado
- * (nivel 1 = más alto, nivel 5 = más bajo)
- * @param {number} nivelRequerido - Nivel mínimo requerido (1-5)
- * @returns {boolean}
- */
 function tieneNivelMinimo(nivelRequerido) {
   const usuario = obtenerRolUsuario();
   if (!usuario) return false;
-  
   return usuario.nivel <= nivelRequerido;
 }
 
 
 // ============================================================================
-// DECORADORES DE PERMISOS (Wrappers para funciones protegidas)
+// DECORADORES DE PERMISOS
 // ============================================================================
 
-/**
- * Ejecuta una función solo si el usuario tiene el permiso requerido.
- * Si no tiene permiso, muestra un mensaje y registra el intento.
- * 
- * @param {string} permisoRequerido - Código del permiso
- * @param {Function} funcion - Función a ejecutar
- * @param {string} nombreAccion - Descripción de la acción (para logs)
- * @returns {*} Resultado de la función o null si no autorizado
- */
 function ejecutarConPermiso(permisoRequerido, funcion, nombreAccion) {
   const usuario = obtenerRolUsuario();
-  
   if (!usuario) {
     SpreadsheetApp.getUi().alert(
       '⛔ Acceso Denegado',
@@ -400,7 +309,6 @@ function ejecutarConPermiso(permisoRequerido, funcion, nombreAccion) {
     );
     return null;
   }
-  
   if (!tienePermiso(permisoRequerido)) {
     SpreadsheetApp.getUi().alert(
       '⛔ Sin Permisos',
@@ -409,35 +317,19 @@ function ejecutarConPermiso(permisoRequerido, funcion, nombreAccion) {
       'Contacta con el Super Administrador si necesitas acceso.',
       SpreadsheetApp.getUi().ButtonSet.OK
     );
-    
     registrarAccion('ACCESO_DENEGADO: ' + nombreAccion + ' (requería: ' + permisoRequerido + ')', usuario);
     return null;
   }
-  
-  // Tiene permiso: ejecutar y registrar
   registrarAccion(nombreAccion, usuario);
   return funcion(usuario);
 }
 
-/**
- * Ejecuta una función solo si el usuario tiene nivel jerárquico suficiente
- * @param {number} nivelMinimo - Nivel mínimo requerido (1 = más alto)
- * @param {Function} funcion - Función a ejecutar
- * @param {string} nombreAccion - Descripción de la acción
- * @returns {*}
- */
 function ejecutarConNivel(nivelMinimo, funcion, nombreAccion) {
   const usuario = obtenerRolUsuario();
-  
   if (!usuario) {
-    SpreadsheetApp.getUi().alert(
-      '⛔ Acceso Denegado',
-      'No estás registrado en el sistema.',
-      SpreadsheetApp.getUi().ButtonSet.OK
-    );
+    SpreadsheetApp.getUi().alert('⛔ Acceso Denegado', 'No estás registrado en el sistema.', SpreadsheetApp.getUi().ButtonSet.OK);
     return null;
   }
-  
   if (usuario.nivel > nivelMinimo) {
     SpreadsheetApp.getUi().alert(
       '⛔ Nivel Insuficiente',
@@ -448,7 +340,6 @@ function ejecutarConNivel(nivelMinimo, funcion, nombreAccion) {
     registrarAccion('NIVEL_INSUFICIENTE: ' + nombreAccion, usuario);
     return null;
   }
-  
   registrarAccion(nombreAccion, usuario);
   return funcion(usuario);
 }
@@ -458,75 +349,34 @@ function ejecutarConNivel(nivelMinimo, funcion, nombreAccion) {
 // FILTROS POR ALCANCE GEOGRÁFICO
 // ============================================================================
 
-/**
- * Filtra un array de datos según el alcance geográfico del usuario.
- * Los roles de nivel 1-3 ven todos los datos.
- * Supervisores y trabajadores solo ven sus zonas/centros.
- * 
- * @param {Array[]} datos - Array de filas de datos
- * @param {string} tipo - Tipo de datos: 'CENTROS', 'EMPLEADOS', 'SERVICIOS', 'INCIDENCIAS'
- * @param {Object} [columnas] - Índices de columnas relevantes
- * @param {number} [columnas.zona] - Índice de la columna zona
- * @param {number} [columnas.centro] - Índice de la columna centro
- * @returns {Array[]} Datos filtrados
- */
 function filtrarDatosSegunAlcance(datos, tipo, columnas) {
   const usuario = obtenerRolUsuario();
   if (!usuario) return [];
-  
-  // Niveles 1, 2 y 3 ven todo
   if (usuario.nivel <= 3) return datos;
-  
-  // Configuración por defecto de columnas según tipo
   const colConfig = columnas || {
     zona: tipo === 'CENTROS' ? 3 : tipo === 'EMPLEADOS' ? 5 : 2,
     centro: tipo === 'CENTROS' ? 0 : tipo === 'EMPLEADOS' ? 6 : 3
   };
-  
   return datos.filter(fila => {
     const zonaFila = fila[colConfig.zona] ? fila[colConfig.zona].toString().trim() : '';
     const centroFila = fila[colConfig.centro] ? fila[colConfig.centro].toString().trim() : '';
-    
-    // ¿Tiene la zona asignada?
-    if (usuario.zonas_asignadas.length > 0 && usuario.zonas_asignadas.includes(zonaFila)) {
-      return true;
-    }
-    
-    // ¿Tiene el centro asignado?
-    if (usuario.centros_asignados.length > 0 && usuario.centros_asignados.includes(centroFila)) {
-      return true;
-    }
-    
+    if (usuario.zonas_asignadas.length > 0 && usuario.zonas_asignadas.includes(zonaFila)) return true;
+    if (usuario.centros_asignados.length > 0 && usuario.centros_asignados.includes(centroFila)) return true;
     return false;
   });
 }
 
-/**
- * Verifica si el usuario tiene acceso a un centro específico
- * @param {string} idCentro - ID del centro
- * @returns {boolean}
- */
 function tieneAccesoCentro(idCentro) {
   const usuario = obtenerRolUsuario();
   if (!usuario) return false;
-  
-  // Niveles 1-3 tienen acceso a todos los centros
   if (usuario.nivel <= 3) return true;
-  
   return usuario.centros_asignados.includes(idCentro);
 }
 
-/**
- * Verifica si el usuario tiene acceso a una zona específica
- * @param {string} zona - Nombre/código de la zona
- * @returns {boolean}
- */
 function tieneAccesoZona(zona) {
   const usuario = obtenerRolUsuario();
   if (!usuario) return false;
-  
   if (usuario.nivel <= 3) return true;
-  
   return usuario.zonas_asignadas.includes(zona);
 }
 
@@ -535,51 +385,33 @@ function tieneAccesoZona(zona) {
 // SISTEMA DE AUDITORÍA
 // ============================================================================
 
-/**
- * Registra una acción en la hoja de auditoría
- * @param {string} accion - Descripción de la acción realizada
- * @param {Object} [usuario] - Datos del usuario (si ya se tienen)
- */
 function registrarAccion(accion, usuario) {
   try {
-    if (!usuario) {
-      usuario = obtenerRolUsuario();
-    }
-    
+    if (!usuario) usuario = obtenerRolUsuario();
     const ss = SpreadsheetApp.getActiveSpreadsheet();
     const hojaAuditoria = ss.getSheetByName(HOJAS.AUDITORIA);
-    
     if (!hojaAuditoria) {
       Logger.log('AVISO: No existe hoja AUDITORIA. No se registró: ' + accion);
       return;
     }
-    
     const nuevaFila = [
-      new Date(),                                          // A: Timestamp
-      usuario ? usuario.email : Session.getActiveUser().getEmail(), // B: Email
-      usuario ? usuario.nombre : 'Desconocido',            // C: Nombre
-      usuario ? usuario.rol : 'SIN_ROL',                   // D: Rol
-      accion,                                              // E: Acción
-      Session.getTemporaryActiveUserKey(),                  // F: Session Key
-      obtenerIPAproximada_()                                // G: Info adicional
+      new Date(),
+      usuario ? usuario.email : Session.getActiveUser().getEmail(),
+      usuario ? usuario.nombre : 'Desconocido',
+      usuario ? usuario.rol : 'SIN_ROL',
+      accion,
+      Session.getTemporaryActiveUserKey(),
+      obtenerIPAproximada_()
     ];
-    
     hojaAuditoria.appendRow(nuevaFila);
-    
   } catch (error) {
     Logger.log('ERROR registrando auditoría: ' + error.message);
   }
 }
 
-/**
- * Obtiene información aproximada de la sesión (no IP real por limitaciones de GAS)
- * @returns {string}
- * @private
- */
 function obtenerIPAproximada_() {
   try {
-    return 'Zona horaria: ' + Session.getScriptTimeZone() + 
-           ' | Locale: ' + Session.getActiveUserLocale();
+    return 'Zona horaria: ' + Session.getScriptTimeZone() + ' | Locale: ' + Session.getActiveUserLocale();
   } catch (e) {
     return 'N/A';
   }
@@ -590,72 +422,40 @@ function obtenerIPAproximada_() {
 // FUNCIONES DE UTILIDAD
 // ============================================================================
 
-/**
- * Devuelve la lista de roles válidos del sistema
- * @returns {string[]}
- */
 function obtenerRolesValidos() {
   return Object.keys(ROLES);
 }
 
-/**
- * Devuelve información completa de un rol
- * @param {string} codigoRol - Código del rol (ej: 'SUPER_ADMIN')
- * @returns {Object|null}
- */
 function obtenerInfoRol(codigoRol) {
   return ROLES[codigoRol] || null;
 }
 
-/**
- * Devuelve los permisos de un rol
- * @param {string} codigoRol - Código del rol
- * @returns {string[]}
- */
 function obtenerPermisosRol(codigoRol) {
   return PERMISOS_POR_ROL[codigoRol] || [];
 }
 
-/**
- * Verifica si el usuario actual es Super Admin
- * @returns {boolean}
- */
 function esSuperAdmin() {
   const usuario = obtenerRolUsuario();
   return usuario && usuario.rol === 'SUPER_ADMIN';
 }
 
-/**
- * Verifica si el usuario actual es administrador (nivel 1 o 2)
- * @returns {boolean}
- */
 function esAdministrador() {
   const usuario = obtenerRolUsuario();
   return usuario && usuario.nivel <= 2;
 }
 
-/**
- * Obtiene un resumen del usuario actual para mostrar en la UI
- * @returns {string}
- */
 function obtenerResumenUsuarioActual() {
   const usuario = obtenerRolUsuario();
   if (!usuario) return 'Usuario no registrado';
-  
   return usuario.nombre + ' | ' + usuario.nombre_rol + ' (Nivel ' + usuario.nivel + ')';
 }
 
-/**
- * Muestra un diálogo con la información del usuario actual
- */
 function mostrarMiPerfil() {
   const usuario = obtenerRolUsuario();
-  
   if (!usuario) {
     SpreadsheetApp.getUi().alert('No estás registrado en el sistema.');
     return;
   }
-  
   const info = [
     '👤 ' + usuario.nombre,
     '📧 ' + usuario.email,
@@ -668,6 +468,91 @@ function mostrarMiPerfil() {
     '',
     '✅ Permisos: ' + (PERMISOS_POR_ROL[usuario.rol].includes('*') ? 'TODOS' : PERMISOS_POR_ROL[usuario.rol].length + ' permisos asignados')
   ];
-  
   SpreadsheetApp.getUi().alert('Mi Perfil', info.join('\n'), SpreadsheetApp.getUi().ButtonSet.OK);
+}
+
+
+// ============================================================================
+// NUEVAS FUNCIONES PARA doPost — v1.1
+// Buscan por email directamente, sin Session.getActiveUser()
+// que no funciona en contexto de Web App con token propio
+// ============================================================================
+
+/**
+ * Obtiene el rol de un usuario a partir de su email.
+ * Uso en doPost donde emailAuth viene del token, no de Session.
+ */
+function obtenerRolPorEmail_(email) {
+  try {
+    if (!email) return null;
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var hojaUsuarios = ss.getSheetByName(HOJAS.USUARIOS);
+    if (!hojaUsuarios) return null;
+
+    var datos = hojaUsuarios.getDataRange().getValues();
+    for (var i = 1; i < datos.length; i++) {
+      var emailFila = datos[i][COL_USUARIOS.EMAIL];
+      if (!emailFila) continue;
+      if (emailFila.toString().toLowerCase().trim() !== email.toLowerCase().trim()) continue;
+
+      var activo = datos[i][COL_USUARIOS.ACTIVO];
+      if (!(activo === true || activo === 'TRUE' || activo === 'true' || activo === 1)) return null;
+
+      var rol = datos[i][COL_USUARIOS.ROL] || '';
+      if (!ROLES[rol]) return null;
+
+      return {
+        nombre:            datos[i][COL_USUARIOS.NOMBRE] || '',
+        email:             email,
+        rol:               rol,
+        nivel:             ROLES[rol].nivel,
+        nombre_rol:        ROLES[rol].nombre,
+        zonas_asignadas:   datos[i][COL_USUARIOS.ZONAS]
+          ? datos[i][COL_USUARIOS.ZONAS].toString().split(',').map(function(z){return z.trim();}).filter(function(z){return z;})
+          : [],
+        centros_asignados: datos[i][COL_USUARIOS.CENTROS]
+          ? datos[i][COL_USUARIOS.CENTROS].toString().split(',').map(function(c){return c.trim();}).filter(function(c){return c;})
+          : []
+      };
+    }
+    return null;
+  } catch (error) {
+    Logger.log('ERROR en obtenerRolPorEmail_(): ' + error.message);
+    return null;
+  }
+}
+
+/**
+ * Verifica si un email tiene un permiso concreto.
+ * Retorna { ok: true } o { ok: false, error: '...' }
+ * Uso en doPost para proteger acciones críticas.
+ */
+function tienePermisoEmail_(email, permiso) {
+  var usuario = obtenerRolPorEmail_(email);
+  if (!usuario) return { ok: false, error: 'Usuario no encontrado o inactivo en el sistema' };
+
+  var permisosRol = PERMISOS_POR_ROL[usuario.rol];
+  if (!permisosRol) return { ok: false, error: 'Rol sin permisos definidos' };
+
+  if (permisosRol.indexOf('*') !== -1) return { ok: true };
+  if (permisosRol.indexOf(permiso) !== -1) return { ok: true };
+
+  return {
+    ok: false,
+    error: 'Sin permisos. Tu rol (' + usuario.nombre_rol + ') no puede realizar esta acción.'
+  };
+}
+
+/**
+ * Verifica si un email tiene nivel jerárquico suficiente.
+ * nivel 1 = más alto (SUPER_ADMIN), nivel 5 = más bajo (TRABAJADOR).
+ */
+function tieneNivelEmail_(email, nivelRequerido) {
+  var usuario = obtenerRolPorEmail_(email);
+  if (!usuario) return { ok: false, error: 'Usuario no encontrado o inactivo en el sistema' };
+  if (usuario.nivel <= nivelRequerido) return { ok: true };
+  return {
+    ok: false,
+    error: 'Acción reservada a nivel ' + nivelRequerido + ' o superior. Tu nivel es ' + usuario.nivel + ' (' + usuario.nombre_rol + ').'
+  };
 }

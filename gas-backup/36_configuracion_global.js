@@ -1,12 +1,19 @@
 // ============================================================================
 // 36_configuracion_global.gs — Configuración centralizada de toda la aplicación
+// Versión: 1.1 | Fecha: 2 Abril 2026
+// CAMBIOS v1.1: + módulo notificaciones (un email por tipo de alerta)
+//               + helper getEmailNotificacion_(tipo)
 // ============================================================================
 
 var HOJA_CONFIG_GLOBAL = 'CONFIG_GLOBAL';
 
 function inicializarConfigGlobal_() {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
-  if (ss.getSheetByName(HOJA_CONFIG_GLOBAL)) return;
+  if (ss.getSheetByName(HOJA_CONFIG_GLOBAL)) {
+    // Si ya existe, añadir filas de notificaciones que falten
+    _añadirFilasNotificacionesSiFaltan_();
+    return;
+  }
 
   var h = ss.insertSheet(HOJA_CONFIG_GLOBAL);
   h.getRange(1,1,1,4).setValues([['Modulo','Clave','Valor','Descripcion']])
@@ -20,7 +27,7 @@ function inicializarConfigGlobal_() {
     ['empresa','direccion','Almonte, Huelva','Dirección fiscal'],
     ['empresa','telefono','','Teléfono de contacto'],
     ['empresa','email_contacto','','Email de contacto'],
-    ['empresa','email_notificaciones','','Emails notificaciones (separados por coma)'],
+    ['empresa','email_notificaciones','','Emails notificaciones genéricas (separados por coma)'],
     ['empresa','logo_url','','URL del logo'],
 
     // LICITACIONES
@@ -72,8 +79,8 @@ function inicializarConfigGlobal_() {
     ['calidad','plazo_accion_correctiva_dias','7','Días plazo acción correctiva desde inspección'],
     ['calidad','frecuencia_inspeccion_dias','30','Días entre inspecciones de calidad'],
 
-    // PL ECONOMICO
-    ['economico','pct_indirectos','15','% costes indirectos P&L (sobrescribe territorio si distinto)'],
+    // ECONOMICO / P&L
+    ['economico','pct_indirectos','15','% costes indirectos P&L'],
     ['economico','dia_consolidacion_mensual','1','Día del mes para consolidación automática P&L'],
     ['economico','margen_alerta_pct','10','Margen mínimo antes de generar alerta (%)'],
     ['economico','incluir_iva_presupuestos','false','Incluir IVA en cálculos de presupuesto'],
@@ -87,13 +94,86 @@ function inicializarConfigGlobal_() {
     ['listas','tipos_material','Producto limpieza,Maquinaria,EPI,Consumible,Herramienta,Otros','Tipos de material'],
     ['listas','carnets_profesionales','Carnet conducir B,Carnet conducir C,Manipulador alimentos,Fitosanitarios,PRL básico,PRL 60h,PRL 20h,Trabajo en altura,Espacios confinados,Primeros auxilios','Carnets y certificaciones'],
     ['listas','convenios','Limpieza edificios y locales Huelva,Limpieza edificios y locales Sevilla,Limpieza edificios y locales Cádiz,Jardines y parques Andalucía','Convenios colectivos aplicables'],
+
+    // ── NOTIFICACIONES — un email por tipo de alerta ──────────────────────────
+    ['notificaciones','email_sla_vencida',          '','Incidencia que supera el tiempo SLA'],
+    ['notificaciones','email_sla_escalacion',        '','Escalación automática de incidencia crítica'],
+    ['notificaciones','email_prl_caducidad',         '','EPIs, reconocimientos o formación PRL próximos a vencer'],
+    ['notificaciones','email_certificaciones',       '','Carnets o certificaciones del personal próximos a vencer'],
+    ['notificaciones','email_stock_minimo',          '','Material por debajo del stock mínimo configurado'],
+    ['notificaciones','email_contratos_vencer',      '','Contratos de empleados próximos a vencer'],
+    ['notificaciones','email_horas_extras_aprobar',  '','Horas extra generadas pendientes de aprobación'],
+    ['notificaciones','email_horas_extras_limite',   '','Empleado acercándose al límite anual de 80h (art. 35 ET)'],
+    ['notificaciones','email_fichajes_prov',         '','Fichajes provisionales sin validar por supervisor'],
+    ['notificaciones','email_ausencias_pendientes',  '','Solicitudes de ausencia pendientes de aprobar'],
+    ['notificaciones','email_licitaciones',          '','Nueva licitación relevante detectada por el sistema'],
+    ['notificaciones','email_backup',                '','Resultado del backup semanal a Google Drive'],
   ];
 
   h.getRange(2, 1, defaults.length, 4).setValues(defaults);
   h.setColumnWidth(1, 120);
-  h.setColumnWidth(2, 220);
+  h.setColumnWidth(2, 240);
   h.setColumnWidth(3, 300);
   h.setColumnWidth(4, 350);
+}
+
+// ── Añadir filas de notificaciones si la hoja ya existe sin ellas ─────────────
+function _añadirFilasNotificacionesSiFaltan_() {
+  var ss   = SpreadsheetApp.getActiveSpreadsheet();
+  var hoja = ss.getSheetByName(HOJA_CONFIG_GLOBAL);
+  if (!hoja) return;
+
+  var datos = hoja.getDataRange().getValues();
+  var clavesExistentes = {};
+  for (var i = 1; i < datos.length; i++) {
+    clavesExistentes[datos[i][0] + '|' + datos[i][1]] = true;
+  }
+
+  var nuevas = [
+    ['notificaciones','email_sla_vencida',          '','Incidencia que supera el tiempo SLA'],
+    ['notificaciones','email_sla_escalacion',        '','Escalación automática de incidencia crítica'],
+    ['notificaciones','email_prl_caducidad',         '','EPIs, reconocimientos o formación PRL próximos a vencer'],
+    ['notificaciones','email_certificaciones',       '','Carnets o certificaciones del personal próximos a vencer'],
+    ['notificaciones','email_stock_minimo',          '','Material por debajo del stock mínimo configurado'],
+    ['notificaciones','email_contratos_vencer',      '','Contratos de empleados próximos a vencer'],
+    ['notificaciones','email_horas_extras_aprobar',  '','Horas extra generadas pendientes de aprobación'],
+    ['notificaciones','email_horas_extras_limite',   '','Empleado acercándose al límite anual de 80h (art. 35 ET)'],
+    ['notificaciones','email_fichajes_prov',         '','Fichajes provisionales sin validar por supervisor'],
+    ['notificaciones','email_ausencias_pendientes',  '','Solicitudes de ausencia pendientes de aprobar'],
+    ['notificaciones','email_licitaciones',          '','Nueva licitación relevante detectada por el sistema'],
+    ['notificaciones','email_backup',                '','Resultado del backup semanal a Google Drive'],
+  ];
+
+  var añadidas = 0;
+  for (var j = 0; j < nuevas.length; j++) {
+    var key = nuevas[j][0] + '|' + nuevas[j][1];
+    if (!clavesExistentes[key]) {
+      hoja.appendRow(nuevas[j]);
+      añadidas++;
+    }
+  }
+  if (añadidas > 0) Logger.log('✅ Añadidas ' + añadidas + ' filas de notificaciones a CONFIG_GLOBAL');
+}
+
+// ── Helper principal: obtener email para un tipo de alerta ────────────────────
+// Uso: var email = getEmailNotificacion_('email_sla_vencida');
+// Fallback: email_notificaciones genérico → email_contacto → owner del script
+function getEmailNotificacion_(tipo) {
+  // 1. Email específico del tipo
+  var email = getConfig_('notificaciones', tipo, '');
+
+  // 2. Fallback: email_notificaciones genérico de empresa
+  if (!email) email = getConfig_('empresa', 'email_notificaciones', '');
+
+  // 3. Fallback: email de contacto de la empresa
+  if (!email) email = getConfig_('empresa', 'email_contacto', '');
+
+  // 4. Último recurso: email del propietario del script
+  if (!email) {
+    try { email = Session.getActiveUser().getEmail(); } catch(e) {}
+  }
+
+  return email || '';
 }
 
 // ── Obtener toda la configuración ────────────────────────────────────────────
@@ -146,13 +226,13 @@ function guardarConfigGlobalAPI_(data) {
       }
     }
 
-    // Si no existe, añadir nueva fila
+    // Si no existe la clave, añadir nueva fila
     if (!encontrado) {
       hoja.appendRow([cam.modulo, cam.clave, cam.valor, cam.descripcion || '']);
     }
   }
 
-  // Invalidar caché GAS si existe
+  // Invalidar caché
   try { CacheService.getScriptCache().removeAll(['config_global']); } catch(e) {}
 
   return { ok: true, cambios_guardados: cambios.length };
@@ -162,11 +242,11 @@ function guardarConfigGlobalAPI_(data) {
 function getConfig_(modulo, clave, defecto) {
   var res = obtenerConfigGlobalAPI_();
   var mod = res.config[modulo] || {};
-  return mod[clave] !== undefined ? mod[clave] : defecto;
+  return mod[clave] !== undefined && mod[clave] !== '' ? mod[clave] : defecto;
 }
 
-// Función pública para ejecutar manualmente desde Apps Script
+// ── Función pública para ejecutar manualmente desde Apps Script ───────────────
 function inicializar() {
   inicializarConfigGlobal_();
-  Logger.log('✅ CONFIG_GLOBAL inicializada con valores por defecto');
+  Logger.log('✅ CONFIG_GLOBAL inicializada/actualizada');
 }

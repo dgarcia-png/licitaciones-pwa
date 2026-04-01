@@ -1,5 +1,7 @@
 // ============================================================================
-// 26_portal_cliente.gs — Portal cliente con acceso por token
+// 26_portal_cliente.gs — Portal cliente con acceso por token + vigencia contrato
+// Versión: 2.0 | Fecha: 2 Abril 2026
+// CAMBIOS v2.0: token válido solo entre fecha_inicio y fecha_fin del contrato
 // ============================================================================
 
 var HOJA_TOKENS_CLIENTE = 'TOKENS_CLIENTE';
@@ -8,9 +10,10 @@ function inicializarPortalCliente_() {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   if (ss.getSheetByName(HOJA_TOKENS_CLIENTE)) return;
   var h = ss.insertSheet(HOJA_TOKENS_CLIENTE);
-  h.getRange(1,1,1,10).setValues([[
+  h.getRange(1,1,1,12).setValues([[
     'ID','Token','Centro_ID','Centro_Nombre','Organismo',
-    'Email_Contacto','Nombre_Contacto','Activo','Creado','Ultimo_Acceso'
+    'Email_Contacto','Nombre_Contacto','Activo','Creado','Ultimo_Acceso',
+    'Fecha_Inicio','Fecha_Fin'
   ]]).setBackground('#1a3c34').setFontColor('#fff').setFontWeight('bold');
   h.setFrozenRows(1);
 }
@@ -21,20 +24,38 @@ function generarTokenClienteAPI_(data) {
   var ss   = SpreadsheetApp.getActiveSpreadsheet();
   var hoja = ss.getSheetByName(HOJA_TOKENS_CLIENTE);
 
+  // Validar fechas
+  if (!data.fecha_inicio || !data.fecha_fin) {
+    return { ok: false, error: 'Las fechas de inicio y fin del contrato son obligatorias' };
+  }
+  var fechaInicio = new Date(data.fecha_inicio);
+  var fechaFin    = new Date(data.fecha_fin);
+  if (isNaN(fechaInicio.getTime()) || isNaN(fechaFin.getTime())) {
+    return { ok: false, error: 'Formato de fecha inválido' };
+  }
+  if (fechaFin <= fechaInicio) {
+    return { ok: false, error: 'La fecha de fin debe ser posterior a la de inicio' };
+  }
+
   // Generar token único
   var token = Utilities.computeHmacSha256Signature(
-    data.centro_id + Date.now(),
-    'forgeser_secret_2026'
+    data.centro_id + Date.now() + Math.random(),
+    PropertiesService.getScriptProperties().getProperty('PORTAL_SECRET') || 'forgeser_portal_2026'
   ).map(function(b) { return (b < 0 ? b + 256 : b).toString(16).padStart(2,'0'); }).join('').substring(0,32);
 
   var id = 'TOK-' + Utilities.formatDate(new Date(),'Europe/Madrid','yyyyMMddHHmmss');
   hoja.appendRow([
     id, token, data.centro_id||'', data.centro_nombre||'',
     data.organismo||'', data.email_contacto||'', data.nombre_contacto||'',
-    true, new Date(), ''
+    true, new Date(), '',
+    fechaInicio, fechaFin
   ]);
 
   var url = 'https://licitaciones-pwa.vercel.app/portal-cliente?token=' + token;
+
+  var periodoStr = Utilities.formatDate(fechaInicio,'Europe/Madrid','dd/MM/yyyy') +
+                   ' — ' +
+                   Utilities.formatDate(fechaFin,'Europe/Madrid','dd/MM/yyyy');
 
   if (data.email_contacto && data.enviar_email) {
     try {
@@ -44,6 +65,7 @@ function generarTokenClienteAPI_(data) {
         'Estimado/a ' + (data.nombre_contacto||'') + ',\n\n' +
         'Le facilitamos el acceso a su portal personalizado de seguimiento de servicios:\n\n' +
         url + '\n\n' +
+        'Este enlace estará disponible durante el período del contrato: ' + periodoStr + '.\n\n' +
         'En este portal podrá consultar:\n' +
         '• Servicios realizados con fecha, trabajador y checklist\n' +
         '• Incidencias abiertas y su estado\n' +
@@ -53,7 +75,7 @@ function generarTokenClienteAPI_(data) {
     } catch(e) { Logger.log('Email error: ' + e.message); }
   }
 
-  return { ok: true, id: id, token: token, url: url };
+  return { ok: true, id: id, token: token, url: url, periodo: periodoStr };
 }
 
 // ── Validar token y obtener datos del portal ─────────────────────────────────
@@ -67,26 +89,55 @@ function obtenerDatosPortalCliente_(token) {
 
   var datos    = hoja.getDataRange().getValues();
   var tokenRow = null;
-
-  Logger.log('Buscando token: ' + token + ' (longitud: ' + token.length + ')');
-  Logger.log('Total filas en hoja: ' + datos.length);
+  var hoy      = new Date();
+  hoy.setHours(0,0,0,0);
 
   for (var i = 1; i < datos.length; i++) {
     var tokenGuardado = String(datos[i][1]).trim();
     var tokenBuscado  = String(token).trim();
     var activo        = datos[i][7];
-    Logger.log('Fila ' + i + ': token=' + tokenGuardado.substring(0,8) + '... activo=' + activo + ' (' + typeof activo + ')');
-    if (tokenGuardado === tokenBuscado && (activo === true || activo === 'TRUE' || activo === 'true' || activo === 1)) {
-      tokenRow = { row: i+1, centro_id: datos[i][2], centro_nombre: datos[i][3], organismo: datos[i][4] };
-      try { hoja.getRange(i+1, 10).setValue(new Date()); } catch(e) {}
-      break;
+
+    if (tokenGuardado !== tokenBuscado) continue;
+
+    // Token encontrado — comprobar activo
+    if (!(activo === true || activo === 'TRUE' || activo === 'true' || activo === 1)) {
+      return { error: 'Este enlace ha sido revocado. Contacte con Forgeser para obtener un nuevo acceso.' };
     }
+
+    // Comprobar rango de fechas
+    var fechaInicio = datos[i][10] instanceof Date ? datos[i][10] : (datos[i][10] ? new Date(datos[i][10]) : null);
+    var fechaFin    = datos[i][11] instanceof Date ? datos[i][11] : (datos[i][11] ? new Date(datos[i][11]) : null);
+
+    if (fechaInicio) {
+      var inicio = new Date(fechaInicio); inicio.setHours(0,0,0,0);
+      if (hoy < inicio) {
+        var inicioStr = Utilities.formatDate(inicio,'Europe/Madrid','dd/MM/yyyy');
+        return { error: 'El período de acceso aún no ha comenzado. Este portal estará disponible a partir del ' + inicioStr + '.' };
+      }
+    }
+
+    if (fechaFin) {
+      var fin = new Date(fechaFin); fin.setHours(23,59,59,999);
+      if (hoy > new Date(fechaFin)) {
+        var finStr = Utilities.formatDate(new Date(fechaFin),'Europe/Madrid','dd/MM/yyyy');
+        return { error: 'El período de acceso finalizó el ' + finStr + '. Contacte con Forgeser si necesita continuar accediendo.' };
+      }
+    }
+
+    // Todo OK
+    tokenRow = {
+      row:           i+1,
+      centro_id:     datos[i][2],
+      centro_nombre: datos[i][3],
+      organismo:     datos[i][4],
+      fecha_inicio:  fechaInicio ? Utilities.formatDate(new Date(fechaInicio),'Europe/Madrid','dd/MM/yyyy') : '',
+      fecha_fin:     fechaFin    ? Utilities.formatDate(new Date(fechaFin),'Europe/Madrid','dd/MM/yyyy')    : ''
+    };
+    try { hoja.getRange(i+1, 10).setValue(new Date()); } catch(e) {}
+    break;
   }
 
-  if (!tokenRow) {
-    Logger.log('Token NO encontrado');
-    return { error: 'Token inválido o expirado', debug: 'token_length=' + String(token).length };
-  }
+  if (!tokenRow) return { error: 'Enlace de acceso inválido. Contacte con Forgeser.' };
 
   var centroId = tokenRow.centro_id;
   var mes      = Utilities.formatDate(new Date(),'Europe/Madrid','yyyy-MM');
@@ -153,11 +204,12 @@ function obtenerDatosPortalCliente_(token) {
     incidencias:     incidencias,
     calidad:         calidad,
     pl_resumen:      plResumen,
-    proximos:        proximos
+    proximos:        proximos,
+    periodo:         { inicio: tokenRow.fecha_inicio, fin: tokenRow.fecha_fin }
   };
 }
 
-// ── Listar tokens activos ────────────────────────────────────────────────────
+// ── Listar tokens ────────────────────────────────────────────────────────────
 function obtenerTokensClienteAPI_() {
   inicializarPortalCliente_();
   var ss   = SpreadsheetApp.getActiveSpreadsheet();
@@ -166,8 +218,19 @@ function obtenerTokensClienteAPI_() {
 
   var datos  = hoja.getDataRange().getValues();
   var tokens = [];
+  var hoy    = new Date(); hoy.setHours(0,0,0,0);
+
   for (var i = datos.length-1; i >= 1; i--) {
     if (!datos[i][0]) continue;
+
+    var fechaInicio = datos[i][10] instanceof Date ? datos[i][10] : (datos[i][10] ? new Date(datos[i][10]) : null);
+    var fechaFin    = datos[i][11] instanceof Date ? datos[i][11] : (datos[i][11] ? new Date(datos[i][11]) : null);
+
+    // Calcular estado de vigencia
+    var vigencia = 'activo';
+    if (fechaInicio && hoy < new Date(new Date(fechaInicio).setHours(0,0,0,0))) vigencia = 'pendiente';
+    else if (fechaFin && hoy > new Date(fechaFin)) vigencia = 'expirado';
+
     tokens.push({
       id:            datos[i][0],
       token:         String(datos[i][1]).substring(0,8) + '...',
@@ -179,6 +242,9 @@ function obtenerTokensClienteAPI_() {
       activo:        datos[i][7],
       creado:        datos[i][8] instanceof Date ? Utilities.formatDate(datos[i][8],'Europe/Madrid','dd/MM/yyyy') : '',
       ultimo_acceso: datos[i][9] instanceof Date ? Utilities.formatDate(datos[i][9],'Europe/Madrid','dd/MM/yyyy HH:mm') : 'Nunca',
+      fecha_inicio:  fechaInicio ? Utilities.formatDate(new Date(fechaInicio),'Europe/Madrid','dd/MM/yyyy') : '',
+      fecha_fin:     fechaFin    ? Utilities.formatDate(new Date(fechaFin),'Europe/Madrid','dd/MM/yyyy')    : '',
+      vigencia:      vigencia,
       url:           'https://licitaciones-pwa.vercel.app/portal-cliente?token=' + datos[i][1]
     });
     if (tokens.length >= 50) break;
@@ -186,6 +252,7 @@ function obtenerTokensClienteAPI_() {
   return { tokens: tokens };
 }
 
+// ── Revocar token ────────────────────────────────────────────────────────────
 function revocarTokenAPI_(id) {
   var ss   = SpreadsheetApp.getActiveSpreadsheet();
   var hoja = ss.getSheetByName(HOJA_TOKENS_CLIENTE);
@@ -197,6 +264,7 @@ function revocarTokenAPI_(id) {
   return { ok: false };
 }
 
+// ── Helper ───────────────────────────────────────────────────────────────────
 function restarMes_(mes) {
   var anio = parseInt(mes.substring(0,4));
   var m    = parseInt(mes.substring(5,7));

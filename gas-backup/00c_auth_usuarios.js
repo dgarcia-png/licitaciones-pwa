@@ -1,8 +1,10 @@
 // ============================================================================
 // 00c_auth_usuarios.gs — Funciones auxiliares globales
-// Contiene funciones que estaban en 00_extraccion_licitaciones.gs original
-// y se perdieron al reemplazarlo con la versión v5.1 del extractor.
-// Versión: 1.1 | Fecha: 1 Abril 2026
+// Versión: 1.3 | Fecha: 2 Abril 2026
+// CAMBIOS v1.3:
+//   - Corregido bug: dashboardRRHHAPI_() → dashboardRRHH_() en obtenerDashboard360_
+//   - invalidarCacheServidor_() recibe 'action' para invalidación inteligente
+//   - obtenerDashboard360_() usa versiones cacheadas de sub-llamadas
 // ============================================================================
 
 // ════════════════════════════════════════════════════════════════
@@ -199,117 +201,38 @@ function actualizarUsuario_(data) {
       if (data.password) {
         PropertiesService.getScriptProperties().setProperty('PWD_' + data.email, hashSHA256_(data.password));
       }
-      return { ok: true, email: data.email };
+      return { ok: true };
     }
   }
   return { ok: false, error: 'Usuario no encontrado' };
 }
 
 function eliminarUsuario_(email) {
+  if (!email) return { ok: false, error: 'Email requerido' };
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var hoja = ss.getSheetByName('USUARIOS');
   if (!hoja) return { ok: false, error: 'Hoja no encontrada' };
   var datos = hoja.getDataRange().getValues();
-  for (var i = datos.length - 1; i >= 1; i--) {
+  for (var i = 1; i < datos.length; i++) {
     if (datos[i][1] === email) {
-      hoja.getRange(i + 1, 1, 1, 10).clearContent();
-      try { PropertiesService.getScriptProperties().deleteProperty('PWD_' + email); } catch(e) {}
-      return { ok: true, email: email };
-    }
-  }
-  return { ok: false, error: 'No encontrado' };
-}
-
-// ════════════════════════════════════════════════════════════════
-// CONFIG CRUD
-// ════════════════════════════════════════════════════════════════
-
-function obtenerConfigRawAPI_() {
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var hoja = ss.getSheetByName('CONFIG_PASO0');
-  if (!hoja) return { items: [], total: 0 };
-  var datos = hoja.getDataRange().getValues();
-  var items = [];
-  for (var i = 1; i < datos.length; i++) {
-    var tipo = (datos[i][0] || '').toString().trim();
-    var valor = (datos[i][1] || '').toString().trim();
-    if (!tipo && !valor) continue;
-    items.push({
-      fila: i + 1, tipo: tipo, valor: valor,
-      activo: datos[i][2] === true || datos[i][2] === 'TRUE',
-      descripcion: (datos[i][3] || '').toString().trim()
-    });
-  }
-  return { items: items, total: items.length };
-}
-
-function addConfigItem_(data) {
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var hoja = ss.getSheetByName('CONFIG_PASO0');
-  if (!hoja) return { ok: false, error: 'Hoja no encontrada' };
-  if (!data.tipo || !data.valor) return { ok: false, error: 'Tipo y valor obligatorios' };
-  var datos = hoja.getDataRange().getValues();
-  var ultimaFilaTipo = -1;
-  for (var i = 1; i < datos.length; i++) {
-    if ((datos[i][0] || '').toString().trim() === data.tipo) ultimaFilaTipo = i + 1;
-  }
-  var fila = [data.tipo, data.valor, data.activo !== false, data.descripcion || ''];
-  if (ultimaFilaTipo > 0) {
-    hoja.insertRowAfter(ultimaFilaTipo);
-    hoja.getRange(ultimaFilaTipo + 1, 1, 1, 4).setValues([fila]);
-    hoja.getRange(ultimaFilaTipo + 1, 3).insertCheckboxes().setValue(data.activo !== false);
-  } else {
-    hoja.appendRow(fila);
-    var lr = hoja.getLastRow();
-    hoja.getRange(lr, 3).insertCheckboxes().setValue(data.activo !== false);
-  }
-  return { ok: true, tipo: data.tipo, valor: data.valor };
-}
-
-function updateConfigItem_(data) {
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var hoja = ss.getSheetByName('CONFIG_PASO0');
-  if (!hoja) return { ok: false, error: 'Hoja no encontrada' };
-  if (!data.fila) return { ok: false, error: 'Fila requerida' };
-  var f = parseInt(data.fila);
-  if (data.valor !== undefined) hoja.getRange(f, 2).setValue(data.valor);
-  if (data.activo !== undefined) hoja.getRange(f, 3).setValue(data.activo === true || data.activo === 'true');
-  if (data.descripcion !== undefined) hoja.getRange(f, 4).setValue(data.descripcion);
-  return { ok: true };
-}
-
-function deleteConfigItem_(data) {
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var hoja = ss.getSheetByName('CONFIG_PASO0');
-  if (!hoja) return { ok: false, error: 'Hoja no encontrada' };
-  if (!data.fila) return { ok: false, error: 'Fila requerida' };
-  hoja.deleteRow(parseInt(data.fila));
-  return { ok: true };
-}
-
-// ════════════════════════════════════════════════════════════════
-// ELIMINAR REGISTRO GENÉRICO
-// ════════════════════════════════════════════════════════════════
-
-function eliminarRegistro_(nombreHoja, id) {
-  if (!id) return { ok: false, error: 'ID requerido' };
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var hoja = ss.getSheetByName(nombreHoja);
-  if (!hoja) return { ok: false, error: 'Hoja no encontrada: ' + nombreHoja };
-  var datos = hoja.getDataRange().getValues();
-  for (var i = 1; i < datos.length; i++) {
-    if (String(datos[i][0]) === String(id)) {
       hoja.deleteRow(i + 1);
+      PropertiesService.getScriptProperties().deleteProperty('PWD_' + email);
       return { ok: true };
     }
   }
-  return { ok: false, error: 'Registro no encontrado' };
+  return { ok: false, error: 'Usuario no encontrado' };
 }
 
 // ════════════════════════════════════════════════════════════════
-// SERVER CACHE
+// CACHÉ DE SERVIDOR
 // ════════════════════════════════════════════════════════════════
 
+/**
+ * Wrapper genérico de CacheService.
+ * key: clave única para este resultado
+ * ttlSeconds: tiempo de vida (máx 21600 = 6h)
+ * fn: función que genera el resultado si no está en caché
+ */
 function serverCache_(key, ttlSeconds, fn) {
   var cache = CacheService.getScriptCache();
   var cached = cache.get(key);
@@ -319,11 +242,70 @@ function serverCache_(key, ttlSeconds, fn) {
   return data;
 }
 
-function invalidarCacheServidor_() {
+/**
+ * Invalida las cachés del servidor.
+ * Recibe el nombre de la acción POST para hacer invalidación inteligente:
+ * solo limpia los keys afectados por ese tipo de escritura.
+ */
+function invalidarCacheServidor_(action) {
   try {
     var cache = CacheService.getScriptCache();
-    cache.removeAll(['batch_dashboard', 'batch_opos', 'batch_stats', 'batch_rrhh', 'batch_conv', 'batch_alertconv', 'batch_alertdoc', 'batch_contratos']);
-  } catch(e) {}
+    action = action || '';
+
+    // Mes actual y anterior para los informes parametrizados
+    var hoy = new Date();
+    var mesCur = Utilities.formatDate(hoy, 'Europe/Madrid', 'yyyy-MM');
+    var mesAnt = Utilities.formatDate(new Date(hoy.getFullYear(), hoy.getMonth() - 1, 1), 'Europe/Madrid', 'yyyy-MM');
+
+    // Keys que se limpian SIEMPRE en cualquier escritura
+    var claves = [
+      'batch_dashboard', 'batch_opos', 'batch_stats',
+      'batch_conv', 'batch_alertconv', 'batch_alertdoc', 'batch_contratos',
+      'dash_360'  // el 360 siempre es el resumen global
+    ];
+
+    // Escrituras relacionadas con RRHH (fichajes, ausencias, empleados, PRL, RGPD)
+    var esRRHH = action.indexOf('fich') !== -1 || action.indexOf('ausenc') !== -1 ||
+                 action.indexOf('emplead') !== -1 || action.indexOf('subrogad') !== -1 ||
+                 action.indexOf('incorpor') !== -1 || action.indexOf('epi') !== -1 ||
+                 action.indexOf('reconoc') !== -1 || action.indexOf('formac') !== -1 ||
+                 action.indexOf('accidente') !== -1 || action.indexOf('certificac') !== -1 ||
+                 action.indexOf('horas_extra') !== -1;
+    if (esRRHH) {
+      claves = claves.concat([
+        'batch_rrhh', 'dash_rrhh',
+        'inf_rrhh_' + mesCur, 'inf_rrhh_' + mesAnt
+      ]);
+    }
+
+    // Escrituras relacionadas con Territorio (partes, incidencias, órdenes, calidad, inventario)
+    var esTerritorio = action.indexOf('parte') !== -1 || action.indexOf('orden') !== -1 ||
+                       action.indexOf('incidencia') !== -1 || action.indexOf('inspeccion') !== -1 ||
+                       action.indexOf('accion_correctiva') !== -1 || action.indexOf('stock') !== -1 ||
+                       action.indexOf('pedido') !== -1 || action.indexOf('centro') !== -1 ||
+                       action.indexOf('vehiculo') !== -1 || action.indexOf('repostaje') !== -1 ||
+                       action.indexOf('mantenimiento') !== -1 || action.indexOf('planif') !== -1 ||
+                       action.indexOf('sustitucion') !== -1 || action.indexOf('servicio_prog') !== -1;
+    if (esTerritorio) {
+      claves = claves.concat([
+        'dash_terr', 'dash_sla',
+        'inf_terr_' + mesCur, 'inf_terr_' + mesAnt
+      ]);
+    }
+
+    // Escrituras relacionadas con Licitaciones / económico
+    var esLicit = action.indexOf('result') !== -1 || action.indexOf('seguimiento') !== -1 ||
+                  action.indexOf('calculo') !== -1 || action.indexOf('oportun') !== -1 ||
+                  action.indexOf('aprobac') !== -1 || action.indexOf('archivar') !== -1 ||
+                  action.indexOf('restaurar_oportun') !== -1;
+    if (esLicit) {
+      claves = claves.concat(['inf_lic', 'inf_eco', 'inf_rend']);
+    }
+
+    cache.removeAll(claves);
+  } catch(e) {
+    // Silencioso — no interrumpir la respuesta si el cache falla
+  }
 }
 
 // ════════════════════════════════════════════════════════════════
@@ -448,38 +430,68 @@ function obtenerDashboardAPI_() {
   };
 }
 
+/**
+ * Dashboard 360 — resumen ejecutivo de todos los módulos.
+ * CORRECCIÓN v1.3: dashboardRRHHAPI_() no existe → usar dashboardRRHH_()
+ * Las sub-llamadas pesadas van a través de serverCache_ para que si
+ * alguien ha pedido el dashboard de RRHH o Territorio recientemente,
+ * el 360 reutilice esos resultados cacheados.
+ */
 function obtenerDashboard360_() {
   var resultado = { licitaciones: {}, rrhh: {}, territorio: {}, alertas: [], timestamp: new Date().toISOString() };
 
   try {
     var dash = obtenerDashboardAPI_();
-    resultado.licitaciones = { pipeline: dash.pipeline || {}, valor_pipeline_go: dash.valor_pipeline_go || 0, contratos: dash.contratos || {}, total: dash.total_oportunidades || 0, proximas_vencer: [] };
-    var hoy = new Date(); hoy.setHours(0,0,0,0);
+    resultado.licitaciones = {
+      pipeline: dash.pipeline || {},
+      valor_pipeline_go: dash.valor_pipeline_go || 0,
+      contratos: dash.contratos || {},
+      total: dash.total_oportunidades || 0,
+      proximas_vencer: []
+    };
+    var hoy = new Date(); hoy.setHours(0, 0, 0, 0);
     (dash.oportunidades || []).forEach(function(o) {
       if (!o.fecha_limite || ['adjudicada','perdida','desierta','no_go'].indexOf(o.estado) !== -1) return;
       var fl = new Date(o.fecha_limite.split(' ')[0]);
       var dias = Math.ceil((fl - hoy) / 86400000);
       if (dias >= 0 && dias <= 7) {
         resultado.licitaciones.proximas_vencer.push({ titulo: o.titulo, organismo: o.organismo, dias: dias, id: o.id });
-        resultado.alertas.push({ modulo: 'licitaciones', nivel: dias <= 2 ? 'alta' : 'media', msg: 'Vence en ' + dias + 'd: ' + (o.titulo||'').substring(0,50), id: o.id });
+        resultado.alertas.push({ modulo: 'licitaciones', nivel: dias <= 2 ? 'alta' : 'media', msg: 'Vence en ' + dias + 'd: ' + (o.titulo||'').substring(0, 50), id: o.id });
       }
     });
   } catch(e) { resultado.licitaciones = { error: e.message }; }
 
   try {
     var sRRHH = statsRRHH_();
-    var dashRRHH = dashboardRRHHAPI_();
-    resultado.rrhh = { plantilla: sRRHH, fichajes: dashRRHH.fichajes || {}, ausencias: dashRRHH.ausencias || {}, prl: dashRRHH.prl || {}, costes: dashRRHH.costes || {} };
+    // FIX v1.3: era dashboardRRHHAPI_() (no existe) → dashboardRRHH_()
+    // Usamos serverCache_ para reutilizar el resultado si ya fue pedido recientemente
+    var dashRRHH = serverCache_('dash_rrhh', 90, function() { return dashboardRRHH_(); });
+    resultado.rrhh = {
+      plantilla: sRRHH,
+      fichajes:  dashRRHH.fichajes  || {},
+      ausencias: dashRRHH.ausencias || {},
+      prl:       dashRRHH.prl       || {},
+      costes:    dashRRHH.costes    || {}
+    };
     var prl = dashRRHH.prl || {};
-    if ((prl.epis_caducados || 0) > 0) resultado.alertas.push({ modulo: 'prl', nivel: 'alta', msg: prl.epis_caducados + ' EPIs caducados' });
-    if ((prl.recos_vencidos || 0) > 0) resultado.alertas.push({ modulo: 'prl', nivel: 'alta', msg: prl.recos_vencidos + ' reconocimientos médicos vencidos' });
+    if ((prl.epis_caducados || 0) > 0)  resultado.alertas.push({ modulo: 'prl', nivel: 'alta', msg: prl.epis_caducados + ' EPIs caducados' });
+    if ((prl.recos_vencidos || 0) > 0)  resultado.alertas.push({ modulo: 'prl', nivel: 'alta', msg: prl.recos_vencidos + ' reconocimientos médicos vencidos' });
   } catch(e) { resultado.rrhh = { error: e.message }; }
 
   try {
-    var dashTerr = dashboardTerritorioAPI_();
-    var incAbiertas = obtenerIncidenciasAPI_({ estado: 'abierta' });
-    resultado.territorio = { centros: dashTerr.total_centros || 0, activos: dashTerr.activos || 0, personal: dashTerr.total_personal || 0, presupuesto_anual: dashTerr.total_presupuesto || 0, incidencias_abiertas: incAbiertas.abiertas || 0 };
-    if ((incAbiertas.abiertas || 0) > 0) resultado.alertas.push({ modulo: 'territorio', nivel: 'media', msg: incAbiertas.abiertas + ' incidencias abiertas en centros' });
+    // También cachea la llamada a dashboardTerritorioAPI_
+    var dashTerr = serverCache_('dash_terr', 90, function() { return dashboardTerritorioAPI_(); });
+    var incAbiertas = dashTerr.incidencias_abiertas || 0;
+    resultado.territorio = {
+      centros:              dashTerr.total_centros   || 0,
+      activos:              dashTerr.activos         || 0,
+      personal:             dashTerr.total_personal  || 0,
+      presupuesto_anual:    dashTerr.total_presupuesto|| 0,
+      incidencias_abiertas: incAbiertas,
+      partes_hoy:           dashTerr.partes_hoy      || 0,
+      calidad_media_mes:    dashTerr.calidad_media_mes|| 0
+    };
+    if (incAbiertas > 0) resultado.alertas.push({ modulo: 'territorio', nivel: 'media', msg: incAbiertas + ' incidencias abiertas en centros' });
   } catch(e) { resultado.territorio = { error: e.message }; }
 
   return resultado;

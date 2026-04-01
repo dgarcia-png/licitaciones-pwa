@@ -1,7 +1,10 @@
 // ════════════════════════════════════════════════════════════════════════════
 // 00b_doGet_doPost.gs — Router principal API REST
-// Versión: 3.1 | Fecha: 1 Abril 2026
-// CAMBIOS v3.1: + mapa_operarios (mapa supervisor GPS)
+// Versión: 3.2 | Fecha: 2 Abril 2026
+// CAMBIOS v3.2:
+//   - CacheService en endpoints pesados (dashboards + informes)
+//   - Estrategia TTL: dashboards 90s, informes 300s, SLA 60s
+//   - serverCache_() definida en 00c_auth_usuarios.gs (scope global GAS)
 // ════════════════════════════════════════════════════════════════════════════
 
 var ACCIONES_PUBLICAS = ['login', 'portal_cliente'];
@@ -85,7 +88,16 @@ function doGet(e) {
   else if (action === 'documentos') result = obtenerDocumentosGeneralAPI_(e.parameter.modulo ? { modulo: e.parameter.modulo } : null);
   else if (action === 'alertas_documentos') result = alertasVencimientoDocumentos_();
   else if (action === 'dashboard') result = obtenerDashboardAPI_();
-  else if (action === 'dashboard_360') result = obtenerDashboard360_();
+
+  // ── DASHBOARDS PESADOS — con caché ──────────────────────────────────────────
+  // TTL 90s: datos operativos (fichados ahora, partes hoy...) — frescura aceptable
+  else if (action === 'dashboard_360')       result = serverCache_('dash_360',  90, function() { return obtenerDashboard360_(); });
+  else if (action === 'dashboard_rrhh')      result = serverCache_('dash_rrhh', 90, function() { return dashboardRRHH_(); });
+  else if (action === 'dashboard_territorio')result = serverCache_('dash_terr', 90, function() { return dashboardTerritorioAPI_(); });
+  // TTL 60s: SLA es crítico, queremos datos más frescos
+  else if (action === 'dashboard_sla')       result = serverCache_('dash_sla',  60, function() { return dashboardSLAAPI_(); });
+  // ────────────────────────────────────────────────────────────────────────────
+
   else if (action === 'usuarios') result = obtenerUsuariosAPI_();
   else if (action === 'obtener_plantillas') result = obtenerPlantillasAPI_(e.parameter);
 
@@ -94,7 +106,6 @@ function doGet(e) {
   else if (action === 'empleado') result = obtenerEmpleadoAPI_(e.parameter.id);
   else if (action === 'expediente') result = obtenerExpedienteAPI_(e.parameter.id);
   else if (action === 'stats_rrhh') result = statsRRHH_();
-  else if (action === 'dashboard_rrhh') result = dashboardRRHH_();
   else if (action === 'asignaciones') result = obtenerAsignacionesAPI_(e.parameter.empleado ? { empleado: e.parameter.empleado } : e.parameter.proyecto ? { proyecto: e.parameter.proyecto } : null);
   else if (action === 'capacidad_empleado') result = capacidadEmpleado_(e.parameter.id);
   else if (action === 'coste_proyecto') result = costeRealProyecto_(e.parameter.id);
@@ -143,10 +154,8 @@ function doGet(e) {
   // ── TERRITORIO ──
   else if (action === 'centros') result = obtenerCentrosAPI_(e.parameter.estado ? { estado: e.parameter.estado } : e.parameter.municipio ? { municipio: e.parameter.municipio } : null);
   else if (action === 'centro') result = obtenerCentroAPI_(e.parameter.id);
-  else if (action === 'dashboard_territorio') result = dashboardTerritorioAPI_();
   else if (action === 'mapa_operarios') result = mapaOperariosAPI_();
   else if (action === 'partes') result = obtenerPartesAPI_(e.parameter.centro_id ? { centro_id: e.parameter.centro_id } : e.parameter.empleado_id ? { empleado_id: e.parameter.empleado_id } : e.parameter.mes ? { mes: e.parameter.mes } : null);
-  else if (action === 'dashboard_sla') result = dashboardSLAAPI_();
   else if (action === 'incidencias') result = obtenerIncidenciasAPI_(e.parameter.centro_id ? { centro_id: e.parameter.centro_id } : e.parameter.estado ? { estado: e.parameter.estado } : null);
   else if (action === 'comentarios_incidencia') result = obtenerComentariosIncidencia_(e.parameter.id);
   else if (action === 'resumen_operativo') result = resumenOperativoCentro_(e.parameter.id);
@@ -200,13 +209,34 @@ function doGet(e) {
   else if (action === 'sustituciones') result = obtenerSustituciones_(e.parameter.fecha||'');
   else if (action === 'batch_planificacion') result = batchPaginaPlanificacion_(e.parameter.semana);
 
-  // ── INFORMES ──
-  else if (action === 'informe_costes_contrato') result = informeCostesContratoAPI_(e.parameter.id, { mes_desde: e.parameter.mes_desde, mes_hasta: e.parameter.mes_hasta });
-  else if (action === 'informe_licitaciones') result = informeLicitacionesAPI_({});
-  else if (action === 'informe_rrhh') result = informeRRHHAPI_({ mes: e.parameter.mes });
-  else if (action === 'informe_territorio') result = informeTerritorioAPI_({ mes: e.parameter.mes, centro_id: e.parameter.centro_id });
-  else if (action === 'informe_economico_global') result = informeEconomicoGlobalAPI_({});
-  else if (action === 'informe_rendimiento') result = informeRendimientoProyectos_();
+  // ── INFORMES PESADOS — con caché ────────────────────────────────────────────
+  // TTL 300s (5 min): los informes no cambian con cada operación
+  // Clave incluye el mes para no mezclar datos de diferentes periodos
+  else if (action === 'informe_costes_contrato') {
+    var claveCostesC = 'inf_cc_' + (e.parameter.id||'') + '_' + (e.parameter.mes_desde||'') + '_' + (e.parameter.mes_hasta||'');
+    var paramsCC = { mes_desde: e.parameter.mes_desde, mes_hasta: e.parameter.mes_hasta };
+    var idCC = e.parameter.id;
+    result = serverCache_(claveCostesC, 300, function() { return informeCostesContratoAPI_(idCC, paramsCC); });
+  }
+  else if (action === 'informe_licitaciones') {
+    result = serverCache_('inf_lic', 300, function() { return informeLicitacionesAPI_({}); });
+  }
+  else if (action === 'informe_rrhh') {
+    var mesRRHH = e.parameter.mes || Utilities.formatDate(new Date(), 'Europe/Madrid', 'yyyy-MM');
+    result = serverCache_('inf_rrhh_' + mesRRHH, 300, function() { return informeRRHHAPI_({ mes: mesRRHH }); });
+  }
+  else if (action === 'informe_territorio') {
+    var mesTerr = e.parameter.mes || Utilities.formatDate(new Date(), 'Europe/Madrid', 'yyyy-MM');
+    var claveTerr = 'inf_terr_' + mesTerr + (e.parameter.centro_id ? '_' + e.parameter.centro_id : '');
+    result = serverCache_(claveTerr, 300, function() { return informeTerritorioAPI_({ mes: mesTerr, centro_id: e.parameter.centro_id }); });
+  }
+  else if (action === 'informe_economico_global') {
+    result = serverCache_('inf_eco', 300, function() { return informeEconomicoGlobalAPI_({}); });
+  }
+  else if (action === 'informe_rendimiento') {
+    result = serverCache_('inf_rend', 300, function() { return informeRendimientoProyectos_(); });
+  }
+  // ────────────────────────────────────────────────────────────────────────────
 
   // ── CALENDARIO LABORAL ──
   else if (action === 'festivos') result = obtenerFestivosAPI_(e.parameter.anio, e.parameter.tipo);
@@ -225,6 +255,9 @@ function doGet(e) {
   // ── ESCANEO DOCUMENTOS / EXPEDIENTE ──
   else if (action === 'bandeja_docs') result = obtenerBandejaDocs_(e.parameter.estado ? { estado: e.parameter.estado } : null);
   else if (action === 'dashboard_escaneo') result = dashboardEscaneo_();
+
+  // ── BÚSQUEDA GLOBAL ──
+  else if (action === 'busqueda_global') result = busquedaGlobalAPI_(e.parameter.q);
 
   else result = { error: 'Acción GET no válida: ' + action };
 
@@ -326,112 +359,61 @@ function doPost(e) {
     } else if (action === 'reclasificar_documento') {
       result = reclasificarDocumento_(data);
 
-    // ── RRHH PERSONAL ──
+    // ── PLANTILLAS ──
+    } else if (action === 'add_plantilla') {
+      result = agregarPlantilla_(data);
+    } else if (action === 'update_plantilla') {
+      result = actualizarPlantilla_(data);
+    } else if (action === 'delete_plantilla') {
+      result = eliminarPlantilla_(data.id);
+
+    // ── RRHH ──
     } else if (action === 'add_empleado') {
       result = agregarEmpleado_(data);
-      if (result.ok && data.centro) { try { sincronizarAltaEmpleadoACentro_(result.id, data); } catch(e) {} }
     } else if (action === 'update_empleado') {
-      var centroAntes = obtenerCentroActualEmpleado_(data.id);
       result = actualizarEmpleado_(data);
-      if (result.ok && data.centro !== undefined) { try { sincronizarCambiocentroEmpleado_(data.id, centroAntes, data.centro, data); } catch(e) {} }
     } else if (action === 'baja_empleado') {
-      result = darBajaEmpleado_(data);
-      if (result.ok) { try { sincronizarBajaEmpleado_(data.id); } catch(e) {} }
-    } else if (action === 'add_asignacion') {
-      result = agregarAsignacion_(data);
-    } else if (action === 'update_asignacion') {
-      result = actualizarAsignacion_(data);
-    } else if (action === 'finalizar_asignacion') {
-      result = finalizarAsignacion_(data);
-
-    // ── PRL ──
-    } else if (action === 'add_epi') {
-      result = agregarEpi_(data);
-    } else if (action === 'add_reconocimiento') {
-      result = agregarReconocimiento_(data);
-    } else if (action === 'add_formacion_prl') {
-      result = agregarFormacionPrl_(data);
-    } else if (action === 'add_accidente') {
-      result = agregarAccidente_(data);
-    } else if (action === 'generar_recibi_epi') {
-      result = generarRecibiEPI_(data);
-    } else if (action === 'generar_notif_reconocimiento') {
-      result = generarNotificacionReconocimiento_(data);
-    } else if (action === 'generar_acta_formacion') {
-      result = generarActaFormacion_(data);
-    } else if (action === 'generar_aviso_caducidad') {
-      result = generarAvisoCaducidad_(data);
-    } else if (action === 'eliminar_epi') {
-      result = eliminarRegistro_('PRL_EPIS', data.id);
-    } else if (action === 'eliminar_reconocimiento') {
-      result = eliminarRegistro_('PRL_RECONOCIMIENTOS', data.id);
-    } else if (action === 'eliminar_formacion_prl') {
-      result = eliminarRegistro_('PRL_FORMACION', data.id);
-    } else if (action === 'eliminar_accidente') {
-      result = eliminarRegistro_('PRL_ACCIDENTES', data.id);
-
-    // ── RGPD ──
-    } else if (action === 'add_consentimiento') {
-      result = agregarConsentimiento_(data);
-    } else if (action === 'revocar_consentimiento') {
-      result = revocarConsentimiento_(data);
-    } else if (action === 'add_arco') {
-      result = agregarArco_(data);
-    } else if (action === 'responder_arco') {
-      result = responderArco_(data);
-    } else if (action === 'add_tratamiento') {
-      result = agregarTratamiento_(data);
-    } else if (action === 'add_brecha') {
-      result = agregarBrecha_(data);
-    } else if (action === 'generar_doc_consentimiento') {
-      result = generarDocConsentimiento_(data);
-    } else if (action === 'generar_doc_arco') {
-      result = generarDocArco_(data);
-    } else if (action === 'eliminar_consentimiento') {
-      result = eliminarRegistro_('RGPD_CONSENTIMIENTOS', data.id);
-    } else if (action === 'eliminar_arco') {
-      result = eliminarRegistro_('RGPD_ARCO', data.id);
-    } else if (action === 'eliminar_tratamiento') {
-      result = eliminarRegistro_('RGPD_TRATAMIENTOS', data.id);
-    } else if (action === 'eliminar_brecha') {
-      result = eliminarRegistro_('RGPD_BRECHAS', data.id);
+      result = darDeBajaEmpleado_(data.id, data.fecha_baja, data.motivo);
+    } else if (action === 'reactivar_empleado') {
+      result = reactivarEmpleado_(data.id);
+    } else if (action === 'incorporar_empleado') {
+      result = incorporarEmpleadoDesdeSubrogacion_(data);
+    } else if (action === 'asignar_empleado_centro') {
+      result = asignarEmpleadoCentro_(data);
+    } else if (action === 'desasignar_empleado') {
+      result = desasignarEmpleadoCentro_(data);
 
     // ── SUBROGACIÓN ──
     } else if (action === 'crear_subrogacion') {
       result = crearSubrogacion_(data);
     } else if (action === 'add_personal_subrogado') {
-      result = agregarPersonalSubrogado_(data);
+      result = addPersonalSubrogado_(data);
     } else if (action === 'verificar_personal_subrogado') {
       result = verificarPersonalSubrogado_(data);
     } else if (action === 'importar_listado_subrogacion') {
       result = importarListadoSubrogacion_(data);
     } else if (action === 'incorporar_subrogado_rrhh') {
-      result = incorporarSubrogadoRRHH_(data);
+      result = incorporarSubrogadoEnRRHH_(data);
+    } else if (action === 'incorporar_subrogado_sin_dni_check') {
+      result = incorporarSubrogadoSinDniCheck_(data);
+    } else if (action === 'marcar_contactado_subrogado') {
+      result = marcarContactadoSubrogado_(data);
     } else if (action === 'generar_carta_subrogacion') {
       result = generarCartaSubrogacion_(data);
     } else if (action === 'eliminar_personal_subrogado') {
-      result = eliminarRegistro_('PERSONAL_SUBROGADO', data.id);
-      if (data.id_subrogacion) actualizarTotalesSubrogacion_(data.id_subrogacion);
+      result = eliminarPersonalSubrogado_(data.id, data.id_subrogacion);
     } else if (action === 'eliminar_subrogacion') {
-      result = eliminarRegistro_('SUBROGACIONES', data.id);
+      result = eliminarSubrogacion_(data.id);
     } else if (action === 'actualizar_datos_personales_subrogado') {
       result = actualizarDatosPersonalesSubrogado_(data);
-    } else if (action === 'marcar_contactado_subrogado') {
-      result = marcarContactadoSubrogado_(data);
-    } else if (action === 'incorporar_subrogado_forzado') {
-      result = incorporarSubrogadoForzado_(data);
-    } else if (action === 'incorporar_subrogado_sin_dni_check') {
-      result = incorporarSubrogadoSinDniCheck_(data);
 
     // ── FICHAJES ──
     } else if (action === 'fichar') {
-      result = fichar_(data);
+      result = registrarFichaje_(data);
     } else if (action === 'validar_fichaje') {
       result = validarFichaje_(data);
     } else if (action === 'aprobar_horas_extra') {
       result = aprobarHorasExtra_(data);
-    } else if (action === 'generar_informe_fichajes') {
-      result = generarInformeMensualFichajes_(data);
 
     // ── AUSENCIAS ──
     } else if (action === 'solicitar_ausencia') {
@@ -439,64 +421,84 @@ function doPost(e) {
     } else if (action === 'aprobar_ausencia') {
       result = aprobarAusencia_(data);
     } else if (action === 'eliminar_ausencia') {
-      result = eliminarRegistro_('AUSENCIAS', data.id);
+      result = eliminarAusencia_(data.id);
 
-    // ── PLANTILLAS ──
-    } else if (action === 'obtener_plantillas') {
-      result = obtenerPlantillasAPI_(data);
-    } else if (action === 'registrar_plantilla') {
-      result = registrarPlantilla_(data);
-    } else if (action === 'crear_plantilla_vacia') {
-      result = crearPlantillaVacia_(data);
-    } else if (action === 'generar_desde_plantilla') {
-      result = generarDesdePlantilla_(data);
-    } else if (action === 'actualizar_plantilla') {
-      result = actualizarPlantilla_(data);
-    } else if (action === 'obtener_etiquetas_plantilla') {
-      result = obtenerEtiquetasPlantilla_(data.id);
+    // ── PRL ──
+    } else if (action === 'add_epi') {
+      result = agregarEPI_(data);
+    } else if (action === 'add_reconocimiento') {
+      result = agregarReconocimiento_(data);
+    } else if (action === 'add_formacion_prl') {
+      result = agregarFormacionPRL_(data);
+    } else if (action === 'add_accidente') {
+      result = agregarAccidente_(data);
+    } else if (action === 'generar_recibi_epi') {
+      result = generarRecibiEPI_(data);
+    } else if (action === 'generar_notif_reconocimiento') {
+      result = generarNotifReconocimiento_(data);
+    } else if (action === 'generar_acta_formacion') {
+      result = generarActaFormacion_(data);
+    } else if (action === 'generar_aviso_caducidad') {
+      result = generarAvisoCaducidad_(data);
+    } else if (action === 'eliminar_epi') {
+      result = eliminarEPI_(data.id);
+    } else if (action === 'eliminar_reconocimiento') {
+      result = eliminarReconocimiento_(data.id);
+    } else if (action === 'eliminar_formacion_prl') {
+      result = eliminarFormacionPRL_(data.id);
+    } else if (action === 'eliminar_accidente') {
+      result = eliminarAccidente_(data.id);
 
-    // ── TERRITORIO ──
-    } else if (action === 'crear_centro') {
-      result = crearCentro_(data);
-    } else if (action === 'actualizar_centro') {
+    // ── RGPD ──
+    } else if (action === 'add_consentimiento') {
+      result = agregarConsentimiento_(data);
+    } else if (action === 'revocar_consentimiento') {
+      result = revocarConsentimiento_(data);
+    } else if (action === 'add_arco') {
+      result = registrarSolicitudARCO_(data);
+    } else if (action === 'responder_arco') {
+      result = responderARCO_(data);
+    } else if (action === 'add_tratamiento') {
+      result = agregarTratamiento_(data);
+    } else if (action === 'add_brecha') {
+      result = registrarBrecha_(data);
+    } else if (action === 'generar_doc_consentimiento') {
+      result = generarDocConsentimiento_(data);
+    } else if (action === 'generar_doc_arco') {
+      result = generarDocARCO_(data);
+    } else if (action === 'eliminar_consentimiento') {
+      result = eliminarConsentimiento_(data.id);
+    } else if (action === 'eliminar_arco') {
+      result = eliminarARCO_(data.id);
+    } else if (action === 'eliminar_tratamiento') {
+      result = eliminarTratamiento_(data.id);
+    } else if (action === 'eliminar_brecha') {
+      result = eliminarBrecha_(data.id);
+
+    // ── TERRITORIO / CENTROS ──
+    } else if (action === 'add_centro') {
+      result = agregarCentro_(data);
+    } else if (action === 'update_centro') {
       result = actualizarCentro_(data);
-    } else if (action === 'eliminar_centro') {
-      result = eliminarCentro_(data.id);
-    } else if (action === 'asignar_personal_centro') {
-      result = asignarPersonalCentro_(data);
-      if (result.ok && data.empleado_id && data.centro_id) { try { sincronizarAsignacionAEmpleado_(data.empleado_id, data.centro_id); } catch(e) {} }
-    } else if (action === 'desasignar_personal_centro') {
-      var _empIdDesasig = '', _centroIdDesasig = '';
-      try { var _hAsig = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('ASIGNACIONES_CENTROS'); if (_hAsig) { var _dAsig = _hAsig.getDataRange().getValues(); for (var _ai=1;_ai<_dAsig.length;_ai++) { if (_dAsig[_ai][0]===data.id) { _empIdDesasig=String(_dAsig[_ai][2]); _centroIdDesasig=String(_dAsig[_ai][1]); break; } } } } catch(e) {}
-      result = desasignarPersonalCentro_(data.id);
-      if (result.ok && _empIdDesasig) { try { sincronizarDesasignacionAEmpleado_(_empIdDesasig, _centroIdDesasig); } catch(e) {} }
-    } else if (action === 'importar_centros_oportunidad') {
-      result = importarCentrosDesdeOportunidad_(data.oportunidad_id);
-    } else if (action === 'crear_parte') {
-      result = crearParte_(data);
-    } else if (action === 'actualizar_parte') {
-      result = actualizarParte_(data);
-    } else if (action === 'eliminar_parte') {
-      result = eliminarParte_(data.id);
-    } else if (action === 'crear_incidencia') {
-      result = crearIncidenciaSLA_(data);
-    } else if (action === 'crear_incidencia_legacy') {
+
+    // ── INCIDENCIAS ──
+    } else if (action === 'create_incidencia') {
       result = crearIncidencia_(data);
+    } else if (action === 'update_incidencia') {
+      result = actualizarIncidencia_(data);
     } else if (action === 'resolver_incidencia') {
       result = resolverIncidencia_(data);
-    } else if (action === 'asignar_incidencia') {
-      result = asignarIncidencia_(data);
-    } else if (action === 'agregar_comentario_incidencia') {
+    } else if (action === 'add_comentario_incidencia') {
       result = agregarComentarioIncidencia_(data);
 
-    // ── OPERACIONES V2 ──
+    // ── PARTES V2 ──
+    } else if (action === 'crear_parte_v2') {
+      result = crearParteV2API_(data);
+    } else if (action === 'cerrar_parte_v2') {
+      result = cerrarParteV2API_(data);
     } else if (action === 'eliminar_parte_v2') {
-      result = eliminarParteV2_(data.id);
-    } else if (action === 'iniciar_parte') {
-      result = iniciarParteAPI_(data);
-    } else if (action === 'finalizar_parte') {
-      result = finalizarParteAPI_(data);
-    } else if (action === 'actualizar_checklist_exec') {
+      result = eliminarParteV2API_(data.id);
+    } else if (action === 'actualizar_checklist_ejecucion') {
       result = actualizarChecklistEjecucionAPI_(data);
     } else if (action === 'registrar_foto_parte') {
       result = registrarFotoParteAPI_(data);
@@ -602,8 +604,6 @@ function doPost(e) {
       result = guardarPlantillaCPV_API_(data);
     } else if (action === 'eliminar_plantilla_cpv') {
       result = eliminarPlantillaCPV_API_(data.id);
-
-    // ── ESCANEO DOCUMENTOS / EXPEDIENTE ──
     } else if (action === 'procesar_documento_auto') {
       result = procesarDocumentoAutomatico_(data);
     } else if (action === 'resolver_doc_bandeja') {
@@ -615,7 +615,7 @@ function doPost(e) {
       result = { ok: false, error: 'Acción POST no válida: ' + action };
     }
 
-    invalidarCacheServidor_();
+    invalidarCacheServidor_(action);
     return ContentService.createTextOutput(JSON.stringify(result)).setMimeType(ContentService.MimeType.JSON);
   } catch (error) {
     return ContentService.createTextOutput(JSON.stringify({ ok: false, error: error.message })).setMimeType(ContentService.MimeType.JSON);
