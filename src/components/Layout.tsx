@@ -8,7 +8,7 @@ import {
   Calculator, Gavel, FileText, BookOpen, Settings, Users,
   LogOut, Menu, X, UserCheck, Shield, ClipboardList,
   Clock, CalendarDays, Map, Activity, Briefcase, CheckSquare,
-  Package, Car, Star, Link2,
+  Package, Car, Star, Link2, MapPin,
   AlertTriangle, ScanLine, ShieldCheck,
 } from 'lucide-react'
 
@@ -21,8 +21,11 @@ const RUTA_A_CLAVE: Record<string, string> = {
   '/prl': 'prl', '/rgpd': 'rgpd', '/territorio': 'territorio', '/partes': 'partes',
   '/operador': 'operador', '/checklist-config': 'checklist-config',
   '/ordenes': 'ordenes', '/inventario': 'inventario', '/vehiculos': 'vehiculos', '/calidad': 'calidad',
-  '/portal-tokens': 'portal-tokens', '/planificacion': 'planificacion', '/escaneo-documentos': 'escaneo-documentos', '/certificaciones': 'certificaciones',
-  '/configuracion': 'configuracion', '/usuarios': 'usuarios', '/plantillas': 'plantillas', '/portal': 'portal', '/dashboard-rrhh': 'dashboard-rrhh', '/licitaciones-dashboard': 'licitaciones-dashboard',
+  '/portal-tokens': 'portal-tokens', '/planificacion': 'planificacion',
+  '/escaneo-documentos': 'escaneo-documentos', '/certificaciones': 'certificaciones',
+  '/mapa-supervisor': 'mapa-supervisor',
+  '/configuracion': 'configuracion', '/usuarios': 'usuarios', '/plantillas': 'plantillas',
+  '/portal': 'portal', '/dashboard-rrhh': 'dashboard-rrhh', '/licitaciones-dashboard': 'licitaciones-dashboard',
 }
 
 const NAV = [
@@ -49,24 +52,25 @@ const NAV = [
     { clave: 'subrogacion', to: '/subrogacion', label: 'Subrogación', icon: UserCheck },
     { clave: 'fichajes', to: '/fichajes', label: 'Fichajes', icon: Clock },
     { clave: 'ausencias', to: '/ausencias', label: 'Ausencias', icon: CalendarDays },
-    { clave: 'certificaciones',      to: '/certificaciones',      label: 'Certificaciones',   icon: ShieldCheck },
-    { clave: 'escaneo-documentos',   to: '/escaneo-documentos',   label: 'Escaneo Docs',      icon: ScanLine },
+    { clave: 'certificaciones', to: '/certificaciones', label: 'Certificaciones', icon: ShieldCheck },
+    { clave: 'escaneo-documentos', to: '/escaneo-documentos', label: 'Escaneo Docs', icon: ScanLine },
   ]},
   { grupo: 'Cumplimiento', items: [
     { clave: 'prl', to: '/prl', label: 'PRL', icon: Shield },
     { clave: 'rgpd', to: '/rgpd', label: 'RGPD', icon: ClipboardList },
   ]},
   { grupo: 'Territorio', items: [
-    { clave: 'territorio',      to: '/territorio',      label: 'Centros',            icon: Map },
-    { clave: 'planificacion',   to: '/planificacion',   label: 'Planificación',      icon: CalendarDays },
-    { clave: 'ordenes',         to: '/ordenes',         label: 'Órdenes de trabajo', icon: ClipboardList },
-    { clave: 'partes',          to: '/partes',          label: 'Partes',             icon: ClipboardList },
-    { clave: 'incidencias',     to: '/incidencias',     label: 'Incidencias SLA',    icon: AlertTriangle },
-    { clave: 'inventario',      to: '/inventario',      label: 'Inventario',         icon: Package },
-    { clave: 'vehiculos',       to: '/vehiculos',       label: 'Vehículos',          icon: Car },
-    { clave: 'calidad',         to: '/calidad',         label: 'Calidad',            icon: Star },
-    { clave: 'checklist-config',to: '/checklist-config',label: 'Config. Checklist', icon: CheckSquare },
-    { clave: 'portal-tokens',   to: '/portal-tokens',   label: 'Portal cliente',     icon: Link2 },
+    { clave: 'territorio',       to: '/territorio',       label: 'Centros',            icon: Map },
+    { clave: 'mapa-supervisor',  to: '/mapa-supervisor',  label: 'Mapa operarios',     icon: MapPin },
+    { clave: 'planificacion',    to: '/planificacion',    label: 'Planificación',      icon: CalendarDays },
+    { clave: 'ordenes',          to: '/ordenes',          label: 'Órdenes de trabajo', icon: ClipboardList },
+    { clave: 'partes',           to: '/partes',           label: 'Partes',             icon: ClipboardList },
+    { clave: 'incidencias',      to: '/incidencias',      label: 'Incidencias SLA',    icon: AlertTriangle },
+    { clave: 'inventario',       to: '/inventario',       label: 'Inventario',         icon: Package },
+    { clave: 'vehiculos',        to: '/vehiculos',        label: 'Vehículos',          icon: Car },
+    { clave: 'calidad',          to: '/calidad',          label: 'Calidad',            icon: Star },
+    { clave: 'checklist-config', to: '/checklist-config', label: 'Config. Checklist',  icon: CheckSquare },
+    { clave: 'portal-tokens',    to: '/portal-tokens',    label: 'Portal cliente',     icon: Link2 },
   ]},
   { grupo: 'Administración', items: [
     { clave: 'configuracion', to: '/configuracion', label: 'Configuración',   icon: Settings },
@@ -138,13 +142,13 @@ function SidebarContent({ collapsed, onToggle, onClose }: { collapsed: boolean; 
         </button>
       </div>
 
-      {/* Nav items filtrados por rol */}
+      {/* Nav */}
       <nav className="flex-1 overflow-y-auto px-2 py-3">
         {NAV.map(grupo => {
           const visibles = grupo.items.filter(i => tieneAcceso(i.clave))
           if (!visibles.length) return null
           return (
-            <div key={grupo.grupo} className="mb-4">
+            <div key={grupo.grupo + visibles[0].clave} className="mb-4">
               {!collapsed && (
                 <p className="text-[9px] font-bold uppercase tracking-widest text-white/30 px-3 mb-1">{grupo.grupo}</p>
               )}
@@ -171,7 +175,7 @@ function SidebarContent({ collapsed, onToggle, onClose }: { collapsed: boolean; 
         })}
       </nav>
 
-      {/* Perfil usuario */}
+      {/* Perfil */}
       <div className="p-3 border-t border-white/10">
         {!collapsed ? (
           <div className="flex items-center gap-3 px-2 py-2 rounded-xl hover:bg-white/10 transition-colors">
@@ -204,7 +208,6 @@ export default function Layout() {
   const location = useLocation()
   const rolInfo = ROL_BADGE[rol || ''] || { label: '', color: '' }
 
-  // Redirigir TRABAJADOR_CAMPO al operador de campo
   useEffect(() => {
     if ((rol === 'TRABAJADOR_CAMPO' || rol === 'TRABAJADOR_LECTURA') &&
         location.pathname !== '/operador' && location.pathname !== '/portal') {
@@ -212,7 +215,6 @@ export default function Layout() {
     }
   }, [rol, location.pathname])
 
-  // Portal sin sidebar para trabajadores
   if (rol === 'TRABAJADOR_CAMPO' || rol === 'TRABAJADOR_LECTURA') {
     return <Outlet />
   }
@@ -220,12 +222,10 @@ export default function Layout() {
   return (
     <div className="flex h-screen overflow-hidden bg-slate-50">
       <OfflineBanner />
-      {/* Desktop sidebar */}
       <aside className={`hidden md:flex flex-col flex-shrink-0 transition-all duration-300 ${collapsed ? 'w-16' : 'w-56'}`}>
         <SidebarContent collapsed={collapsed} onToggle={() => setCollapsed(c => !c)} onClose={() => {}} />
       </aside>
 
-      {/* Mobile overlay */}
       {mobileOpen && (
         <>
           <div className="fixed inset-0 bg-black/50 z-40 md:hidden" onClick={() => setMobileOpen(false)} />
@@ -236,7 +236,6 @@ export default function Layout() {
       )}
 
       <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Topbar mobile */}
         <header className="md:hidden flex items-center justify-between px-4 py-3 bg-white border-b border-slate-200">
           <button onClick={() => setMobileOpen(true)} className="p-2 text-slate-600 hover:bg-slate-100 rounded-lg">
             <Menu size={20} />

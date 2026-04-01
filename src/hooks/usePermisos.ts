@@ -39,42 +39,44 @@ export const MENU_POR_ROL: Record<Rol, string[]> = {
     'dashboard', 'oportunidades', 'seguimiento',
     'personal', 'ausencias', 'fichajes',
     'prl', 'rgpd', 'configuracion', 'usuarios',
-    'escaneo-documentos'
+    'escaneo-documentos', 'mapa-supervisor',
   ],
   ADMIN_LICITACIONES: [
     'dashboard', 'oportunidades', 'nueva', 'analisis', 'calculo',
-    'decisiones', 'oferta', 'seguimiento', 'conocimiento', 'convenios', 'documentos'
+    'decisiones', 'oferta', 'seguimiento', 'conocimiento', 'convenios', 'documentos',
   ],
   ADMIN_RRHH: [
     'dashboard', 'personal', 'subrogacion', 'fichajes', 'ausencias',
     'prl', 'rgpd', 'plantillas', 'usuarios', 'dashboard-rrhh',
-    'escaneo-documentos', 'certificaciones'
+    'escaneo-documentos', 'certificaciones',
   ],
   ADMIN_TERRITORIO: [
     'dashboard', 'personal', 'fichajes', 'ausencias', 'territorio',
-    'escaneo-documentos'
+    'partes', 'incidencias', 'ordenes', 'inventario', 'vehiculos', 'calidad',
+    'planificacion', 'checklist-config', 'informes',
+    'escaneo-documentos', 'mapa-supervisor',
   ],
   RESPONSABLE_COMERCIAL: [
     'dashboard', 'oportunidades', 'nueva', 'analisis', 'calculo',
-    'decisiones', 'oferta', 'seguimiento', 'conocimiento'
+    'decisiones', 'oferta', 'seguimiento', 'conocimiento',
   ],
   RESPONSABLE_PRL: [
-    'dashboard', 'personal', 'prl', 'escaneo-documentos'
+    'dashboard', 'personal', 'prl', 'escaneo-documentos',
   ],
   RESPONSABLE_RGPD: [
-    'dashboard', 'personal', 'rgpd'
+    'dashboard', 'personal', 'rgpd',
   ],
   ENCARGADO_ZONA: [
-    'dashboard', 'fichajes', 'ausencias'
+    'dashboard', 'fichajes', 'ausencias', 'mapa-supervisor',
   ],
   SUPERVISOR_TERRITORIO: [
-    'dashboard', 'personal', 'fichajes', 'ausencias'
+    'dashboard', 'personal', 'fichajes', 'ausencias', 'mapa-supervisor',
   ],
   TRABAJADOR_CAMPO: [
-    'portal', 'fichajes', 'ausencias', 'mis-datos'
+    'portal', 'fichajes', 'ausencias', 'mis-datos',
   ],
   TRABAJADOR_LECTURA: [
-    'portal', 'fichajes', 'mis-datos'
+    'portal', 'fichajes', 'mis-datos',
   ],
 }
 
@@ -111,7 +113,6 @@ export function usePermisos() {
   const soloSusDatos           = esTrabajador
   const puedeAprobarAusencias  = nivel <= 3
 
-  // Zonas/centros asignados (para supervisores)
   const zonasAsignadas   = (usuario as any)?.zonas_asignadas || []
   const centrosAsignados = (usuario as any)?.centros_asignados || []
 

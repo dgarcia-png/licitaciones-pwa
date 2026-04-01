@@ -5,7 +5,7 @@ import {
   Settings, Upload, Trash2, Loader2, CheckCircle2, AlertCircle,
   ChevronDown, ChevronUp, BookOpen, CalendarDays, Euro, ExternalLink, Plus, Save, X,
   ToggleLeft, ToggleRight, Filter, MapPin, Tag, Hash, Globe,
-  Building2, Users, Map, AlertTriangle, Star, TrendingUp, List
+  Building2, Users, Map, AlertTriangle, Star, TrendingUp, List, FileText, Edit2
 } from 'lucide-react'
 
 const TIPOS_CONFIG: Record<string, { label: string; icon: any; color: string; placeholder: string }> = {
@@ -82,8 +82,8 @@ const CAMPOS_SISTEMA: Record<Modulo, { clave: string, label: string, tipo: 'text
   territorio: [
     { clave: 'pct_indirectos',                label: '% Costes indirectos',           tipo: 'number', descripcion: '% sobre costes directos para indirectos en P&L' },
     { clave: 'stock_minimo_defecto',          label: 'Stock mínimo por defecto',      tipo: 'number', descripcion: 'Cantidad mínima por defecto al crear material' },
-    { clave: 'hora_generacion_ordenes',       label: 'Hora generación órdenes',       tipo: 'time',   descripcion: 'Hora de generación automática de órdenes desde planificación' },
-    { clave: 'hora_cierre_ordenes',           label: 'Hora cierre jornada',           tipo: 'time',   descripcion: 'Hora de cierre automático de jornada de operarios' },
+    { clave: 'hora_generacion_ordenes',       label: 'Hora generación órdenes',       tipo: 'time',   descripcion: 'Hora de generación automática de órdenes' },
+    { clave: 'hora_cierre_ordenes',           label: 'Hora cierre jornada',           tipo: 'time',   descripcion: 'Hora de cierre automático de jornada' },
     { clave: 'coste_hora_maquinaria_defecto', label: 'Coste/hora maquinaria (€)',     tipo: 'number', descripcion: 'Coste por hora de maquinaria por defecto' },
     { clave: 'tipos_servicio',                label: 'Tipos de servicio',             tipo: 'lista',  descripcion: 'Tipos de servicio disponibles (separados por coma)' },
     { clave: 'frecuencias',                   label: 'Frecuencias servicio',          tipo: 'lista',  descripcion: 'Frecuencias disponibles en planificación' },
@@ -122,6 +122,23 @@ const CAMPOS_SISTEMA: Record<Modulo, { clave: string, label: string, tipo: 'text
     { clave: 'carnets_profesionales',    label: 'Carnets y certificaciones', tipo: 'lista', descripcion: 'Tipos de carnets y certificaciones del personal' },
     { clave: 'convenios_lista',          label: 'Convenios colectivos',      tipo: 'lista', descripcion: 'Convenios colectivos aplicables en la empresa' },
   ],
+}
+
+const FAMILIAS_CPV: Record<string, { label: string; emoji: string; color: string }> = {
+  limpieza:      { label: 'Limpieza',      emoji: '🧹', color: 'bg-blue-100 text-blue-700' },
+  jardineria:    { label: 'Jardinería',    emoji: '🌿', color: 'bg-emerald-100 text-emerald-700' },
+  mantenimiento: { label: 'Mantenimiento', emoji: '🔧', color: 'bg-amber-100 text-amber-700' },
+  conserjeria:   { label: 'Conserjería',   emoji: '🏢', color: 'bg-purple-100 text-purple-700' },
+  residuos:      { label: 'Residuos',      emoji: '♻️', color: 'bg-slate-100 text-slate-700' },
+}
+
+const TIPOS_DOC_CPV: Record<string, string> = {
+  memoria_tecnica:    'Memoria técnica',
+  plan_trabajo:       'Plan de trabajo',
+  carta_presentacion: 'Carta de presentación',
+  plan_calidad:       'Plan de calidad',
+  plan_prl:           'Plan de PRL',
+  plan_medioambiente: 'Plan medioambiental',
 }
 
 function Bloque({ title, children, defaultOpen = true, badge, actions }: {
@@ -174,7 +191,7 @@ function CosteRow({ bloque, item, guardando, onToggle, onUpdateValor, onDelete }
 }
 
 export default function ConfiguracionPage() {
-  const [tab, setTab] = useState<'filtros'|'convenios'|'costes'|'sistema'|'festivos'>('filtros')
+  const [tab, setTab] = useState<'filtros'|'convenios'|'costes'|'sistema'|'festivos'|'plantillas_cpv'>('filtros')
 
   // Estados originales
   const [convenios, setConvenios] = useState<any[]>([])
@@ -195,6 +212,14 @@ export default function ConfiguracionPage() {
   const [seccionSistema, setSeccionSistema] = useState<Modulo>('empresa')
   const [cambiosPendientes, setCambiosPendientes] = useState(false)
   const [guardandoSistema, setGuardandoSistema] = useState(false)
+
+  // Estados tab Plantillas CPV
+  const [plantillasCpv, setPlantillasCpv] = useState<any[]>([])
+  const [filtroFamilia, setFiltroFamilia] = useState('')
+  const [editandoCpv, setEditandoCpv] = useState<any>(null)  // plantilla en edición
+  const [nuevaPlantilla, setNuevaPlantilla] = useState(false)
+  const [formCpv, setFormCpv] = useState({ familia_cpv: 'limpieza', tipo_documento: 'memoria_tecnica', titulo: '', contenido_base: '' })
+  const [guardandoCpv, setGuardandoCpv] = useState('')
 
   const showMsg = (m: string, err = false) => {
     if (err) setError(m); else setMensaje(m)
@@ -225,7 +250,15 @@ export default function ConfiguracionPage() {
     } catch(e) {}
   }
 
+  const cargarPlantillasCpv = async () => {
+    try {
+      const r = await api.plantillasCPV(filtroFamilia || undefined)
+      setPlantillasCpv(r.plantillas || [])
+    } catch(e) {}
+  }
+
   useEffect(() => { cargarDatos(); cargarConfigGlobal() }, [])
+  useEffect(() => { if (tab === 'plantillas_cpv') cargarPlantillasCpv() }, [tab, filtroFamilia])
 
   // Handlers convenios
   const handleSubirConvenio = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -317,6 +350,40 @@ export default function ConfiguracionPage() {
     finally { setGuardandoSistema(false) }
   }
 
+  // Handlers plantillas CPV
+  const handleGuardarPlantillaCpv = async () => {
+    if (!formCpv.titulo || !formCpv.contenido_base) { showMsg('Título y contenido obligatorios', true); return }
+    setGuardandoCpv('save')
+    try {
+      const data = editandoCpv ? { id: editandoCpv.id, ...formCpv } : formCpv
+      const r = await api.guardarPlantillaCPV(data)
+      if (r.ok) {
+        showMsg(editandoCpv ? 'Plantilla actualizada' : 'Plantilla creada')
+        setEditandoCpv(null); setNuevaPlantilla(false)
+        setFormCpv({ familia_cpv: 'limpieza', tipo_documento: 'memoria_tecnica', titulo: '', contenido_base: '' })
+        await cargarPlantillasCpv()
+      } else { showMsg(r.error || 'Error', true) }
+    } catch(e) { showMsg('Error de conexión', true) }
+    finally { setGuardandoCpv('') }
+  }
+
+  const handleEliminarPlantillaCpv = async (id: string, titulo: string) => {
+    if (!confirm(`¿Eliminar "${titulo}"?`)) return
+    setGuardandoCpv(id)
+    try {
+      const r = await api.eliminarPlantillaCPV(id)
+      if (r.ok) { showMsg('Plantilla eliminada'); await cargarPlantillasCpv() }
+      else showMsg(r.error || 'Error', true)
+    } catch(e) { showMsg('Error', true) }
+    finally { setGuardandoCpv('') }
+  }
+
+  const handleEditarPlantillaCpv = (p: any) => {
+    setEditandoCpv(p)
+    setFormCpv({ familia_cpv: p.familia_cpv, tipo_documento: p.tipo_documento, titulo: p.titulo, contenido_base: p.contenido_base })
+    setNuevaPlantilla(false)
+  }
+
   const renderCampoSistema = (modulo: Modulo, campo: typeof CAMPOS_SISTEMA['empresa'][0]) => {
     const val = getValSistema(modulo, campo.clave)
     if (campo.tipo === 'textarea' || campo.tipo === 'lista') return (
@@ -340,6 +407,7 @@ export default function ConfiguracionPage() {
   if (cargando) return <div className="flex flex-col items-center py-20"><Loader2 size={32} className="text-blue-500 animate-spin mb-3" /><p className="text-slate-500">Cargando...</p></div>
 
   const bloques = Object.keys(costesRef.costes||{}).filter(b => b)
+  const plantillasFiltradas = filtroFamilia ? plantillasCpv.filter(p => p.familia_cpv === filtroFamilia) : plantillasCpv
 
   return (
     <div className="p-6 lg:p-8 max-w-4xl">
@@ -356,11 +424,12 @@ export default function ConfiguracionPage() {
 
       <div className="flex gap-2 mb-6 flex-wrap">
         {[
-          { id: 'filtros',   label: 'Filtros PASO 0',           icon: Filter   },
-          { id: 'convenios', label: `Convenios (${convenios.length})`, icon: BookOpen },
-          { id: 'costes',    label: 'Costes ref.',               icon: Euro     },
-          { id: 'sistema',   label: 'Sistema',                   icon: Settings },
-          { id: 'festivos',  label: 'Festivos',                   icon: CalendarDays },
+          { id: 'filtros',        label: 'Filtros PASO 0',           icon: Filter      },
+          { id: 'convenios',      label: `Convenios (${convenios.length})`, icon: BookOpen },
+          { id: 'costes',         label: 'Costes ref.',               icon: Euro        },
+          { id: 'sistema',        label: 'Sistema',                   icon: Settings    },
+          { id: 'festivos',       label: 'Festivos',                  icon: CalendarDays },
+          { id: 'plantillas_cpv', label: 'Templates CPV',             icon: FileText    },
         ].map(t => (
           <button key={t.id} onClick={() => setTab(t.id as any)}
             className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-colors ${tab === t.id ? 'bg-[#1a3c34] text-white' : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'}`}>
@@ -578,6 +647,137 @@ export default function ConfiguracionPage() {
 
       {/* TAB FESTIVOS */}
       {tab === 'festivos' && <FestivosManager />}
+
+      {/* TAB PLANTILLAS CPV */}
+      {tab === 'plantillas_cpv' && (
+        <div>
+          <div className="bg-white border border-slate-200 rounded-2xl p-5 mb-4">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h3 className="text-sm font-bold text-slate-900 mb-1">Templates de oferta por sector CPV</h3>
+                <p className="text-xs text-slate-500">Textos base que la IA usa como punto de partida al generar documentos de oferta. Personaliza el texto con la experiencia real de Forgeser.</p>
+              </div>
+              <button onClick={() => { setNuevaPlantilla(true); setEditandoCpv(null); setFormCpv({ familia_cpv: 'limpieza', tipo_documento: 'memoria_tecnica', titulo: '', contenido_base: '' }) }}
+                className="shrink-0 flex items-center gap-1 px-3 py-2 text-xs font-medium text-white bg-[#1a3c34] hover:bg-[#2d5a4e] rounded-xl">
+                <Plus size={14} /> Nueva plantilla
+              </button>
+            </div>
+            {/* Filtro por familia */}
+            <div className="flex gap-2 mt-4 flex-wrap">
+              <button onClick={() => setFiltroFamilia('')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${!filtroFamilia ? 'bg-[#1a3c34] text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>
+                Todas ({plantillasCpv.length})
+              </button>
+              {Object.entries(FAMILIAS_CPV).map(([k, v]) => {
+                const count = plantillasCpv.filter(p => p.familia_cpv === k).length
+                return (
+                  <button key={k} onClick={() => setFiltroFamilia(k)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${filtroFamilia === k ? 'bg-[#1a3c34] text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>
+                    {v.emoji} {v.label} ({count})
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+
+          {/* Formulario nueva/editar */}
+          {(nuevaPlantilla || editandoCpv) && (
+            <div className="bg-[#1a3c34]/5 border border-[#1a3c34]/20 rounded-2xl p-5 mb-4">
+              <h3 className="text-sm font-bold text-slate-900 mb-4">
+                {editandoCpv ? `Editando: ${editandoCpv.titulo}` : 'Nueva plantilla CPV'}
+              </h3>
+              <div className="grid grid-cols-2 gap-3 mb-3">
+                <div>
+                  <label className="text-[10px] font-semibold text-slate-600 uppercase block mb-1">Sector / Familia CPV</label>
+                  <select value={formCpv.familia_cpv} onChange={e => setFormCpv({...formCpv, familia_cpv: e.target.value})}
+                    className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm bg-white focus:border-[#1a3c34] focus:outline-none">
+                    {Object.entries(FAMILIAS_CPV).map(([k,v]) => <option key={k} value={k}>{v.emoji} {v.label}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-[10px] font-semibold text-slate-600 uppercase block mb-1">Tipo de documento</label>
+                  <select value={formCpv.tipo_documento} onChange={e => setFormCpv({...formCpv, tipo_documento: e.target.value})}
+                    className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm bg-white focus:border-[#1a3c34] focus:outline-none">
+                    {Object.entries(TIPOS_DOC_CPV).map(([k,v]) => <option key={k} value={k}>{v}</option>)}
+                  </select>
+                </div>
+              </div>
+              <div className="mb-3">
+                <label className="text-[10px] font-semibold text-slate-600 uppercase block mb-1">Título</label>
+                <input type="text" value={formCpv.titulo} onChange={e => setFormCpv({...formCpv, titulo: e.target.value})}
+                  placeholder="Ej: Memoria Técnica — Limpieza edificios públicos"
+                  className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:border-[#1a3c34] focus:outline-none" />
+              </div>
+              <div className="mb-4">
+                <label className="text-[10px] font-semibold text-slate-600 uppercase block mb-1">
+                  Texto base <span className="text-slate-400 normal-case font-normal">(la IA lo usa como referencia corporativa y lo mejora según el pliego)</span>
+                </label>
+                <textarea value={formCpv.contenido_base} onChange={e => setFormCpv({...formCpv, contenido_base: e.target.value})}
+                  rows={12} placeholder="Escribe aquí el texto base con la experiencia real de Forgeser para este tipo de servicio..."
+                  className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm resize-y focus:border-[#1a3c34] focus:outline-none font-mono" />
+                <p className="text-[10px] text-slate-400 mt-1">{formCpv.contenido_base.length} caracteres</p>
+              </div>
+              <div className="flex gap-2">
+                <button onClick={handleGuardarPlantillaCpv} disabled={guardandoCpv === 'save'}
+                  className="flex items-center gap-2 px-5 py-2.5 text-sm font-bold text-white bg-[#1a3c34] hover:bg-[#2d5a4e] rounded-xl disabled:opacity-50">
+                  {guardandoCpv === 'save' ? <Loader2 size={15} className="animate-spin" /> : <Save size={15} />}
+                  {editandoCpv ? 'Actualizar plantilla' : 'Crear plantilla'}
+                </button>
+                <button onClick={() => { setEditandoCpv(null); setNuevaPlantilla(false) }}
+                  className="px-5 py-2.5 text-sm text-slate-600 border border-slate-200 rounded-xl hover:bg-slate-50">
+                  Cancelar
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Lista de plantillas */}
+          {plantillasFiltradas.length === 0 ? (
+            <div className="flex flex-col items-center py-12 text-center">
+              <FileText size={40} className="text-slate-300 mb-3" />
+              <p className="text-slate-500 font-medium">No hay plantillas {filtroFamilia ? `para ${FAMILIAS_CPV[filtroFamilia]?.label}` : ''}</p>
+              <p className="text-xs text-slate-400 mt-1">Crea una plantilla o ejecuta <code className="bg-slate-100 px-1 rounded">inicializarPlantillasCPV()</code> en Apps Script para cargar las por defecto</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {plantillasFiltradas.map((p: any) => {
+                const familia = FAMILIAS_CPV[p.familia_cpv]
+                const isEditando = editandoCpv?.id === p.id
+                return (
+                  <div key={p.id} className={`bg-white border rounded-2xl overflow-hidden transition-all ${isEditando ? 'border-[#1a3c34]' : 'border-slate-200'}`}>
+                    <div className="flex items-center justify-between p-4">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <span className={`text-xs px-2.5 py-1 rounded-lg font-bold shrink-0 ${familia?.color || 'bg-slate-100 text-slate-700'}`}>
+                          {familia?.emoji} {familia?.label}
+                        </span>
+                        <span className="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded shrink-0">
+                          {TIPOS_DOC_CPV[p.tipo_documento] || p.tipo_documento}
+                        </span>
+                        <span className="text-sm font-medium text-slate-800 truncate">{p.titulo}</span>
+                        <span className="text-[10px] text-slate-400 shrink-0">{p.contenido_base?.length || 0} chars</span>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <button onClick={() => handleEditarPlantillaCpv(p)}
+                          className="flex items-center gap-1 px-3 py-1.5 text-xs text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg">
+                          <Edit2 size={12} /> Editar
+                        </button>
+                        <button onClick={() => handleEliminarPlantillaCpv(p.id, p.titulo)} disabled={guardandoCpv === p.id}
+                          className="flex items-center gap-1 px-3 py-1.5 text-xs text-red-500 bg-red-50 hover:bg-red-100 rounded-lg">
+                          {guardandoCpv === p.id ? <Loader2 size={12} className="animate-spin" /> : <Trash2 size={12} />}
+                        </button>
+                      </div>
+                    </div>
+                    {/* Preview del texto */}
+                    <div className="px-4 pb-4 border-t border-slate-50 pt-3">
+                      <p className="text-xs text-slate-500 line-clamp-2">{p.contenido_base?.substring(0, 200)}...</p>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   )
 }

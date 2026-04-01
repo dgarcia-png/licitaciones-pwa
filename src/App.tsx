@@ -45,6 +45,7 @@ const PortalTokensPage = lazy(() => import('./pages/PortalTokensPage'))
 const PlanificacionPage = lazy(() => import('./pages/PlanificacionPage'))
 const CertificacionesPage = lazy(() => import('./pages/CertificacionesPage'))
 const EscaneoDocumentosPage = lazy(() => import('./pages/EscaneoDocumentosPage'))
+const MapaSupervisorPage = lazy(() => import('./pages/MapaSupervisorPage'))
 
 function Cargando() {
   return <div className="flex flex-col items-center justify-center py-20"><Loader2 size={28} className="text-[#1a3c34] animate-spin mb-2" /><p className="text-sm text-slate-400">Cargando...</p></div>
@@ -107,6 +108,7 @@ function AppRoutes() {
           <Route path="/planificacion" element={<PlanificacionPage />} />
           <Route path="/certificaciones" element={<Suspense fallback={<Cargando/>}><CertificacionesPage/></Suspense>} />
           <Route path="/escaneo-documentos" element={<Suspense fallback={<Cargando/>}><EscaneoDocumentosPage/></Suspense>} />
+          <Route path="/mapa-supervisor" element={<Suspense fallback={<Cargando/>}><MapaSupervisorPage/></Suspense>} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
