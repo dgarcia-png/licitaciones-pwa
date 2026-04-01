@@ -1,3 +1,4 @@
+import { SkeletonList } from '../components/Skeleton'
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { api } from '../services/api'
@@ -236,10 +237,7 @@ export default function TerritorioPage() {
       </div>
 
       {cargando ? (
-        <div className="flex flex-col items-center py-20">
-          <Loader2 size={28} className="text-[#1a3c34] animate-spin mb-3" />
-          <p className="text-slate-500 text-sm">Cargando centros...</p>
-        </div>
+        <SkeletonList count={4} />
       ) : filtrados.length === 0 ? (
         <div className="flex flex-col items-center py-20 bg-white border border-slate-200 rounded-2xl">
           <MapPin size={40} className="text-slate-300 mb-3" />

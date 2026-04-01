@@ -1,9 +1,9 @@
+import { SkeletonPage } from '../components/Skeleton'
 import { useState, useEffect } from 'react'
 import { api } from '../services/api'
 import { useAuth } from '../context/AuthContext'
 import { usePermisos } from '../hooks/usePermisos'
 import { Loader2, Plus, Calendar, CheckCircle2, XCircle, Clock, Users, ChevronLeft, ChevronRight, Save, X, Trash2, Sun, Stethoscope, AlertTriangle } from 'lucide-react'
-import ConfirmModal from '../components/ConfirmModal'
 
 function fmtDate(d: any) { if (!d) return ''; try { const date = new Date(d); if (isNaN(date.getTime())) return String(d); return date.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' }) } catch { return String(d) } }
 
@@ -25,7 +25,6 @@ export default function AusenciasPage() {
   const [mes, setMes] = useState(new Date().getMonth() + 1)
   const [anio, setAnio] = useState(new Date().getFullYear())
   const [filtroEstado, setFiltroEstado] = useState('')
-  const [confirmEliminar, setConfirmEliminar] = useState<string | null>(null)
 
   const mesesNombre = ['', 'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre']
 
@@ -40,9 +39,12 @@ export default function AusenciasPage() {
       let ausFiltered = aus.ausencias || []
       let empsFiltered = (emps.empleados || []).filter((e: any) => e.estado === 'activo')
 
+      // Trabajador: solo ve sus propias ausencias
       if (soloSusDatos) {
         ausFiltered = ausFiltered.filter((a: any) => a.id_empleado === (empsFiltered.find((e: any) => e.email === usuario?.email)?.id))
-      } else if (esSupervisor && !esAdmin && centrosAsignados.length > 0) {
+      }
+      // Supervisor: solo ve su equipo
+      else if (esSupervisor && !esAdmin && centrosAsignados.length > 0) {
         empsFiltered = empsFiltered.filter((e: any) => centrosAsignados.includes(e.centro) || centrosAsignados.includes(e.zona))
         const idsEquipo = new Set(empsFiltered.map((e: any) => e.id))
         ausFiltered = ausFiltered.filter((a: any) => idsEquipo.has(a.id_empleado))
@@ -63,6 +65,7 @@ export default function AusenciasPage() {
   }
 
   useEffect(() => { cargar() }, [filtroEstado])
+  // Cargar vacaciones del propio trabajador al montar
   useEffect(() => {
     if (soloSusDatos) {
       api.empleados().then((d: any) => {
@@ -112,19 +115,18 @@ export default function AusenciasPage() {
     setTimeout(() => setMsg(''), 3000)
   }
 
-  const eliminarConfirmado = async () => {
-    if (!confirmEliminar) return
-    try {
-      const r = await api.eliminarAusencia(confirmEliminar)
-      if (r.ok) { setMsg('✅ Eliminada'); cargar() }
-    } catch(e) {}
-    finally { setConfirmEliminar(null) }
+  const eliminar = async (id: string) => {
+    if (!confirm('¿Eliminar esta solicitud?')) return
+    try { const r = await api.eliminarAusencia(id); if (r.ok) { setMsg('✅ Eliminada'); cargar() } } catch(e) {}
+    setTimeout(() => setMsg(''), 3000)
   }
 
   const s = dashboard?.stats || {}
-  if (cargando && ausencias.length === 0 && !dashboard) return <div className="flex flex-col items-center py-20"><Loader2 size={32} className="text-[#1a3c34] animate-spin mb-3" /><p className="text-slate-500">Cargando ausencias...</p></div>
+  if (cargando && ausencias.length === 0 && !dashboard) return <div className="p-6 lg:p-8"><SkeletonPage /></div>
 
+  // Generar días del mes para calendario
   const generarDiasMes = () => {
+    const primer = new Date(anio, mes - 1, 1)
     const ultimo = new Date(anio, mes, 0)
     const dias = []
     for (let d = 1; d <= ultimo.getDate(); d++) {
@@ -137,21 +139,12 @@ export default function AusenciasPage() {
 
   return (
     <div className="p-6 lg:p-8 max-w-6xl">
-
-      <ConfirmModal
-        open={!!confirmEliminar}
-        titulo="¿Eliminar solicitud?"
-        mensaje="Se eliminará esta solicitud de ausencia. Esta acción no se puede deshacer."
-        labelOk="Sí, eliminar" peligroso
-        onConfirm={eliminarConfirmado}
-        onCancel={() => setConfirmEliminar(null)}
-      />
-
       <div className="flex items-center gap-4 mb-6">
         <div className="p-2.5 bg-gradient-to-br from-violet-700 to-purple-600 rounded-xl shadow-lg shadow-violet-200"><Sun size={22} className="text-white" /></div>
         <div><h1 className="text-2xl font-bold text-slate-900">Ausencias y Permisos</h1><p className="text-sm text-slate-500">{s.pendientes || 0} pendientes · {s.hoy_ausentes || 0} ausentes hoy</p></div>
       </div>
 
+      {/* Banner vacaciones para trabajador (vista simplificada) */}
       {soloSusDatos && resumenVac && (
         <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4 mb-5 flex items-center gap-6">
           <div className="flex items-center gap-3">
@@ -169,6 +162,7 @@ export default function AusenciasPage() {
         </div>
       )}
 
+      {/* Tabs */}
       <div className="flex gap-1 bg-slate-100 p-1 rounded-xl mb-6">
         {[{id:'solicitudes',label:'Solicitudes',icon:Calendar},{id:'calendario',label:'Calendario',icon:Users}].map((t: any) => (
           <button key={t.id} onClick={() => setTab(t.id)}
@@ -180,8 +174,10 @@ export default function AusenciasPage() {
 
       {msg && <div className={`mb-4 p-4 rounded-xl text-sm font-medium ${msg.includes('✅') ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-red-50 text-red-700 border border-red-200'}`}>{msg}</div>}
 
+      {/* ═══ SOLICITUDES ═══ */}
       {tab === 'solicitudes' && (
         <div>
+          {/* KPIs */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
             <div className="bg-white border border-slate-200 rounded-xl p-4 text-center"><p className="text-[10px] text-slate-500 uppercase font-bold">Pendientes</p><p className="text-2xl font-black text-amber-600">{s.pendientes || 0}</p></div>
             <div className="bg-white border border-slate-200 rounded-xl p-4 text-center"><p className="text-[10px] text-slate-500 uppercase font-bold">Aprobadas</p><p className="text-2xl font-black text-emerald-600">{s.aprobadas || 0}</p></div>
@@ -189,6 +185,7 @@ export default function AusenciasPage() {
             <div className={`border rounded-xl p-4 text-center ${s.hoy_ausentes > 0 ? 'bg-amber-50 border-amber-200' : 'bg-white border-slate-200'}`}><p className="text-[10px] text-slate-500 uppercase font-bold">Ausentes hoy</p><p className="text-2xl font-black">{s.hoy_ausentes || 0}</p></div>
           </div>
 
+          {/* Acciones */}
           <div className="flex items-center justify-between mb-4">
             <div className="flex gap-2">
               {['','pendiente','aprobada','rechazada'].map((e: string) => (
@@ -200,6 +197,7 @@ export default function AusenciasPage() {
             <button onClick={() => { setMostrarForm(!mostrarForm); setForm({}); setResumenVac(null) }} className="flex items-center gap-2 px-5 py-3 bg-violet-700 hover:bg-violet-800 text-white text-sm font-bold rounded-xl shadow-lg shadow-violet-200"><Plus size={16} /> Nueva solicitud</button>
           </div>
 
+          {/* Formulario */}
           {mostrarForm && (
             <div className="bg-violet-50 border-2 border-violet-200 rounded-2xl p-6 mb-6">
               <h4 className="text-base font-bold text-violet-800 mb-4">Nueva solicitud de ausencia</h4>
@@ -234,10 +232,12 @@ export default function AusenciasPage() {
             </div>
           )}
 
+          {/* Lista */}
           {cargando ? <div className="text-center py-8"><Loader2 size={24} className="animate-spin text-slate-400 mx-auto" /></div> : ausencias.length === 0 ? (
             <div className="text-center py-16"><Calendar size={48} className="text-slate-300 mx-auto mb-3" /><p className="text-slate-500">Sin solicitudes{filtroEstado ? ' con este estado' : ''}</p></div>
           ) : (
             <div className="space-y-2">{ausencias.map((a: any) => {
+              const tipoInfo = tipos.find((t: any) => t.id === a.tipo)
               return (
                 <div key={a.id} className={`bg-white border-2 rounded-2xl p-4 ${a.estado === 'pendiente' ? 'border-amber-200' : a.estado === 'rechazada' ? 'border-red-200' : 'border-slate-200'}`}>
                   <div className="flex items-center justify-between">
@@ -262,7 +262,7 @@ export default function AusenciasPage() {
                           <button onClick={() => aprobar(a.id, 'rechazada')} className="flex items-center gap-1 px-3 py-2 bg-red-100 hover:bg-red-200 text-red-700 text-xs font-bold rounded-lg"><XCircle size={14} /> Rechazar</button>
                         </>
                       )}
-                      {a.estado === 'pendiente' && <button onClick={() => setConfirmEliminar(a.id)} className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg"><Trash2 size={16} /></button>}
+                      {a.estado === 'pendiente' && <button onClick={() => eliminar(a.id)} className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg"><Trash2 size={16} /></button>}
                     </div>
                   </div>
                 </div>
@@ -272,6 +272,7 @@ export default function AusenciasPage() {
         </div>
       )}
 
+      {/* ═══ CALENDARIO ═══ */}
       {tab === 'calendario' && (
         <div>
           <div className="flex justify-center mb-4">
@@ -288,6 +289,7 @@ export default function AusenciasPage() {
                 {['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'].map((d: string) => <div key={d} className="text-center text-[10px] font-bold text-slate-500 py-1">{d}</div>)}
               </div>
               <div className="grid grid-cols-7 gap-1">
+                {/* Espacios vacíos antes del primer día */}
                 {Array.from({ length: (new Date(anio, mes-1, 1).getDay() + 6) % 7 }, (_, i) => <div key={'empty-'+i} />)}
                 {generarDiasMes().map((d: any) => {
                   const ausentes = calendario?.dias?.[d.fecha] || []

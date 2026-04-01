@@ -1,3 +1,4 @@
+import { SkeletonPage } from '../components/Skeleton'
 import { useState, useEffect } from 'react'
 import { usePermisos } from '../hooks/usePermisos'
 import { api } from '../services/api'
@@ -128,7 +129,7 @@ export default function PrlPage() {
   )
 
   const s = dashboard?.stats || {}
-  if (cargando && !dashboard) return (<div className="flex flex-col items-center py-20"><Loader2 size={32} className="text-[#1a3c34] animate-spin mb-3" /><p className="text-slate-500">Cargando PRL...</p></div>)
+  if (cargando && !dashboard) return <div className="p-6 lg:p-8"><SkeletonPage /></div>
 
   return (
     <div className="p-6 lg:p-8 max-w-6xl">

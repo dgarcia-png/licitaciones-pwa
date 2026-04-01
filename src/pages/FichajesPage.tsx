@@ -1,3 +1,4 @@
+import { SkeletonPage } from '../components/Skeleton'
 // src/pages/FichajesPage.tsx — ACTUALIZADO 1/04/2026
 // FIX: historial usa tipo_dia ('trabajado'|'festivo'|'fin_de_semana'|'falta'|'futuro')
 //      para no contar festivos ni fines de semana como faltas
@@ -212,12 +213,7 @@ export default function FichajesPage() {
     ...(esAdmin ? [{ id: 'panel', label: 'Panel hoy', icon: Activity }] : []),
   ]
 
-  if (cargando && empleados.length === 0) return (
-    <div className="flex flex-col items-center py-20">
-      <Loader2 size={32} className="text-blue-500 animate-spin mb-3" />
-      <p className="text-slate-500">Cargando fichajes...</p>
-    </div>
-  )
+  if (cargando && empleados.length === 0) return <div className="p-6 lg:p-8"><SkeletonPage /></div>
 
   return (
     <div className="max-w-4xl">

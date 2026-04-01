@@ -1,3 +1,4 @@
+import { SkeletonStats, SkeletonList } from '../components/Skeleton'
 // src/pages/InformesPage.tsx — ACTUALIZADO 1 abril 2026
 // Cambios:
 //   1. Tab nueva "Rendimiento" — desviación por partidas, semáforos, proyección fin de contrato
@@ -503,7 +504,7 @@ export default function InformesPage() {
       </div>
 
       {cargando && !informeEco && (
-        <div className="flex justify-center py-16"><Loader2 size={28} className="animate-spin text-[#1a3c34]"/></div>
+        <div className="p-6 space-y-4"><SkeletonStats count={4} /><SkeletonList count={3} /></div>
       )}
 
       {/* ═══ TAB ECONÓMICO / P&L ═══ */}
