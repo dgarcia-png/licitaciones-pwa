@@ -3,13 +3,14 @@ import { Link, useLocation, useNavigate, Outlet } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { usePermisos, MENU_POR_ROL } from '../hooks/usePermisos'
 import OfflineBanner from './OfflineBanner'
+import BusquedaGlobal from './BusquedaGlobal'
 import {
   LayoutDashboard, FileSearch, PlusCircle, BarChart3,
   Calculator, Gavel, FileText, BookOpen, Settings, Users,
   LogOut, Menu, X, UserCheck, Shield, ClipboardList,
   Clock, CalendarDays, Map, Activity, Briefcase, CheckSquare,
   Package, Car, Star, Link2, MapPin,
-  AlertTriangle, ScanLine, ShieldCheck,
+  AlertTriangle, ScanLine, ShieldCheck, Search,
 } from 'lucide-react'
 
 const RUTA_A_CLAVE: Record<string, string> = {
@@ -111,7 +112,9 @@ function ForgeserLogo({ collapsed }: { collapsed: boolean }) {
   )
 }
 
-function SidebarContent({ collapsed, onToggle, onClose }: { collapsed: boolean; onToggle: () => void; onClose: () => void }) {
+function SidebarContent({ collapsed, onToggle, onClose, onBuscar }: {
+  collapsed: boolean; onToggle: () => void; onClose: () => void; onBuscar: () => void
+}) {
   const location = useLocation()
   const navigate = useNavigate()
   const { usuario, logout } = useAuth()
@@ -142,8 +145,24 @@ function SidebarContent({ collapsed, onToggle, onClose }: { collapsed: boolean; 
         </button>
       </div>
 
+      {/* Botón búsqueda */}
+      <div className="px-2 pt-2">
+        <button
+          onClick={onBuscar}
+          title={collapsed ? 'Buscar (⌘K)' : undefined}
+          className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-white/50 hover:text-white hover:bg-white/10 transition-all text-sm ${collapsed ? 'justify-center' : ''}`}>
+          <Search size={16} className="shrink-0" />
+          {!collapsed && (
+            <>
+              <span className="flex-1 text-left text-[13px]">Buscar...</span>
+              <kbd className="text-[10px] border border-white/20 rounded px-1.5 py-0.5 font-mono opacity-60">⌘K</kbd>
+            </>
+          )}
+        </button>
+      </div>
+
       {/* Nav */}
-      <nav className="flex-1 overflow-y-auto px-2 py-3">
+      <nav className="flex-1 overflow-y-auto px-2 py-2">
         {NAV.map(grupo => {
           const visibles = grupo.items.filter(i => tieneAcceso(i.clave))
           if (!visibles.length) return null
@@ -203,10 +222,23 @@ function SidebarContent({ collapsed, onToggle, onClose }: { collapsed: boolean; 
 export default function Layout() {
   const [collapsed, setCollapsed] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
+  const [busquedaAbierta, setBusquedaAbierta] = useState(false)
   const { rol } = usePermisos()
   const navigate = useNavigate()
   const location = useLocation()
   const rolInfo = ROL_BADGE[rol || ''] || { label: '', color: '' }
+
+  // Atajo de teclado Cmd+K / Ctrl+K
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault()
+        setBusquedaAbierta(a => !a)
+      }
+    }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [])
 
   useEffect(() => {
     if ((rol === 'TRABAJADOR_CAMPO' || rol === 'TRABAJADOR_LECTURA') &&
@@ -222,20 +254,35 @@ export default function Layout() {
   return (
     <div className="flex h-screen overflow-hidden bg-slate-50">
       <OfflineBanner />
+
+      {/* Búsqueda global */}
+      <BusquedaGlobal abierto={busquedaAbierta} onCerrar={() => setBusquedaAbierta(false)} />
+
       <aside className={`hidden md:flex flex-col flex-shrink-0 transition-all duration-300 ${collapsed ? 'w-16' : 'w-56'}`}>
-        <SidebarContent collapsed={collapsed} onToggle={() => setCollapsed(c => !c)} onClose={() => {}} />
+        <SidebarContent
+          collapsed={collapsed}
+          onToggle={() => setCollapsed(c => !c)}
+          onClose={() => {}}
+          onBuscar={() => setBusquedaAbierta(true)}
+        />
       </aside>
 
       {mobileOpen && (
         <>
           <div className="fixed inset-0 bg-black/50 z-40 md:hidden" onClick={() => setMobileOpen(false)} />
           <aside className="fixed inset-y-0 left-0 w-64 z-50 flex flex-col md:hidden">
-            <SidebarContent collapsed={false} onToggle={() => {}} onClose={() => setMobileOpen(false)} />
+            <SidebarContent
+              collapsed={false}
+              onToggle={() => {}}
+              onClose={() => setMobileOpen(false)}
+              onBuscar={() => { setMobileOpen(false); setBusquedaAbierta(true) }}
+            />
           </aside>
         </>
       )}
 
       <div className="flex-1 flex flex-col overflow-hidden">
+        {/* Header móvil */}
         <header className="md:hidden flex items-center justify-between px-4 py-3 bg-white border-b border-slate-200">
           <button onClick={() => setMobileOpen(true)} className="p-2 text-slate-600 hover:bg-slate-100 rounded-lg">
             <Menu size={20} />
@@ -244,7 +291,9 @@ export default function Layout() {
             <div className="w-7 h-7 rounded-lg flex items-center justify-center font-bold text-white text-sm" style={{ background: '#1a3c34' }}>F</div>
             <span className="font-semibold text-slate-800 text-sm">Forgeser</span>
           </div>
-          <span className={`text-[9px] font-bold px-2 py-1 rounded-full ${rolInfo.color}`}>{rolInfo.label}</span>
+          <button onClick={() => setBusquedaAbierta(true)} className="p-2 text-slate-600 hover:bg-slate-100 rounded-lg">
+            <Search size={18} />
+          </button>
         </header>
 
         <main className="flex-1 overflow-y-auto p-4 lg:p-6">

@@ -417,4 +417,6 @@ export const api = {
   restaurarOportunidad: (id: string) => postAPI({ action: 'restaurar_oportunidad', id }),
   papelera:             (hoja?: string) => fetchAPI('papelera', hoja ? { hoja } : {}),
   restaurarPapelera:    (id_papelera: string) => postAPI({ action: 'restaurar_papelera', id_papelera }),
+  // ═══ BÚSQUEDA GLOBAL ═══
+  busquedaGlobal:       (q: string) => fetchAPI('busqueda_global', { q }),
 }
