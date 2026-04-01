@@ -5,6 +5,7 @@ import {
   ChevronDown, ChevronUp, Search, FileText, Award, Users, Shield,
   Wrench, Briefcase, Lightbulb, X, ExternalLink, Database, Zap
 } from 'lucide-react'
+import ConfirmModal from '../components/ConfirmModal'
 
 const CATEGORIAS: Record<string, { label: string; icon: any; color: string }> = {
   memoria_tecnica:    { label: 'Memoria técnica ganadora',    icon: FileText,  color: 'bg-blue-100 text-blue-700' },
@@ -37,8 +38,8 @@ export default function ConocimientoPage() {
   const [resultadosBusqueda, setResultadosBusqueda] = useState<any[]>([])
   const [mostrarFormulario, setMostrarFormulario] = useState(false)
   const [filtroCategoria, setFiltroCategoria] = useState('')
+  const [confirmEliminar, setConfirmEliminar] = useState<{ id: string; nombre: string } | null>(null)
 
-  // Form state
   const [form, setForm] = useState({
     categoria: 'memoria_tecnica',
     descripcion: '',
@@ -78,12 +79,13 @@ export default function ConocimientoPage() {
     finally { setSubiendo(false); e.target.value = '' }
   }
 
-  const handleEliminar = async (id: string, nombre: string) => {
-    if (!confirm(`¿Eliminar "${nombre}"?\n\nSe borrarán el archivo y sus embeddings.`)) return
+  const handleEliminarConfirmado = async () => {
+    if (!confirmEliminar) return
     try {
-      await api.eliminarConocimiento(id)
+      await api.eliminarConocimiento(confirmEliminar.id)
       setMensaje('Documento eliminado'); await cargarDatos()
     } catch (e) { setError('Error eliminando') }
+    finally { setConfirmEliminar(null) }
   }
 
   const handleBuscar = async () => {
@@ -102,6 +104,16 @@ export default function ConocimientoPage() {
 
   return (
     <div className="p-6 lg:p-8 max-w-5xl">
+
+      <ConfirmModal
+        open={!!confirmEliminar}
+        titulo="¿Eliminar documento?"
+        mensaje={`Se eliminarán el archivo "${confirmEliminar?.nombre}" y todos sus embeddings. Esta acción no se puede deshacer.`}
+        labelOk="Sí, eliminar" peligroso
+        onConfirm={handleEliminarConfirmado}
+        onCancel={() => setConfirmEliminar(null)}
+      />
+
       {/* Cabecera */}
       <div className="flex items-center gap-4 mb-6">
         <div className="p-2.5 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl shadow-lg shadow-indigo-200"><Database size={22} className="text-white" /></div>
@@ -148,7 +160,6 @@ export default function ConocimientoPage() {
       {mostrarFormulario && (
         <div className="bg-indigo-50 border border-indigo-200 rounded-2xl p-5 mb-6">
           <h3 className="text-sm font-semibold text-indigo-900 mb-4">Subir documento de la empresa</h3>
-
           <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-4">
             <div>
               <label className="text-[10px] text-slate-500 uppercase">Categoría</label>
@@ -204,7 +215,6 @@ export default function ConocimientoPage() {
                 placeholder="limpieza, colegios, sevilla, subrogación" className="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs" />
             </div>
           </div>
-
           <label className={`flex flex-col items-center justify-center p-6 border-2 border-dashed rounded-xl cursor-pointer transition-all ${subiendo ? 'border-indigo-300 bg-indigo-100' : 'border-slate-300 hover:border-indigo-400 hover:bg-indigo-50/50'}`}>
             {subiendo ? (
               <><Loader2 size={24} className="text-indigo-500 animate-spin mb-2" /><span className="text-sm text-indigo-700 font-medium">Procesando con Gemini...</span><span className="text-xs text-indigo-500 mt-1">Extrayendo texto + generando embeddings (1-3 min)</span></>
@@ -213,7 +223,6 @@ export default function ConocimientoPage() {
             )}
             <input type="file" accept=".pdf,.doc,.docx" onChange={handleSubir} disabled={subiendo} className="hidden" />
           </label>
-
           <button onClick={() => setMostrarFormulario(false)} className="mt-3 text-xs text-slate-500 hover:text-slate-700">Cancelar</button>
         </div>
       )}
@@ -231,7 +240,6 @@ export default function ConocimientoPage() {
             {buscando ? <Loader2 size={14} className="animate-spin" /> : <Search size={14} />} Buscar
           </button>
         </div>
-
         {resultadosBusqueda.length > 0 && (
           <div className="mt-4 space-y-2">
             <p className="text-xs text-slate-500">{resultadosBusqueda.length} resultados</p>
@@ -309,7 +317,7 @@ export default function ConocimientoPage() {
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
                     {doc.drive_url && <a href={doc.drive_url} target="_blank" rel="noopener noreferrer" className="text-slate-400 hover:text-blue-600 p-1"><ExternalLink size={14} /></a>}
-                    <button onClick={() => handleEliminar(doc.id, doc.nombre)} className="text-slate-300 hover:text-red-600 p-1"><Trash2 size={14} /></button>
+                    <button onClick={() => setConfirmEliminar({ id: doc.id, nombre: doc.nombre })} className="text-slate-300 hover:text-red-600 p-1"><Trash2 size={14} /></button>
                   </div>
                 </div>
               </div>

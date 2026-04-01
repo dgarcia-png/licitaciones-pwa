@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { usePermisos } from '../hooks/usePermisos'
 import { api } from '../services/api'
 import ModalPlantilla from '../components/ModalPlantilla'
+import ConfirmModal from '../components/ConfirmModal'
 import { Shield, Loader2, Plus, AlertTriangle, CheckCircle2, XCircle, Clock, FileText, Lock, UserCheck, Database, Siren, X, Save, ChevronDown, ChevronUp, User, ExternalLink } from 'lucide-react'
 
 function fmtDate(d: any) { if (!d) return ''; try { const date = new Date(d); if (isNaN(date.getTime())) return String(d); return date.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' }) } catch { return String(d) } }
@@ -23,6 +24,7 @@ export default function RgpdPage() {
   const [guardando, setGuardando] = useState(false)
   const [generandoDoc, setGenerandoDoc] = useState<string|null>(null)
   const [modalPlantilla, setModalPlantilla] = useState<{ datos: any; titulo: string } | null>(null)
+  const [confirmRevocar, setConfirmRevocar] = useState<string | null>(null)
   const showMsg = (m: string) => { setMsg(m); setTimeout(() => setMsg(''), 3000) }
   const [msg, setMsg] = useState('')
   const [form, setForm] = useState<any>({})
@@ -65,9 +67,13 @@ export default function RgpdPage() {
     finally { setGuardando(false) }
   }
 
-  const revocar = async (id: string) => {
-    if (!confirm('¿Revocar este consentimiento?')) return
-    try { const r = await api.revocarConsentimiento({ id, motivo: 'Revocación voluntaria' }); if (r.ok) { setMsg('✅ Revocado'); cargarTab('consentimientos'); cargar() } } catch(e) {}
+  const revocarConfirmado = async () => {
+    if (!confirmRevocar) return
+    try {
+      const r = await api.revocarConsentimiento({ id: confirmRevocar, motivo: 'Revocación voluntaria' })
+      if (r.ok) { setMsg('✅ Revocado'); cargarTab('consentimientos'); cargar() }
+    } catch(e) {}
+    finally { setConfirmRevocar(null) }
   }
 
   const responderArco = async (id: string) => {
@@ -105,6 +111,16 @@ export default function RgpdPage() {
 
   return (
     <div className="p-6 lg:p-8 max-w-6xl">
+
+      <ConfirmModal
+        open={!!confirmRevocar}
+        titulo="¿Revocar consentimiento?"
+        mensaje="Se registrará la revocación de este consentimiento. Esta acción no se puede deshacer."
+        labelOk="Sí, revocar" peligroso
+        onConfirm={revocarConfirmado}
+        onCancel={() => setConfirmRevocar(null)}
+      />
+
       {modalPlantilla && (
         <ModalPlantilla
           modulo="RGPD"
@@ -114,6 +130,7 @@ export default function RgpdPage() {
           onGenerado={() => { showMsg('✅ Documento generado'); setModalPlantilla(null) }}
         />
       )}
+
       <div className="flex items-center gap-4 mb-6">
         <div className="p-2.5 bg-gradient-to-br from-blue-700 to-indigo-800 rounded-xl shadow-lg shadow-blue-200"><Lock size={22} className="text-white" /></div>
         <div><h1 className="text-2xl font-bold text-slate-900">Protección de Datos (RGPD)</h1><p className="text-sm text-slate-500">{dashboard?.alertas || 0} alertas activas</p></div>
@@ -130,10 +147,9 @@ export default function RgpdPage() {
 
       {msg && <div className={`mb-4 p-4 rounded-xl text-sm font-medium ${msg.includes('✅') ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-red-50 text-red-700 border border-red-200'}`}>{msg}</div>}
 
-      {/* ═══ DASHBOARD MEJORADO ═══ */}
+      {/* DASHBOARD */}
       {tab === 'dashboard' && s && (
         <div>
-          {/* KPIs con semáforos */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-5">
             {[
               { icon: UserCheck, label: 'Consentimientos', valor: s.consentimientos?.vigentes||0, sub: (s.consentimientos?.revocados||0) + ' revocados', urgente: false, aviso: (s.consentimientos?.vigentes||0) === 0, color: 'text-blue-600', tab: 'consentimientos' },
@@ -155,12 +171,9 @@ export default function RgpdPage() {
             ))}
           </div>
 
-          {/* Alertas urgentes */}
           {(dashboard?.alertas || 0) > 0 && (
             <div className="bg-red-50 border-2 border-red-200 rounded-2xl p-5 mb-5">
-              <h3 className="text-sm font-bold text-red-800 mb-3 flex items-center gap-2">
-                <AlertTriangle size={16} /> Alertas RGPD — acción requerida
-              </h3>
+              <h3 className="text-sm font-bold text-red-800 mb-3 flex items-center gap-2"><AlertTriangle size={16} /> Alertas RGPD — acción requerida</h3>
               <div className="space-y-2">
                 {s.arco?.vencidos > 0 && (
                   <div className="flex items-center gap-3 p-3 bg-white rounded-xl border border-red-200">
@@ -186,11 +199,8 @@ export default function RgpdPage() {
             </div>
           )}
 
-          {/* Checklist cumplimiento RGPD */}
           <div className="bg-white border border-slate-200 rounded-2xl p-5">
-            <h3 className="text-sm font-bold text-slate-900 mb-4 flex items-center gap-2">
-              <CheckCircle2 size={15} className="text-blue-600" /> Checklist de cumplimiento RGPD
-            </h3>
+            <h3 className="text-sm font-bold text-slate-900 mb-4 flex items-center gap-2"><CheckCircle2 size={15} className="text-blue-600" /> Checklist de cumplimiento RGPD</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
               {[
                 { ok: (s.consentimientos?.vigentes||0) > 0, label: 'Consentimientos de empleados registrados', info: 'Art. 6 RGPD — base legal del tratamiento', tab: 'consentimientos' },
@@ -201,9 +211,7 @@ export default function RgpdPage() {
               ].map((item: any, i: number) => (
                 <button key={i} onClick={() => setTab(item.tab)}
                   className={`flex items-start gap-3 p-3 rounded-xl border text-left hover:shadow-sm transition-all ${item.ok ? 'bg-emerald-50 border-emerald-200' : 'bg-amber-50 border-amber-200'}`}>
-                  {item.ok
-                    ? <CheckCircle2 size={16} className="text-emerald-600 flex-shrink-0 mt-0.5" />
-                    : <AlertTriangle size={16} className="text-amber-600 flex-shrink-0 mt-0.5" />}
+                  {item.ok ? <CheckCircle2 size={16} className="text-emerald-600 flex-shrink-0 mt-0.5" /> : <AlertTriangle size={16} className="text-amber-600 flex-shrink-0 mt-0.5" />}
                   <div>
                     <p className={`text-xs font-bold ${item.ok ? 'text-emerald-800' : 'text-amber-800'}`}>{item.label}</p>
                     <p className="text-[10px] text-slate-500 mt-0.5">{item.info}</p>
@@ -252,7 +260,7 @@ export default function RgpdPage() {
                   </div>
                   <div className="flex gap-2">
                     <button onClick={() => setModalPlantilla({ titulo: 'Consentimiento RGPD — ' + c.nombre, datos: { nombre_empleado: c.nombre, dni: c.dni || '', centro: c.centro || '', tipo_consentimiento: c.tipo || '', finalidad: c.finalidad || '', base_legal: c.base_legal || '' } })} className="flex items-center gap-1.5 px-3 py-2 bg-blue-100 hover:bg-blue-200 text-blue-700 text-xs font-bold rounded-lg"><FileText size={12} /> Documento</button>
-                    {c.estado === 'vigente' && <button onClick={() => revocar(c.id)} className="flex items-center gap-1.5 px-3 py-2 bg-red-100 hover:bg-red-200 text-red-700 text-xs font-bold rounded-lg"><XCircle size={12} /> Revocar</button>}
+                    {c.estado === 'vigente' && <button onClick={() => setConfirmRevocar(c.id)} className="flex items-center gap-1.5 px-3 py-2 bg-red-100 hover:bg-red-200 text-red-700 text-xs font-bold rounded-lg"><XCircle size={12} /> Revocar</button>}
                   </div>
                 </div>
               </div>
