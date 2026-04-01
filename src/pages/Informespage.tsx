@@ -190,16 +190,18 @@ function ChartCard({ title, children, actions }: { title: string; children: Reac
 
 // ─── Etiqueta interior en dona ────────────────────────────────────────────────
 
-function LabelDonut({ cx, cy, midAngle, innerRadius, outerRadius, pct }: any) {
-  if (pct < 8) return null
+function LabelDonut({ cx, cy, midAngle, innerRadius, outerRadius, pct, percent }: any) {
+  // pct es campo custom; percent es el prop nativo de recharts (0–1)
+  const val = pct != null ? pct : (percent ?? 0) * 100
+  if (val < 8) return null
   const RADIAN = Math.PI / 180
   const r = innerRadius + (outerRadius - innerRadius) * 0.5
   const x = cx + r * Math.cos(-midAngle * RADIAN)
   const y = cy + r * Math.sin(-midAngle * RADIAN)
   return (
     <text x={x} y={y} textAnchor="middle" dominantBaseline="central"
-      className="fill-white text-[10px] font-bold" style={{ fontSize: 10, fontWeight: 700, fill: 'white' }}>
-      {pct.toFixed(0)}%
+      style={{ fontSize: 10, fontWeight: 700, fill: 'white' }}>
+      {val.toFixed(0)}%
     </text>
   )
 }
@@ -602,9 +604,10 @@ function TabRRHH({ informeRRHH, exportarCSV }: any) {
   const a = informeRRHH.ausencias  || {}
 
   // Barras: distribución de la plantilla
+  const _pt = p.total || 0
   const plantillaData = [
-    { name: 'Activos',   value: p.activos         || 0, fill: C.emerald },
-    { name: 'Inactivos', value: (p.total || 0) - (p.activos || 0), fill: C.slateL.replace('e2', 'a0') },
+    { name: 'Activos',   value: p.activos || 0, pct: _pt > 0 ? (p.activos || 0) / _pt * 100 : 0, fill: C.emerald },
+    { name: 'Inactivos', value: (p.total || 0) - (p.activos || 0), pct: _pt > 0 ? ((p.total || 0) - (p.activos || 0)) / _pt * 100 : 0, fill: C.slateL.replace('e2', 'a0') },
   ].filter(d => d.value > 0)
 
   // Barras: horas trabajadas vs extra
@@ -784,9 +787,10 @@ function TabTerritorio({ informeTerr, mes }: any) {
     { name: 'Materiales', value: Math.round(op.coste_materiales || 0), pct: totalCostes > 0 ? (op.coste_materiales || 0) / totalCostes * 100 : 0, fill: C.azul  },
   ].filter(d => d.value > 0)
 
+  const _ptotal = op.partes_totales || 0
   const partesData = [
-    { name: 'Completados', value: op.partes_completados || 0, fill: C.emerald },
-    { name: 'Pendientes',  value: Math.max(0, (op.partes_totales || 0) - (op.partes_completados || 0)), fill: C.slateL },
+    { name: 'Completados', value: op.partes_completados || 0, pct: _ptotal > 0 ? (op.partes_completados || 0) / _ptotal * 100 : 0, fill: C.emerald },
+    { name: 'Pendientes',  value: Math.max(0, (op.partes_totales || 0) - (op.partes_completados || 0)), pct: _ptotal > 0 ? Math.max(0, (op.partes_totales || 0) - (op.partes_completados || 0)) / _ptotal * 100 : 0, fill: C.slateL },
   ].filter(d => d.value > 0)
 
   const incidenciasData = [
