@@ -1,0 +1,16 @@
+{
+  "scriptId": "1iElF1-HzPlkw_7v1_SYj_FB13L0l6uNaIUpBPIPuzN6bMzvDTCY69cvt",
+  "rootDir": "gas-backup",
+  "scriptExtensions": [
+    ".js",
+    ".gs"
+  ],
+  "htmlExtensions": [
+    ".html"
+  ],
+  "jsonExtensions": [
+    ".json"
+  ],
+  "filePushOrder": [],
+  "skipSubdirectories": false
+}
