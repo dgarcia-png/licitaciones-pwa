@@ -168,6 +168,7 @@ export default function DetalleOportunidadPage() {
   const [sugerenciaIA, setSugerenciaIA] = useState('')
   const [lotes, setLotes] = useState<any[]>([])
   const [cargandoLotes, setCargandoLotes] = useState(false)
+  const [configLicit, setConfigLicit] = useState<any>(null)
 
   const recargarLotes = async () => {
     if (!id) return
@@ -254,6 +255,11 @@ export default function DetalleOportunidadPage() {
         })
         await recargarAnalisis()
         await recargarLotes()
+        // Cargar pesos de scoring desde config_global
+        try {
+          const cfg = await api.configGlobal()
+          setConfigLicit(cfg?.config?.licitaciones || null)
+        } catch {}
       } catch (e) {
         setError('Error cargando la oportunidad')
       } finally {
@@ -281,7 +287,6 @@ export default function DetalleOportunidadPage() {
     setArchivosNuevos(prev => prev.filter((_, i) => i !== index))
   }
 
-  // PASO 1: Descargar pliegos → auto cambia a en_analisis
   const handleDescargarPliegos = async () => {
     setDescargando(true); setError('')
     setProgreso('Descargando pliegos de PLACSP...')
@@ -289,7 +294,6 @@ export default function DetalleOportunidadPage() {
       const result = await api.descargarPliegos(id || '')
       if (result.ok) {
         setDocsDescargados(result.descargados)
-        // Auto cambiar estado a en_analisis
         if (form.estado === 'nueva') {
           await cambiarEstado('en_analisis')
           setProgreso(`${result.descargados} pliegos descargados. Estado actualizado a "En análisis".`)
@@ -303,7 +307,6 @@ export default function DetalleOportunidadPage() {
     finally { setDescargando(false) }
   }
 
-  // PASO 2: Analizar con IA → sugiere descartada si <30
   const handleAnalizarIA = async () => {
     setAnalizando(true); setError(''); setSugerenciaIA('')
     setProgreso('Analizando pliegos con Gemini 3.1 Pro... (1-2 minutos)')
@@ -313,8 +316,6 @@ export default function DetalleOportunidadPage() {
         await recargarAnalisis()
         await recargarDatos()
         const puntIA = result.puntuacion_interes || 0
-
-        // Auto-descartar si la IA dice que no es para nosotros
         if (puntIA < 30 && form.estado === 'en_analisis') {
           await cambiarEstado('descartada')
           setProgreso('')
@@ -353,22 +354,15 @@ export default function DetalleOportunidadPage() {
   const ac = analisis?.analisis_completo || {}
   const puntIA = ac.puntuacion_interes?.valor ?? analisis?.puntuacion_interes ?? null
 
-  // Siguiente acción recomendada
   let nextAction = ''
   let nextActionLabel = ''
   let NextActionIcon = Download
   if (form.estado === 'nueva' && numDocsDisponibles > 0 && docsDescargados === 0) {
-    nextAction = 'descargar'
-    nextActionLabel = 'Siguiente paso: Descargar pliegos'
-    NextActionIcon = Download
+    nextAction = 'descargar'; nextActionLabel = 'Siguiente paso: Descargar pliegos'; NextActionIcon = Download
   } else if ((docsDescargados > 0 || numDocsDisponibles > 0) && !analisis?.existe) {
-    nextAction = 'analizar'
-    nextActionLabel = 'Siguiente paso: Analizar con IA'
-    NextActionIcon = Brain
+    nextAction = 'analizar'; nextActionLabel = 'Siguiente paso: Analizar con IA'; NextActionIcon = Brain
   } else if (analisis?.existe && puntIA !== null && puntIA >= 30 && !['go','no_go','descartada'].includes(form.estado)) {
-    nextAction = 'calculo'
-    nextActionLabel = 'Siguiente paso: Cálculo económico'
-    NextActionIcon = Euro
+    nextAction = 'calculo'; nextActionLabel = 'Siguiente paso: Cálculo económico'; NextActionIcon = Euro
   }
 
   if (cargando) return <div className="p-6 lg:p-8"><SkeletonDetalle /></div>
@@ -399,14 +393,14 @@ export default function DetalleOportunidadPage() {
         </div>
       </div>
 
-      {/* ── PipelineBar de navegación ── */}
+      {/* PipelineBar */}
       <div className="mb-4 mt-2">
         <PipelineBar currentStep="oportunidad" idOverride={id} />
       </div>
 
-      {/* ── Score desglosado ── */}
+      {/* Score desglosado — ahora con pesos desde config_global */}
       <div className="mb-4">
-        <ScoreDesglose oportunidad={form} />
+        <ScoreDesglose oportunidad={form} configLicit={configLicit} />
       </div>
 
       {/* Siguiente acción recomendada */}
@@ -551,7 +545,6 @@ export default function DetalleOportunidadPage() {
           <h2 className="text-sm font-semibold text-slate-900">Documentos</h2>
           {numDocsDisponibles > 0 && <span className="text-xs bg-blue-50 text-blue-600 px-2 py-0.5 rounded font-medium">{numDocsDisponibles} en PLACSP</span>}
         </div>
-
         {documentosExistentes.length > 0 && (
           <div className="space-y-2 mb-4">
             {documentosExistentes.map((doc: string, i: number) => {
@@ -571,13 +564,11 @@ export default function DetalleOportunidadPage() {
             })}
           </div>
         )}
-
         <label className="flex flex-col items-center justify-center p-4 border-2 border-dashed border-slate-300 rounded-xl hover:border-blue-400 hover:bg-blue-50/50 transition-all cursor-pointer">
           <Upload size={18} className="text-slate-400 mb-1" />
           <span className="text-xs text-slate-600 font-medium">Añadir documentos manualmente</span>
           <input type="file" multiple accept=".pdf,.doc,.docx,.xls,.xlsx" onChange={handleFiles} className="hidden" />
         </label>
-
         {archivosNuevos.length > 0 && (
           <div className="mt-3 space-y-2">
             {archivosNuevos.map((file, i) => (
@@ -594,18 +585,12 @@ export default function DetalleOportunidadPage() {
         )}
       </div>
 
-      {/* ═══ LOTES ═══ */}
+      {/* Lotes */}
       <div className="bg-white border border-slate-200 rounded-2xl p-6 mb-4">
-        <LotesPanel
-          oportunidadId={id || ''}
-          lotes={lotes}
-          cargando={cargandoLotes}
-          onRecargar={recargarLotes}
-          modo="detalle"
-        />
+        <LotesPanel oportunidadId={id || ''} lotes={lotes} cargando={cargandoLotes} onRecargar={recargarLotes} modo="detalle" />
       </div>
 
-      {/* ═══ ANÁLISIS IA ═══ */}
+      {/* Análisis IA */}
       {analisis?.existe && (
         <div className="bg-white border border-slate-200 rounded-2xl p-6 mb-4">
           <div className="flex items-center gap-3 mb-4">
@@ -721,7 +706,6 @@ export default function DetalleOportunidadPage() {
             <DataRow label="Revisión precios" value={ac.datos_basicos?.revision_precios} />
           </Collapsible>
 
-          {/* Estructura económica — nueva sección v2 */}
           {ac.estructura_economica && (ac.estructura_economica.precio_hora_maximo > 0 || ac.estructura_economica.convenio_referencia) && (
             <Collapsible title="Estructura económica del pliego" icon={BarChart3} defaultOpen={true}>
               <DataRow label="Precio/hora máximo" value={ac.estructura_economica.precio_hora_maximo ? ac.estructura_economica.precio_hora_maximo + ' €/h' : undefined} />
@@ -734,14 +718,12 @@ export default function DetalleOportunidadPage() {
             </Collapsible>
           )}
 
-          {/* Servicios requeridos — nueva sección v2 */}
           {ac.servicios_requeridos && (ac.servicios_requeridos.total_horas_contrato > 0 || ac.servicios_requeridos.centros_o_zonas?.length > 0) && (
             <Collapsible title={`Servicios requeridos${ac.servicios_requeridos.total_horas_contrato > 0 ? ` — ${ac.servicios_requeridos.total_horas_contrato.toLocaleString('es-ES')}h` : ''}`} icon={Wrench} defaultOpen={true}>
               <DataRow label="Total horas contrato" value={ac.servicios_requeridos.total_horas_contrato ? ac.servicios_requeridos.total_horas_contrato.toLocaleString('es-ES') + ' h' : undefined} />
               <DataRow label="Bolsa emergencia" value={ac.servicios_requeridos.bolsa_horas_emergencia ? ac.servicios_requeridos.bolsa_horas_emergencia.toLocaleString('es-ES') + ' h' : undefined} />
               <DataRow label="Superficie total" value={ac.servicios_requeridos.total_superficie_m2 ? ac.servicios_requeridos.total_superficie_m2.toLocaleString('es-ES') + ' m²' : undefined} />
               <DataRow label="Materiales empresa" value={(ac.servicios_requeridos.materiales_cargo_empresa || []).join(', ')} />
-              {/* Tabla de centros */}
               {ac.servicios_requeridos.centros_o_zonas?.length > 0 && (
                 <div className="mt-3">
                   <p className="text-xs font-semibold text-slate-600 mb-2">Centros / zonas ({ac.servicios_requeridos.centros_o_zonas.length})</p>
@@ -760,7 +742,6 @@ export default function DetalleOportunidadPage() {
                   </div>
                 </div>
               )}
-              {/* Tareas principales */}
               {ac.servicios_requeridos.tareas_principales?.length > 0 && (
                 <div className="mt-3">
                   <p className="text-xs font-semibold text-slate-600 mb-2">Tareas principales</p>
@@ -777,7 +758,6 @@ export default function DetalleOportunidadPage() {
             </Collapsible>
           )}
 
-          {/* Medios mínimos — nueva sección v2 */}
           {ac.medios_minimos_requeridos && (ac.medios_minimos_requeridos.personal?.length > 0 || ac.medios_minimos_requeridos.maquinaria?.length > 0) && (
             <Collapsible title="Medios mínimos requeridos" icon={Users} defaultOpen={false}>
               {ac.medios_minimos_requeridos.personal?.length > 0 && (
@@ -822,7 +802,6 @@ export default function DetalleOportunidadPage() {
             </Collapsible>
           )}
 
-          {/* Dimensionamiento estimado — nueva sección v2 */}
           {ac.dimensionamiento_estimado && ac.dimensionamiento_estimado.total_personas > 0 && (
             <Collapsible title="Dimensionamiento estimado" icon={Clock} defaultOpen={true}>
               <div className="grid grid-cols-3 gap-3 mb-3">
@@ -909,7 +888,7 @@ export default function DetalleOportunidadPage() {
         </button>
       </div>
 
-      {/* Historial de actividad */}
+      {/* Historial */}
       <div className="mt-6">
         <HistorialActividad oportunidadId={id || ''} />
       </div>
