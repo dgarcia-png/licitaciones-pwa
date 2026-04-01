@@ -35,46 +35,71 @@ const PERMISOS: Record<Rol, string[]> = {
 // ── Visibilidad del menú por rol ─────────────────────────────────────────────
 export const MENU_POR_ROL: Record<Rol, string[]> = {
   SUPER_ADMIN: ['*'],
+
   DIRECTOR_GERENTE: [
-    'dashboard', 'oportunidades', 'seguimiento',
+    'dashboard', 'informes',
+    'oportunidades', 'seguimiento',
     'personal', 'ausencias', 'fichajes',
     'prl', 'rgpd', 'configuracion', 'usuarios',
     'escaneo-documentos', 'mapa-supervisor',
   ],
+
   ADMIN_LICITACIONES: [
-    'dashboard', 'oportunidades', 'nueva', 'analisis', 'calculo',
-    'decisiones', 'oferta', 'seguimiento', 'conocimiento', 'convenios', 'documentos',
+    'dashboard', 'informes',
+    'licitaciones-dashboard',
+    'oportunidades', 'nueva', 'analisis', 'calculo',
+    'decisiones', 'oferta', 'seguimiento',
+    'conocimiento', 'convenios', 'documentos',
   ],
+
   ADMIN_RRHH: [
-    'dashboard', 'personal', 'subrogacion', 'fichajes', 'ausencias',
-    'prl', 'rgpd', 'plantillas', 'usuarios', 'dashboard-rrhh',
-    'escaneo-documentos', 'certificaciones',
+    'dashboard', 'informes',
+    'personal', 'subrogacion', 'fichajes', 'ausencias',
+    'prl', 'rgpd', 'plantillas', 'usuarios',
+    'dashboard-rrhh', 'escaneo-documentos', 'certificaciones',
   ],
+
   ADMIN_TERRITORIO: [
-    'dashboard', 'personal', 'fichajes', 'ausencias', 'territorio',
-    'partes', 'incidencias', 'ordenes', 'inventario', 'vehiculos', 'calidad',
-    'planificacion', 'checklist-config', 'informes',
+    'dashboard', 'informes',
+    'personal', 'fichajes', 'ausencias',
+    'territorio', 'partes', 'incidencias', 'ordenes',
+    'inventario', 'vehiculos', 'calidad',
+    'planificacion', 'checklist-config',
     'escaneo-documentos', 'mapa-supervisor',
+    'portal-tokens',
   ],
+
   RESPONSABLE_COMERCIAL: [
-    'dashboard', 'oportunidades', 'nueva', 'analisis', 'calculo',
+    'dashboard',
+    'licitaciones-dashboard',
+    'oportunidades', 'nueva', 'analisis', 'calculo',
     'decisiones', 'oferta', 'seguimiento', 'conocimiento',
   ],
+
   RESPONSABLE_PRL: [
-    'dashboard', 'personal', 'prl', 'escaneo-documentos',
+    'dashboard',
+    'personal', 'prl', 'certificaciones', 'escaneo-documentos',
   ],
+
   RESPONSABLE_RGPD: [
-    'dashboard', 'personal', 'rgpd',
+    'dashboard',
+    'personal', 'rgpd',
   ],
+
   ENCARGADO_ZONA: [
-    'dashboard', 'fichajes', 'ausencias', 'mapa-supervisor',
+    'dashboard',
+    'fichajes', 'ausencias', 'mapa-supervisor',
   ],
+
   SUPERVISOR_TERRITORIO: [
-    'dashboard', 'personal', 'fichajes', 'ausencias', 'mapa-supervisor',
+    'dashboard',
+    'personal', 'fichajes', 'ausencias', 'mapa-supervisor',
   ],
+
   TRABAJADOR_CAMPO: [
     'portal', 'fichajes', 'ausencias', 'mis-datos',
   ],
+
   TRABAJADOR_LECTURA: [
     'portal', 'fichajes', 'mis-datos',
   ],
@@ -101,19 +126,19 @@ export function usePermisos() {
   }
 
   // Helpers semánticos
-  const esSuperAdmin    = rol === 'SUPER_ADMIN'
-  const esAdmin         = nivel <= 2
-  const esAdminRRHH     = rol === 'ADMIN_RRHH' || esSuperAdmin
-  const esAdminLicit    = rol === 'ADMIN_LICITACIONES' || esSuperAdmin
-  const esSupervisor    = rol === 'SUPERVISOR_TERRITORIO' || rol === 'ENCARGADO_ZONA'
-  const esTrabajador    = rol === 'TRABAJADOR_CAMPO' || rol === 'TRABAJADOR_LECTURA'
-  const esDirector      = rol === 'DIRECTOR_GERENTE' || esSuperAdmin
-  const puedeGestionarRRHH     = esAdmin || esDirector
-  const puedeVerTodaPlantilla  = nivel <= 3
-  const soloSusDatos           = esTrabajador
-  const puedeAprobarAusencias  = nivel <= 3
+  const esSuperAdmin   = rol === 'SUPER_ADMIN'
+  const esAdmin        = nivel <= 2
+  const esAdminRRHH    = rol === 'ADMIN_RRHH' || esSuperAdmin
+  const esAdminLicit   = rol === 'ADMIN_LICITACIONES' || esSuperAdmin
+  const esSupervisor   = rol === 'SUPERVISOR_TERRITORIO' || rol === 'ENCARGADO_ZONA'
+  const esTrabajador   = rol === 'TRABAJADOR_CAMPO' || rol === 'TRABAJADOR_LECTURA'
+  const esDirector     = rol === 'DIRECTOR_GERENTE' || esSuperAdmin
+  const puedeGestionarRRHH    = esAdmin || esDirector
+  const puedeVerTodaPlantilla = nivel <= 3
+  const soloSusDatos          = esTrabajador
+  const puedeAprobarAusencias = nivel <= 3
 
-  const zonasAsignadas   = (usuario as any)?.zonas_asignadas || []
+  const zonasAsignadas   = (usuario as any)?.zonas_asignadas   || []
   const centrosAsignados = (usuario as any)?.centros_asignados || []
 
   return {
