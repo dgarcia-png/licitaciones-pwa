@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { api } from '../services/api'
+import ConfirmModal from '../components/ConfirmModal'
 import {
   Loader2, Plus, Users, FileText, CheckCircle2, AlertTriangle, XCircle,
   Save, Upload, UserPlus, Shield, Trash2, Phone, Mail, MapPin,
@@ -13,7 +14,6 @@ function fmtDate(d: any) {
 }
 function fmt(n: number) { return (n || 0).toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €' }
 
-// Normalizar estados del script viejo al nuevo
 function normalizarEstado(e: string): string {
   const mapa: Record<string, string> = {
     'pendiente_verificacion': 'pendiente_datos',
@@ -25,7 +25,6 @@ function normalizarEstado(e: string): string {
   return mapa[e] || e || 'pendiente_datos'
 }
 
-// Pasos del proceso en orden
 const PASOS = [
   { key: 'pendiente_datos',  label: 'Pendiente datos',  color: 'amber',   icon: AlertTriangle,  accion: 'Contactar',          desc: 'Aún no hemos contactado con este trabajador' },
   { key: 'contactado',       label: 'Contactado',       color: 'blue',    icon: Phone,          accion: 'Marcar datos recibidos', desc: 'Contactado — esperando sus datos personales' },
@@ -68,7 +67,6 @@ function BarraProgreso({ pct }: { pct: number }) {
   )
 }
 
-// ════════════════════════════════════════════════════════════
 export default function SubrogacionPage() {
   const [vista, setVista] = useState<'lista' | 'detalle' | 'nueva'>('lista')
   const [cargando, setCargando] = useState(true)
@@ -91,12 +89,19 @@ export default function SubrogacionPage() {
   const [filtroEstado, setFiltroEstado] = useState<string>('')
   const [incorporandoTodos, setIncorporandoTodos] = useState(false)
 
+  // Confirms
+  const [confirmIncorporarParcial, setConfirmIncorporarParcial] = useState<{ persona: any; faltantes: string[] } | null>(null)
+  const [confirmDniDuplicado, setConfirmDniDuplicado] = useState<{ persona: any; dni: string; empleadoExistente: string } | null>(null)
+  const [confirmIncorporarTodos, setConfirmIncorporarTodos] = useState(false)
+  const [confirmRechazar, setConfirmRechazar] = useState<string | null>(null)
+  const [confirmEliminarPersona, setConfirmEliminarPersona] = useState<string | null>(null)
+  const [confirmEliminarSub, setConfirmEliminarSub] = useState<string | null>(null)
+
   const showMsg = (m: string) => { setMsg(m); setTimeout(() => setMsg(''), 6000) }
 
   const cargar = async () => {
     setCargando(true)
     try {
-      // 1 llamada batch en lugar de 3
       const batch = await api.batchSubrogacion()
       setSubrogaciones(batch.subrogaciones?.subrogaciones || [])
       setOportunidades((batch.oportunidades?.oportunidades || []).filter((o: any) =>
@@ -109,10 +114,7 @@ export default function SubrogacionPage() {
   const cargarPersonal = async (subId: string) => {
     Object.keys(localStorage).filter(k => k.startsWith('fc_')).forEach(k => localStorage.removeItem(k))
     const data = await api.personalSubrogado(subId)
-    // Normalizar estados del script antiguo al nuevo
-    const normalizado = (data.personal || []).map((p: any) => ({
-      ...p, estado: normalizarEstado(p.estado)
-    }))
+    const normalizado = (data.personal || []).map((p: any) => ({ ...p, estado: normalizarEstado(p.estado) }))
     setPersonal(normalizado)
   }
 
@@ -138,11 +140,9 @@ export default function SubrogacionPage() {
 
   useEffect(() => { cargar() }, [])
 
-  // ── Avanzar estado ────────────────────────────────────────────────────────
   const avanzarEstado = async (p: any) => {
     const estado = p.estado
     if (estado === 'pendiente_datos') {
-      // Contactar → marcar como contactado
       try {
         const r = await api.marcarContactadoSubrogado({ id: p.id })
         if (r.ok) {
@@ -151,12 +151,10 @@ export default function SubrogacionPage() {
         }
       } catch { showMsg('❌ Error') }
     } else if (estado === 'contactado') {
-      // Datos recibidos → abrir el formulario de datos
       setPersonaEditando(personaEditando === p.id ? null : p.id)
       setFormPersona({ ...p })
       if (personaEditando !== p.id) showMsg('📝 Rellena los datos personales y pulsa "Guardar datos"')
     } else if (estado === 'datos_recibidos') {
-      // Verificar docs
       try {
         const r = await api.verificarPersonalSubrogado({ id: p.id, estado: 'docs_verificados', aceptado: 'Sí' })
         if (r.ok) {
@@ -165,7 +163,6 @@ export default function SubrogacionPage() {
         }
       } catch { showMsg('❌ Error') }
     } else if (estado === 'docs_verificados') {
-      // Incorporar a RRHH
       await incorporar(p)
     }
   }
@@ -173,13 +170,11 @@ export default function SubrogacionPage() {
   const guardarDatosPersonales = async (id: string) => {
     setGuardando(id)
     try {
-      // Excluir campos que no son datos personales para que el backend pueda auto-avanzar el estado
       const { estado: _e, id: _i, id_subrogacion: _s, id_empleado_rrhh: _r, ...datosPersonales } = formPersona as any
       const r = await api.actualizarDatosPersonalesSubrogado({ id, ...datosPersonales })
       if (r.ok) {
         const nuevoEstado = normalizarEstado(r.estado_nuevo || 'datos_recibidos')
-        setPersonal(prev => prev.map(p => p.id === id
-          ? { ...p, ...formPersona, estado: nuevoEstado } : p))
+        setPersonal(prev => prev.map(p => p.id === id ? { ...p, ...formPersona, estado: nuevoEstado } : p))
         const msgs: Record<string, string> = {
           datos_recibidos: '✅ Datos guardados — Estado: Datos recibidos. Siguiente paso: Verificar documentación ✓',
           contactado: '✅ Datos parciales guardados — Completa los datos para avanzar',
@@ -193,37 +188,22 @@ export default function SubrogacionPage() {
 
   const incorporar = async (p: any, forzar = false) => {
     const { pct, faltantes } = calcularCompletitud(p)
-    if (pct < 37 && !confirm(`Faltan: ${faltantes.join(', ')}.\n¿Incorporar de todas formas?`)) return
+    if (pct < 37 && !forzar) {
+      setConfirmIncorporarParcial({ persona: p, faltantes })
+      return
+    }
+    await _incorporarEjecutar(p, forzar)
+  }
+
+  const _incorporarEjecutar = async (p: any, forzar = false) => {
     setGuardando(p.id)
     try {
       const r = await api.incorporarSubrogadoRRHH({ id: p.id, forzar })
       if (r.ok) {
-        setPersonal(prev => prev.map(x => x.id === p.id
-          ? { ...x, estado: 'incorporado', id_empleado_rrhh: r.id_empleado } : x))
+        setPersonal(prev => prev.map(x => x.id === p.id ? { ...x, estado: 'incorporado', id_empleado_rrhh: r.id_empleado } : x))
         showMsg('✅ Incorporado a plantilla RRHH — Expediente creado en Drive')
       } else if (r.error === 'DNI duplicado') {
-        // DNI ya existe en plantilla — mostrar aviso claro con opciones
-        const opcion = window.confirm(
-          `⚠️ DNI DUPLICADO\n\n` +
-          `El DNI ${r.dni} ya existe en la plantilla.\n` +
-          `Empleado existente: ${r.empleado_existente}\n\n` +
-          `Puede que:\n` +
-          `• Sea un error en el DNI del subrogado (edítalo con el lápiz ✏️ y corrígelo)\n` +
-          `• Sea la misma persona con nombre diferente\n\n` +
-          `¿Crear ficha nueva igualmente? (ACEPTAR)\n` +
-          `¿Cancelar y corregir el DNI? (CANCELAR)`
-        )
-        if (opcion) {
-          // Crear ficha sin check DNI
-          const rf = await api.incorporarSubrogadoSinDniCheck({ id: p.id })
-          if (rf?.ok) {
-            setPersonal(prev => prev.map(x => x.id === p.id
-              ? { ...x, estado: 'incorporado', id_empleado_rrhh: rf.id_empleado } : x))
-            showMsg('✅ Ficha creada en RRHH — Nota: el DNI ' + r.dni + ' ya existía en plantilla, verifica que no hay duplicado')
-          } else showMsg('❌ Error: ' + (rf?.error || 'Error desconocido'))
-        } else {
-          showMsg('⚠️ Operación cancelada — Edita el DNI con el lápiz ✏️ y vuelve a intentarlo')
-        }
+        setConfirmDniDuplicado({ persona: p, dni: r.dni, empleadoExistente: r.empleado_existente })
       } else {
         showMsg('❌ Error: ' + (r.error || 'Error desconocido'))
       }
@@ -231,10 +211,26 @@ export default function SubrogacionPage() {
     finally { setGuardando('') }
   }
 
+  const incorporarSinDniCheck = async (p: any, dni: string) => {
+    setGuardando(p.id)
+    try {
+      const rf = await api.incorporarSubrogadoSinDniCheck({ id: p.id })
+      if (rf?.ok) {
+        setPersonal(prev => prev.map(x => x.id === p.id ? { ...x, estado: 'incorporado', id_empleado_rrhh: rf.id_empleado } : x))
+        showMsg('✅ Ficha creada en RRHH — Nota: el DNI ' + dni + ' ya existía en plantilla, verifica que no hay duplicado')
+      } else showMsg('❌ Error: ' + (rf?.error || 'Error desconocido'))
+    } catch { showMsg('❌ Error') }
+    finally { setGuardando('') }
+  }
+
   const incorporarTodos = async () => {
     const pendientes = personal.filter(p => p.estado === 'docs_verificados' && !p.id_empleado_rrhh)
     if (!pendientes.length) { showMsg('⚠️ No hay trabajadores verificados pendientes'); return }
-    if (!confirm(`¿Incorporar ${pendientes.length} trabajadores a RRHH?\nSe creará expediente Drive para cada uno.`)) return
+    setConfirmIncorporarTodos(true)
+  }
+
+  const _incorporarTodosEjecutar = async () => {
+    const pendientes = personal.filter(p => p.estado === 'docs_verificados' && !p.id_empleado_rrhh)
     setIncorporandoTodos(true)
     let ok = 0, errores: string[] = []
     for (const p of pendientes) {
@@ -257,7 +253,6 @@ export default function SubrogacionPage() {
   }
 
   const rechazar = async (id: string) => {
-    if (!confirm('¿Marcar como rechazado? El trabajador no se incorporará a la plantilla.')) return
     try {
       const r = await api.actualizarDatosPersonalesSubrogado({ id, estado: 'rechazado' })
       if (r.ok) setPersonal(prev => prev.map(p => p.id === id ? { ...p, estado: 'rechazado' } : p))
@@ -316,12 +311,10 @@ export default function SubrogacionPage() {
   }
 
   const eliminarPersona = async (id: string) => {
-    if (!confirm('¿Eliminar?')) return
     try { await api.eliminarPersonalSubrogado(id, subSel.id); setPersonal(prev => prev.filter(p => p.id !== id)) } catch { }
   }
 
   const eliminarSub = async (id: string) => {
-    if (!confirm('¿Eliminar subrogación completa?')) return
     try { const r = await api.eliminarSubrogacion(id); if (r.ok) { cargar(); setVista('lista') } } catch { }
   }
 
@@ -335,6 +328,68 @@ export default function SubrogacionPage() {
 
   return (
     <div className="max-w-5xl">
+
+      {/* Confirm: datos incompletos al incorporar */}
+      <ConfirmModal
+        open={!!confirmIncorporarParcial}
+        titulo="¿Incorporar con datos incompletos?"
+        mensaje={`Faltan: ${confirmIncorporarParcial?.faltantes.join(', ')}. ¿Incorporar de todas formas?`}
+        labelOk="Sí, incorporar igualmente"
+        onConfirm={() => { const p = confirmIncorporarParcial?.persona; setConfirmIncorporarParcial(null); if (p) _incorporarEjecutar(p, true) }}
+        onCancel={() => setConfirmIncorporarParcial(null)}
+      />
+
+      {/* Confirm: DNI duplicado */}
+      <ConfirmModal
+        open={!!confirmDniDuplicado}
+        titulo="⚠️ DNI duplicado en plantilla"
+        mensaje={`El DNI ${confirmDniDuplicado?.dni} ya existe asignado a "${confirmDniDuplicado?.empleadoExistente}".\n\nPuede ser un error en el DNI del subrogado (edítalo con el lápiz ✏️ y corrígelo) o la misma persona con nombre diferente.\n\n¿Crear ficha nueva igualmente o cancelar para corregir el DNI?`}
+        labelOk="Crear ficha nueva igualmente"
+        labelCancel="Cancelar y corregir el DNI"
+        onConfirm={() => { const d = confirmDniDuplicado; setConfirmDniDuplicado(null); if (d) incorporarSinDniCheck(d.persona, d.dni) }}
+        onCancel={() => { setConfirmDniDuplicado(null); showMsg('⚠️ Operación cancelada — Edita el DNI con el lápiz ✏️ y vuelve a intentarlo') }}
+      />
+
+      {/* Confirm: incorporar todos */}
+      <ConfirmModal
+        open={confirmIncorporarTodos}
+        titulo="¿Incorporar todos a RRHH?"
+        mensaje={`Se incorporarán ${verificadosPendientes} trabajadores verificados. Se creará expediente Drive para cada uno.`}
+        labelOk="Sí, incorporar todos"
+        onConfirm={() => { setConfirmIncorporarTodos(false); _incorporarTodosEjecutar() }}
+        onCancel={() => setConfirmIncorporarTodos(false)}
+      />
+
+      {/* Confirm: rechazar */}
+      <ConfirmModal
+        open={!!confirmRechazar}
+        titulo="¿Marcar como rechazado?"
+        mensaje="El trabajador no se incorporará a la plantilla."
+        labelOk="Sí, rechazar" peligroso
+        onConfirm={() => { const id = confirmRechazar; setConfirmRechazar(null); if (id) rechazar(id) }}
+        onCancel={() => setConfirmRechazar(null)}
+      />
+
+      {/* Confirm: eliminar persona */}
+      <ConfirmModal
+        open={!!confirmEliminarPersona}
+        titulo="¿Eliminar trabajador?"
+        mensaje="Se eliminará este trabajador del listado de subrogación."
+        labelOk="Sí, eliminar" peligroso
+        onConfirm={() => { const id = confirmEliminarPersona; setConfirmEliminarPersona(null); if (id) eliminarPersona(id) }}
+        onCancel={() => setConfirmEliminarPersona(null)}
+      />
+
+      {/* Confirm: eliminar subrogación completa */}
+      <ConfirmModal
+        open={!!confirmEliminarSub}
+        titulo="¿Eliminar subrogación completa?"
+        mensaje="Se eliminará el proceso de subrogación y todo su personal asociado. Esta acción no se puede deshacer."
+        labelOk="Sí, eliminar todo" peligroso
+        onConfirm={() => { const id = confirmEliminarSub; setConfirmEliminarSub(null); if (id) eliminarSub(id) }}
+        onCancel={() => setConfirmEliminarSub(null)}
+      />
+
       {/* Cabecera */}
       <div className="flex items-center gap-4 mb-6">
         <div className="p-2.5 bg-gradient-to-br from-orange-700 to-amber-600 rounded-xl shadow-lg shadow-orange-200"><Users size={22} className="text-white" /></div>
@@ -354,7 +409,7 @@ export default function SubrogacionPage() {
         </div>
       )}
 
-      {/* ══ LISTA ══════════════════════════════════════════════════════════ */}
+      {/* ══ LISTA ══ */}
       {vista === 'lista' && (
         <div>
           <div className="flex justify-end mb-4">
@@ -378,7 +433,7 @@ export default function SubrogacionPage() {
                   </button>
                   <div className="flex gap-2">
                     <button onClick={() => cargarDetalle(s)} className="px-3 py-1.5 text-xs font-semibold text-orange-700 bg-orange-50 hover:bg-orange-100 rounded-lg border border-orange-200">Gestionar →</button>
-                    <button onClick={() => eliminarSub(s.id)} className="p-1.5 text-red-400 hover:text-red-600 rounded-lg"><Trash2 size={14} /></button>
+                    <button onClick={() => setConfirmEliminarSub(s.id)} className="p-1.5 text-red-400 hover:text-red-600 rounded-lg"><Trash2 size={14} /></button>
                   </div>
                 </div>
               </div>
@@ -387,7 +442,7 @@ export default function SubrogacionPage() {
         </div>
       )}
 
-      {/* ══ NUEVA ══════════════════════════════════════════════════════════ */}
+      {/* ══ NUEVA ══ */}
       {vista === 'nueva' && (
         <div className="bg-orange-50 border-2 border-orange-200 rounded-2xl p-6">
           <h2 className="text-base font-bold text-orange-800 mb-5">Nueva subrogación</h2>
@@ -419,10 +474,9 @@ export default function SubrogacionPage() {
         </div>
       )}
 
-      {/* ══ DETALLE ════════════════════════════════════════════════════════ */}
+      {/* ══ DETALLE ══ */}
       {vista === 'detalle' && subSel && (
         <div>
-          {/* Guía de proceso — banner visible */}
           <div className="bg-gradient-to-r from-orange-50 to-amber-50 border border-orange-200 rounded-2xl p-4 mb-4">
             <p className="text-xs font-bold text-orange-800 mb-2">📋 Flujo del proceso — pulsa el botón de acción en cada tarjeta para avanzar al siguiente paso:</p>
             <div className="flex items-center gap-1 flex-wrap">
@@ -441,7 +495,6 @@ export default function SubrogacionPage() {
             </div>
           </div>
 
-          {/* Info subrogación */}
           <div className="bg-white border-2 border-orange-200 rounded-2xl p-5 mb-4">
             <div className="flex items-start justify-between gap-4 mb-3">
               <div className="flex-1 min-w-0">
@@ -452,10 +505,8 @@ export default function SubrogacionPage() {
                   <span>{personal.length} trabajadores</span>
                 </div>
               </div>
-              <button onClick={() => eliminarSub(subSel.id)} className="p-2 text-red-400 hover:text-red-600"><Trash2 size={15} /></button>
+              <button onClick={() => setConfirmEliminarSub(subSel.id)} className="p-2 text-red-400 hover:text-red-600"><Trash2 size={15} /></button>
             </div>
-
-            {/* Progreso completitud + botón incorporar todos */}
             <div className="flex items-center gap-3 flex-wrap">
               <span className="text-xs text-slate-500">Datos personales recogidos:</span>
               <div className="flex-1 min-w-[80px]"><BarraProgreso pct={pctGlobal} /></div>
@@ -470,7 +521,6 @@ export default function SubrogacionPage() {
             </div>
           </div>
 
-          {/* Barra acciones */}
           <div className="flex flex-wrap gap-2 mb-4">
             <button onClick={() => { setMostrarAddPersona(!mostrarAddPersona); setForm({}) }} className="flex items-center gap-2 px-4 py-2 bg-orange-700 hover:bg-orange-800 text-white text-xs font-bold rounded-xl"><UserPlus size={14} /> Añadir persona</button>
             <button onClick={() => setMostrarImport(!mostrarImport)} className="flex items-center gap-2 px-4 py-2 bg-slate-700 hover:bg-slate-800 text-white text-xs font-bold rounded-xl"><Upload size={14} /> Importar CSV</button>
@@ -480,7 +530,6 @@ export default function SubrogacionPage() {
             {filtroEstado && <button onClick={() => setFiltroEstado('')} className="flex items-center gap-1 px-3 py-2 text-xs text-orange-600 bg-orange-50 border border-orange-200 rounded-xl"><X size={12} /> Filtro activo: {getPaso(filtroEstado).label}</button>}
           </div>
 
-          {/* Importar */}
           {mostrarImport && (
             <div className="bg-slate-50 border border-slate-200 rounded-2xl p-5 mb-4">
               <h3 className="text-sm font-bold text-slate-700 mb-2">Importar CSV</h3>
@@ -495,7 +544,6 @@ export default function SubrogacionPage() {
             </div>
           )}
 
-          {/* Añadir persona */}
           {mostrarAddPersona && (
             <div className="bg-orange-50 border-2 border-orange-200 rounded-2xl p-5 mb-4">
               <h3 className="text-sm font-bold text-orange-800 mb-4">Añadir trabajador</h3>
@@ -522,7 +570,6 @@ export default function SubrogacionPage() {
             </div>
           )}
 
-          {/* ── Lista trabajadores ──────────────────────────────────────── */}
           {cargando && personal.length === 0
             ? <div className="text-center py-12"><Loader2 size={28} className="text-orange-400 animate-spin mx-auto" /></div>
             : personal.length === 0
@@ -540,15 +587,10 @@ export default function SubrogacionPage() {
 
                     return (
                       <div key={p.id} className={`rounded-2xl border-2 overflow-hidden bg-white ${c.border}`}>
-
-                        {/* ── Fila principal ── */}
                         <div className="flex items-center gap-3 p-4">
-                          {/* Avatar */}
                           <div className={`w-10 h-10 rounded-full ${c.bg} flex items-center justify-center ${c.text} font-bold text-sm flex-shrink-0`}>
                             {(p.nombre?.[0] || '?')}{(p.apellidos?.[0] || '')}
                           </div>
-
-                          {/* Datos */}
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 flex-wrap mb-0.5">
                               <span className="text-sm font-bold text-slate-900">
@@ -563,7 +605,6 @@ export default function SubrogacionPage() {
                               {p.telefono && <span className="flex items-center gap-0.5"><Phone size={9} />{p.telefono}</span>}
                               {p.dni && <span className="flex items-center gap-0.5"><Hash size={9} />{p.dni}</span>}
                             </div>
-                            {/* Barra completitud */}
                             <div className="flex items-center gap-2 mt-1.5">
                               <div className="w-20"><BarraProgreso pct={pct} /></div>
                               <span className="text-[10px] text-slate-400">{pct}% datos</span>
@@ -572,66 +613,48 @@ export default function SubrogacionPage() {
                               )}
                             </div>
                           </div>
-
-                          {/* BOTÓN ACCIÓN PRINCIPAL — el paso siguiente */}
                           <div className="flex items-center gap-2 flex-shrink-0">
                             {!incorporado && !rechazado && paso.accion && (
-                              <button
-                                onClick={() => avanzarEstado(p)}
-                                disabled={estaGuardando}
-                                className={`flex items-center gap-1.5 px-3 py-2 ${c.btn} text-white text-xs font-bold rounded-xl shadow-sm disabled:opacity-50 min-w-[110px] justify-center`}
-                              >
-                                {estaGuardando
-                                  ? <Loader2 size={12} className="animate-spin" />
-                                  : <ArrowRight size={12} />}
+                              <button onClick={() => avanzarEstado(p)} disabled={estaGuardando}
+                                className={`flex items-center gap-1.5 px-3 py-2 ${c.btn} text-white text-xs font-bold rounded-xl shadow-sm disabled:opacity-50 min-w-[110px] justify-center`}>
+                                {estaGuardando ? <Loader2 size={12} className="animate-spin" /> : <ArrowRight size={12} />}
                                 {paso.accion}
                               </button>
                             )}
-                            {/* Editar datos */}
                             <button onClick={() => {
                               if (esEditando) { setPersonaEditando(null); setFormPersona({}) }
                               else { setPersonaEditando(p.id); setFormPersona({ ...p }) }
                             }} className={`p-2 rounded-xl transition-colors ${esEditando ? 'bg-orange-100 text-orange-700' : 'text-slate-400 hover:bg-slate-100'}`} title="Editar datos personales">
                               <Edit3 size={14} />
                             </button>
-                            {/* Carta */}
                             <button onClick={() => generarCarta(p)} disabled={generandoDoc === p.id || !p.nombre}
                               className="p-2 text-indigo-500 hover:bg-indigo-50 rounded-xl disabled:opacity-30" title="Carta Art.44 ET">
                               {generandoDoc === p.id ? <Loader2 size={14} className="animate-spin" /> : <FileText size={14} />}
                             </button>
-                            {/* Drive */}
                             {p.id_empleado_rrhh && (
                               <button onClick={() => abrirExpediente(p.id_empleado_rrhh)} className="p-2 text-teal-600 hover:bg-teal-50 rounded-xl" title="Expediente Drive">
                                 <FolderOpen size={14} />
                               </button>
                             )}
-                            {/* Rechazar */}
                             {!incorporado && !rechazado && (
-                              <button onClick={() => rechazar(p.id)} className="p-2 text-red-400 hover:bg-red-50 rounded-xl" title="Rechazar">
+                              <button onClick={() => setConfirmRechazar(p.id)} className="p-2 text-red-400 hover:bg-red-50 rounded-xl" title="Rechazar">
                                 <XCircle size={14} />
                               </button>
                             )}
-                            {/* Eliminar */}
                             {!incorporado && (
-                              <button onClick={() => eliminarPersona(p.id)} className="p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-xl" title="Eliminar">
+                              <button onClick={() => setConfirmEliminarPersona(p.id)} className="p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-xl" title="Eliminar">
                                 <Trash2 size={13} />
                               </button>
                             )}
                           </div>
                         </div>
 
-                        {/* ── Panel datos personales (expandible) ── */}
                         {esEditando && (
                           <div className={`border-t ${c.border} ${c.bg} p-4`}>
                             <div className="flex items-center justify-between mb-3">
-                              <p className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
-                                <ClipboardList size={13} /> Datos personales
-                              </p>
-                              <span className={`text-[10px] px-2 py-1 rounded-lg font-medium ${c.badge}`}>
-                                {paso.desc}
-                              </span>
+                              <p className="text-xs font-bold text-slate-700 flex items-center gap-1.5"><ClipboardList size={13} /> Datos personales</p>
+                              <span className={`text-[10px] px-2 py-1 rounded-lg font-medium ${c.badge}`}>{paso.desc}</span>
                             </div>
-
                             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                               <div><label className="block text-[10px] text-slate-500 uppercase mb-1">Nombre</label><input type="text" value={formPersona.nombre || ''} onChange={(e: any) => setFormPersona({ ...formPersona, nombre: e.target.value })} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white" /></div>
                               <div><label className="block text-[10px] text-slate-500 uppercase mb-1">Apellidos</label><input type="text" value={formPersona.apellidos || ''} onChange={(e: any) => setFormPersona({ ...formPersona, apellidos: e.target.value })} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white" /></div>
@@ -645,7 +668,6 @@ export default function SubrogacionPage() {
                               <div><label className="block text-[10px] text-slate-500 uppercase mb-1">Empresa anterior</label><input type="text" value={formPersona.empresa_anterior_real || ''} onChange={(e: any) => setFormPersona({ ...formPersona, empresa_anterior_real: e.target.value })} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white" /></div>
                               <div><label className="block text-[10px] text-slate-500 uppercase mb-1">Tel. emergencia</label><input type="tel" value={formPersona.tel_emergencia || ''} onChange={(e: any) => setFormPersona({ ...formPersona, tel_emergencia: e.target.value })} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white" /></div>
                             </div>
-
                             <div className="flex items-center gap-2 mt-4 flex-wrap">
                               <button onClick={() => guardarDatosPersonales(p.id)} disabled={estaGuardando}
                                 className="flex items-center gap-2 px-5 py-2.5 bg-orange-700 hover:bg-orange-800 disabled:opacity-50 text-white text-sm font-bold rounded-xl">
@@ -660,8 +682,6 @@ export default function SubrogacionPage() {
                                 <FileText size={14} /> Carta Art.44 ET
                               </button>
                             </div>
-
-                            {/* Checklist documentos */}
                             {!incorporado && (
                               <div className="mt-3 p-3 bg-white/70 border border-slate-200 rounded-xl">
                                 <p className="text-xs font-bold text-slate-600 mb-2">📋 Documentos a recopilar:</p>
