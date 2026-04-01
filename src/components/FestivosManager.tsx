@@ -10,6 +10,7 @@ import {
   Calendar, Plus, Loader2, CheckCircle2, AlertTriangle, X, Save,
   Trash2, RefreshCw, Download, Globe, MapPin, Building2, FileText, Star
 } from 'lucide-react'
+import ConfirmModal from './ConfirmModal'
 
 const TIPO_CONFIG: Record<string, { label: string; icon: any; color: string; bg: string }> = {
   nacional:   { label: 'Nacional (BOE)',     icon: Globe,     color: 'text-red-700',     bg: 'bg-red-100' },
@@ -34,6 +35,7 @@ export default function FestivosManager() {
   const [filtroTipo, setFiltroTipo] = useState('')
   const [cargandoAuto, setCargandoAuto] = useState(false)
   const [editandoId, setEditandoId] = useState<string|null>(null)
+  const [confirmEliminar, setConfirmEliminar] = useState<{ id: string; desc: string } | null>(null)
 
   const showMsg = (m: string, err = false) => {
     if (err) setError(m); else setMsg(m)
@@ -80,12 +82,13 @@ export default function FestivosManager() {
     finally { setGuardando(false) }
   }
 
-  const handleEliminar = async (id: string, desc: string) => {
-    if (!confirm(`¿Eliminar "${desc}"?`)) return
+  const handleEliminarConfirmado = async () => {
+    if (!confirmEliminar) return
     try {
-      const r = await api.eliminarFestivo(id)
+      const r = await api.eliminarFestivo(confirmEliminar.id)
       if (r.ok) { showMsg('Eliminado'); cargar() }
     } catch (e) { showMsg('Error', true) }
+    finally { setConfirmEliminar(null) }
   }
 
   const handleEditar = (f: any) => {
@@ -107,6 +110,16 @@ export default function FestivosManager() {
 
   return (
     <div className="space-y-4">
+
+      <ConfirmModal
+        open={!!confirmEliminar}
+        titulo="¿Eliminar festivo?"
+        mensaje={`Se eliminará "${confirmEliminar?.desc}". Esta acción no se puede deshacer.`}
+        labelOk="Sí, eliminar" peligroso
+        onConfirm={handleEliminarConfirmado}
+        onCancel={() => setConfirmEliminar(null)}
+      />
+
       {/* Info */}
       <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4">
         <p className="text-xs text-blue-700">
@@ -282,7 +295,7 @@ export default function FestivosManager() {
                         className={`w-4 h-4 rounded border-2 ${f.activo ? 'bg-emerald-500 border-emerald-500' : 'bg-white border-slate-300'}`} />
                     </td>
                     <td className="px-2 py-2 text-right">
-                      <button onClick={() => handleEliminar(f.id, f.descripcion)}
+                      <button onClick={() => setConfirmEliminar({ id: f.id, desc: f.descripcion })}
                         className="text-red-300 hover:text-red-600 p-1">
                         <Trash2 size={13} />
                       </button>

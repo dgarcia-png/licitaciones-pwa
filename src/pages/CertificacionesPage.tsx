@@ -6,6 +6,7 @@ import {
   Trash2, Search, User, Calendar, FileText, ExternalLink, ChevronDown, ChevronUp,
   Shield, Clock, AlertCircle
 } from 'lucide-react'
+import ConfirmModal from '../components/ConfirmModal'
 
 const ESTADO_CONFIG: Record<string, { label: string; color: string; bg: string }> = {
   vencido:         { label: 'VENCIDO',       color: 'text-red-700',     bg: 'bg-red-100' },
@@ -37,6 +38,7 @@ export default function CertificacionesPage() {
   const [filtroEstado, setFiltroEstado] = useState('')
   const [empSel, setEmpSel] = useState<string>('')
   const [certsSel, setCertsSel] = useState<any>(null)
+  const [confirmEliminar, setConfirmEliminar] = useState<{ id: string; desc: string } | null>(null)
   const [form, setForm] = useState<any>({
     empleado_id: '', tipo: '', descripcion: '', fecha_obtencion: '',
     fecha_vencimiento: '', numero_certificado: '', organismo_emisor: '', notas: ''
@@ -101,13 +103,14 @@ export default function CertificacionesPage() {
     setMostrarForm(true)
   }
 
-  const handleEliminar = async (id: string, desc: string) => {
-    if (!confirm(`¿Eliminar certificación "${desc}"?`)) return
+  const handleEliminarConfirmado = async () => {
+    if (!confirmEliminar) return
     try {
-      await api.eliminarCertificacion(id)
+      await api.eliminarCertificacion(confirmEliminar.id)
       showMsg('Eliminado'); cargar()
       if (empSel) cargarCertsEmpleado(empSel)
     } catch (e) { showMsg('Error', true) }
+    finally { setConfirmEliminar(null) }
   }
 
   // Filtrar
@@ -126,6 +129,16 @@ export default function CertificacionesPage() {
 
   return (
     <div className="p-6 lg:p-8 max-w-5xl">
+
+      <ConfirmModal
+        open={!!confirmEliminar}
+        titulo="¿Eliminar certificación?"
+        mensaje={`Se eliminará "${confirmEliminar?.desc}". Esta acción no se puede deshacer.`}
+        labelOk="Sí, eliminar" peligroso
+        onConfirm={handleEliminarConfirmado}
+        onCancel={() => setConfirmEliminar(null)}
+      />
+
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-4">
@@ -266,7 +279,6 @@ export default function CertificacionesPage() {
             <div>
               <label className="text-xs font-semibold text-slate-600 block mb-1">Tipo de certificación *</label>
               <select value={form.tipo} onChange={e => {
-                const sel = tiposDisponibles.find((t: any) => t.label === e.target.value)
                 setForm({ ...form, tipo: e.target.value, descripcion: e.target.value })
               }}
                 className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm bg-white">
@@ -356,7 +368,7 @@ export default function CertificacionesPage() {
                     <button onClick={() => handleEditar(c)} className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg">
                       <FileText size={13} />
                     </button>
-                    <button onClick={() => handleEliminar(c.id, c.tipo + ' — ' + c.nombre_empleado)}
+                    <button onClick={() => setConfirmEliminar({ id: c.id, desc: c.tipo + ' — ' + c.nombre_empleado })}
                       className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg">
                       <Trash2 size={13} />
                     </button>
