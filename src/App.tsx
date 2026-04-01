@@ -30,6 +30,7 @@ const PlantillasPage             = lazy(() => import('./pages/PlantillasPage'))
 const PortalEmpleadoPage         = lazy(() => import('./pages/PortalEmpleadoPage'))
 const DashboardRRHHPage          = lazy(() => import('./pages/DashboardRRHHPage'))
 const DashboardLicitacionesPage  = lazy(() => import('./pages/DashboardLicitacionesPage'))
+const DashboardTerritorioPage    = lazy(() => import('./pages/DashboardTerritorioPage'))
 const TerritorioPage             = lazy(() => import('./pages/TerritorioPage'))
 const PartesPage                 = lazy(() => import('./pages/PartesPage'))
 const IncidenciasPage            = lazy(() => import('./pages/IncidenciasPage'))
@@ -144,17 +145,18 @@ function AppRoutes() {
           <Route path="/rgpd" element={<RoleRoute clave="rgpd"><RgpdPage /></RoleRoute>} />
 
           {/* Territorio */}
-          <Route path="/territorio"       element={<RoleRoute clave="territorio"><TerritorioPage /></RoleRoute>} />
-          <Route path="/mapa-supervisor"  element={<RoleRoute clave="mapa-supervisor"><MapaSupervisorPage /></RoleRoute>} />
-          <Route path="/planificacion"    element={<RoleRoute clave="planificacion"><PlanificacionPage /></RoleRoute>} />
-          <Route path="/ordenes"          element={<RoleRoute clave="ordenes"><OrdenesPage /></RoleRoute>} />
-          <Route path="/partes"           element={<RoleRoute clave="partes"><PartesPage /></RoleRoute>} />
-          <Route path="/incidencias"      element={<RoleRoute clave="incidencias"><IncidenciasPage /></RoleRoute>} />
-          <Route path="/inventario"       element={<RoleRoute clave="inventario"><InventarioPage /></RoleRoute>} />
-          <Route path="/vehiculos"        element={<RoleRoute clave="vehiculos"><VehiculosPage /></RoleRoute>} />
-          <Route path="/calidad"          element={<RoleRoute clave="calidad"><CalidadPage /></RoleRoute>} />
-          <Route path="/checklist-config" element={<RoleRoute clave="checklist-config"><ChecklistConfigPage /></RoleRoute>} />
-          <Route path="/portal-tokens"    element={<RoleRoute clave="portal-tokens"><PortalTokensPage /></RoleRoute>} />
+          <Route path="/dashboard-territorio" element={<RoleRoute clave="dashboard-territorio"><DashboardTerritorioPage /></RoleRoute>} />
+          <Route path="/territorio"            element={<RoleRoute clave="territorio"><TerritorioPage /></RoleRoute>} />
+          <Route path="/mapa-supervisor"       element={<RoleRoute clave="mapa-supervisor"><MapaSupervisorPage /></RoleRoute>} />
+          <Route path="/planificacion"         element={<RoleRoute clave="planificacion"><PlanificacionPage /></RoleRoute>} />
+          <Route path="/ordenes"               element={<RoleRoute clave="ordenes"><OrdenesPage /></RoleRoute>} />
+          <Route path="/partes"                element={<RoleRoute clave="partes"><PartesPage /></RoleRoute>} />
+          <Route path="/incidencias"           element={<RoleRoute clave="incidencias"><IncidenciasPage /></RoleRoute>} />
+          <Route path="/inventario"            element={<RoleRoute clave="inventario"><InventarioPage /></RoleRoute>} />
+          <Route path="/vehiculos"             element={<RoleRoute clave="vehiculos"><VehiculosPage /></RoleRoute>} />
+          <Route path="/calidad"               element={<RoleRoute clave="calidad"><CalidadPage /></RoleRoute>} />
+          <Route path="/checklist-config"      element={<RoleRoute clave="checklist-config"><ChecklistConfigPage /></RoleRoute>} />
+          <Route path="/portal-tokens"         element={<RoleRoute clave="portal-tokens"><PortalTokensPage /></RoleRoute>} />
 
           {/* Administración */}
           <Route path="/configuracion" element={<RoleRoute clave="configuracion"><ConfiguracionPage /></RoleRoute>} />

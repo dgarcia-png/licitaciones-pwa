@@ -42,6 +42,7 @@ export const MENU_POR_ROL: Record<Rol, string[]> = {
     'personal', 'ausencias', 'fichajes', 'horas-extras',
     'prl', 'rgpd', 'configuracion', 'usuarios',
     'escaneo-documentos', 'mapa-supervisor',
+    'dashboard-territorio',
   ],
 
   ADMIN_LICITACIONES: [
@@ -62,6 +63,7 @@ export const MENU_POR_ROL: Record<Rol, string[]> = {
   ADMIN_TERRITORIO: [
     'dashboard', 'informes',
     'personal', 'fichajes', 'ausencias',
+    'dashboard-territorio',
     'territorio', 'partes', 'incidencias', 'ordenes',
     'inventario', 'vehiculos', 'calidad',
     'planificacion', 'checklist-config',
@@ -89,11 +91,13 @@ export const MENU_POR_ROL: Record<Rol, string[]> = {
   ENCARGADO_ZONA: [
     'dashboard',
     'fichajes', 'ausencias', 'mapa-supervisor',
+    'dashboard-territorio',
   ],
 
   SUPERVISOR_TERRITORIO: [
     'dashboard',
     'personal', 'fichajes', 'ausencias', 'horas-extras', 'mapa-supervisor',
+    'dashboard-territorio',
   ],
 
   TRABAJADOR_CAMPO: [
