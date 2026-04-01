@@ -4,6 +4,7 @@ import {
   MapPin, AlertTriangle, CheckCircle2, Clock, Upload, Search, BarChart3,
   Loader2, FileText, Trash2, XCircle, Building2, Brain, X, Plus, Briefcase
 } from 'lucide-react'
+import ConfirmModal from '../components/ConfirmModal'
 
 const PROVINCIAS_DEFAULT = ['Almería','Cádiz','Córdoba','Granada','Huelva','Jaén','Málaga','Sevilla']
 const SECTORES_DEFAULT = ['Limpieza','Mantenimiento','Jardinería','Multiservicios','Seguridad','Hostelería','Oficinas']
@@ -20,7 +21,6 @@ export default function ConveniosPage() {
   const [subiendo, setSubiendo] = useState(false)
   const [tab, setTab] = useState<'sectores'|'comparador'|'alertas'>('sectores')
 
-  // Sectores configurables
   const [sectores, setSectores] = useState<string[]>(() => {
     const saved = localStorage.getItem('forgeser_sectores')
     return saved ? JSON.parse(saved) : SECTORES_DEFAULT
@@ -28,7 +28,6 @@ export default function ConveniosPage() {
   const [nuevoSector, setNuevoSector] = useState('')
   const [mostrarAddSector, setMostrarAddSector] = useState(false)
 
-  // Provincias configurables
   const [provincias_config, setProvinciasConfig] = useState<string[]>(() => {
     const saved = localStorage.getItem('forgeser_provincias')
     return saved ? JSON.parse(saved) : PROVINCIAS_DEFAULT
@@ -36,15 +35,17 @@ export default function ConveniosPage() {
   const [nuevaProvincia, setNuevaProvincia] = useState('')
   const [mostrarAddProvincia, setMostrarAddProvincia] = useState(false)
 
-  // Búsqueda IA
   const [buscando, setBuscando] = useState(false)
   const [busqProvincia, setBusqProvincia] = useState('')
   const [busqSector, setBusqSector] = useState('')
   const [resultadoBusq, setResultadoBusq] = useState<any>(null)
   const [mostrarBusqueda, setMostrarBusqueda] = useState(false)
-
-  // Sector expandido
   const [sectorExpandido, setSectorExpandido] = useState<string|null>(null)
+
+  // Confirmaciones
+  const [confirmSector, setConfirmSector] = useState<string | null>(null)
+  const [confirmProvincia, setConfirmProvincia] = useState<string | null>(null)
+  const [confirmConvenio, setConfirmConvenio] = useState<string | null>(null)
 
   const cargar = async () => {
     setCargando(true)
@@ -68,20 +69,12 @@ export default function ConveniosPage() {
     guardarSectores([...sectores, nuevoSector.trim()])
     setNuevoSector(''); setMostrarAddSector(false)
   }
-  const removeSector = (s: string) => {
-    if (!confirm(`¿Eliminar el sector "${s}"?`)) return
-    guardarSectores(sectores.filter(x => x !== s))
-  }
 
   const guardarProvincias = (p: string[]) => { setProvinciasConfig(p); localStorage.setItem('forgeser_provincias', JSON.stringify(p)) }
   const addProvincia = () => {
     if (!nuevaProvincia.trim() || provincias_config.includes(nuevaProvincia.trim())) return
     guardarProvincias([...provincias_config, nuevaProvincia.trim()])
     setNuevaProvincia(''); setMostrarAddProvincia(false)
-  }
-  const removeProvincia = (p: string) => {
-    if (!confirm(`¿Eliminar la provincia "${p}"?`)) return
-    guardarProvincias(provincias_config.filter(x => x !== p))
   }
 
   const handleSubir = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -93,11 +86,6 @@ export default function ConveniosPage() {
       if (result.ok) { await cargar() } else { alert('Error: ' + (result.error || '')) }
     } catch (err) { alert('Error subiendo') }
     finally { setSubiendo(false); e.target.value = '' }
-  }
-
-  const handleEliminar = async (id: string) => {
-    if (!confirm('¿Eliminar este convenio?')) return
-    try { await api.eliminarConvenio(id); await cargar() } catch (e) { console.error(e) }
   }
 
   const handleBuscarAuto = async () => {
@@ -118,7 +106,6 @@ export default function ConveniosPage() {
     setComparacion(comp.comparacion || [])
   }
 
-  // Agrupar convenios por sector
   const conveniosPorSector = (sector: string) => {
     return convenios.filter(c => c.sector && c.sector.toLowerCase().includes(sector.toLowerCase()))
   }
@@ -130,6 +117,34 @@ export default function ConveniosPage() {
 
   return (
     <div className="p-6 lg:p-8 max-w-6xl">
+
+      <ConfirmModal
+        open={!!confirmSector}
+        titulo="¿Eliminar sector?"
+        mensaje={`Se eliminará el sector "${confirmSector}" de la lista. Los convenios cargados no se borran.`}
+        labelOk="Sí, eliminar" peligroso
+        onConfirm={() => { if (confirmSector) guardarSectores(sectores.filter(x => x !== confirmSector)); setConfirmSector(null) }}
+        onCancel={() => setConfirmSector(null)}
+      />
+
+      <ConfirmModal
+        open={!!confirmProvincia}
+        titulo="¿Eliminar provincia?"
+        mensaje={`Se eliminará la provincia "${confirmProvincia}" de la lista de territorios.`}
+        labelOk="Sí, eliminar" peligroso
+        onConfirm={() => { if (confirmProvincia) guardarProvincias(provincias_config.filter(x => x !== confirmProvincia)); setConfirmProvincia(null) }}
+        onCancel={() => setConfirmProvincia(null)}
+      />
+
+      <ConfirmModal
+        open={!!confirmConvenio}
+        titulo="¿Eliminar convenio?"
+        mensaje="Se eliminarán el convenio y todas sus tablas salariales. Esta acción no se puede deshacer."
+        labelOk="Sí, eliminar" peligroso
+        onConfirm={async () => { if (confirmConvenio) { try { await api.eliminarConvenio(confirmConvenio); await cargar() } catch(e) {} } setConfirmConvenio(null) }}
+        onCancel={() => setConfirmConvenio(null)}
+      />
+
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-4">
@@ -236,7 +251,6 @@ export default function ConveniosPage() {
       {/* TAB: POR SECTORES */}
       {tab === 'sectores' && (
         <div>
-          {/* Botón buscar global */}
           {!mostrarBusqueda && (
             <button onClick={() => setMostrarBusqueda(true)}
               className="w-full mb-4 flex items-center justify-center gap-2 px-4 py-3 bg-violet-50 hover:bg-violet-100 border-2 border-dashed border-violet-300 text-violet-700 text-sm font-semibold rounded-xl transition-colors">
@@ -244,7 +258,6 @@ export default function ConveniosPage() {
             </button>
           )}
 
-          {/* Sectores */}
           <div className="space-y-4">
             {sectores.map(sector => {
               const convsSector = conveniosPorSector(sector)
@@ -263,7 +276,6 @@ export default function ConveniosPage() {
                       </div>
                     </div>
                     <div className="flex items-center gap-3">
-                      {/* Mini mapa de provincias */}
                       <div className="hidden md:flex gap-1">
                         {provincias_config.map(prov => (
                           <div key={prov} title={prov}
@@ -305,7 +317,7 @@ export default function ConveniosPage() {
                                     {conv.dias_restantes < 0 ? `Venció hace ${Math.abs(conv.dias_restantes)}d` : `Vence en ${conv.dias_restantes}d`}
                                   </p>
                                 )}
-                                <button onClick={() => handleEliminar(conv.id)} className="mt-1.5 text-[9px] text-red-400 hover:text-red-600 flex items-center gap-1"><Trash2 size={9} /> Eliminar</button>
+                                <button onClick={() => setConfirmConvenio(conv.id)} className="mt-1.5 text-[9px] text-red-400 hover:text-red-600 flex items-center gap-1"><Trash2 size={9} /> Eliminar</button>
                               </div>
                             )
                           }
@@ -321,7 +333,6 @@ export default function ConveniosPage() {
                           )
                         })}
                       </div>
-                      {/* Convenios de otras provincias */}
                       {convsSector.filter(c => !provincias_config.includes(c.provincia)).length > 0 && (
                         <div className="mt-3 pt-3 border-t border-slate-100">
                           <p className="text-[10px] text-slate-500 uppercase font-semibold mb-2">Otros territorios</p>
@@ -330,7 +341,7 @@ export default function ConveniosPage() {
                               <div key={c.id} className="flex items-center gap-2 px-3 py-1.5 bg-blue-50 border border-blue-200 rounded-lg">
                                 <span className="text-xs font-semibold text-blue-800">{c.provincia}</span>
                                 <span className="text-[10px] text-blue-500">{c.num_categorias} cat.</span>
-                                <button onClick={() => handleEliminar(c.id)} className="text-red-400 hover:text-red-600"><Trash2 size={10} /></button>
+                                <button onClick={() => setConfirmConvenio(c.id)} className="text-red-400 hover:text-red-600"><Trash2 size={10} /></button>
                               </div>
                             ))}
                           </div>
@@ -349,14 +360,13 @@ export default function ConveniosPage() {
 
           {/* Gestión sectores y provincias */}
           <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Sectores */}
             <div className="bg-white border border-slate-200 rounded-xl p-4">
               <h4 className="text-xs font-bold text-slate-500 uppercase mb-3">Sectores</h4>
               <div className="flex flex-wrap gap-2 mb-3">
                 {sectores.map(s => (
                   <span key={s} className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#1a3c34]/10 rounded-full text-xs text-[#1a3c34] font-medium">
                     {s}
-                    <button onClick={() => removeSector(s)} className="text-slate-400 hover:text-red-500"><X size={12} /></button>
+                    <button onClick={() => setConfirmSector(s)} className="text-slate-400 hover:text-red-500"><X size={12} /></button>
                   </span>
                 ))}
               </div>
@@ -373,14 +383,13 @@ export default function ConveniosPage() {
               )}
             </div>
 
-            {/* Provincias */}
             <div className="bg-white border border-slate-200 rounded-xl p-4">
               <h4 className="text-xs font-bold text-slate-500 uppercase mb-3">Provincias / Territorios</h4>
               <div className="flex flex-wrap gap-2 mb-3">
                 {provincias_config.map(p => (
                   <span key={p} className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 rounded-full text-xs text-blue-700 font-medium">
                     <MapPin size={10} />{p}
-                    <button onClick={() => removeProvincia(p)} className="text-slate-400 hover:text-red-500"><X size={12} /></button>
+                    <button onClick={() => setConfirmProvincia(p)} className="text-slate-400 hover:text-red-500"><X size={12} /></button>
                   </span>
                 ))}
               </div>
@@ -413,7 +422,6 @@ export default function ConveniosPage() {
               </select>
             </div>
           </div>
-
           {comparacion.length === 0 ? (
             <div className="text-center py-12">
               <BarChart3 size={40} className="text-slate-300 mx-auto mb-3" />
