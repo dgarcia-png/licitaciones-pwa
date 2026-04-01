@@ -1,8 +1,8 @@
 import { SkeletonStats, SkeletonList } from '../components/Skeleton'
-// src/pages/InformesPage.tsx — ACTUALIZADO con recharts
-// Requiere: npm install recharts xlsx
+// src/pages/InformesPage.tsx — ACTUALIZADO con recharts + @react-pdf/renderer
+// Requiere: npm install recharts xlsx @react-pdf/renderer
 
-import { useState, useEffect } from 'react'
+import React, { useState, useEffect } from 'react'
 import { api } from '../services/api'
 import {
   BarChart3, TrendingUp, Users, Map, FileText, Download,
@@ -23,8 +23,11 @@ import {
   exportarRRHHExcel,
   exportarTerritorioExcel,
   exportarRendimientoExcel,
-  imprimirInformeRendimiento,
+
 } from '../utils/exportInformes'
+import {
+  PDFEconomico, PDFLicitaciones, PDFRRHH, PDFTerritorio, PDFRendimiento, descargarPDF,
+} from '../utils/pdfInformes'
 
 // ─── Paleta ──────────────────────────────────────────────────────────────────
 
@@ -167,11 +170,13 @@ function BtnExcel({ onClick }: { onClick: () => void }) {
   )
 }
 
-function BtnPDF({ onClick }: { onClick: () => void }) {
+function BtnPDF({ onClick, generando }: { onClick: () => void; generando?: boolean }) {
   return (
-    <button onClick={onClick}
-      className="flex items-center gap-1.5 px-3 py-1.5 text-xs bg-red-50 border border-red-200 hover:bg-red-100 text-red-700 rounded-lg font-semibold transition-colors">
-      <FileText size={12} /> PDF
+    <button onClick={onClick} disabled={generando}
+      className="flex items-center gap-1.5 px-3 py-1.5 text-xs bg-red-50 border border-red-200 hover:bg-red-100 text-red-700 rounded-lg font-semibold transition-colors disabled:opacity-60">
+      {generando
+        ? <><Loader2 size={12} className="animate-spin" /> Generando...</>
+        : <><FileText size={12} /> PDF</>}
     </button>
   )
 }
@@ -211,6 +216,8 @@ function LabelDonut({ cx, cy, midAngle, innerRadius, outerRadius, pct, percent }
 // ════════════════════════════════════════════════════════════════════════════
 
 function TabEconomico({ informeEco, informeContrato, contratoSel, setContratoSel, exportarCSV, mes }: any) {
+  const [genPDF, setGenPDF] = React.useState(false)
+  const handlePDF = async () => { setGenPDF(true); try { await descargarPDF(<PDFEconomico informeEco={informeEco} informeContrato={informeContrato} mes={mes} />, `informe_economico_${mes}.pdf`) } finally { setGenPDF(false) } }
   // Prepara datos para gráfico de barras de contratos (top 8 por ingresos)
   const contratosChart = [...(informeEco.contratos || [])]
     .sort((a: any, b: any) => b.ingresos_acum - a.ingresos_acum)
@@ -269,7 +276,7 @@ function TabEconomico({ informeEco, informeContrato, contratoSel, setContratoSel
           actions={
             <>
               <BtnExcel onClick={() => exportarEconomicoExcel(informeEco)} />
-              <BtnPDF onClick={() => window.print()} />
+              <BtnPDF onClick={handlePDF} generando={genPDF} />
             </>
           }>
           <ResponsiveContainer width="100%" height={260}>
@@ -476,6 +483,8 @@ function TabEconomico({ informeEco, informeContrato, contratoSel, setContratoSel
 // ════════════════════════════════════════════════════════════════════════════
 
 function TabLicitaciones({ informeLic, exportarCSV }: any) {
+  const [genPDF, setGenPDF] = React.useState(false)
+  const handlePDF = async () => { setGenPDF(true); try { await descargarPDF(<PDFLicitaciones informeLic={informeLic} />, 'informe_licitaciones.pdf') } finally { setGenPDF(false) } }
   // Pipeline como barras horizontales (funnel)
   const estadoOrden = ['nueva', 'en_analisis', 'go', 'presentada', 'adjudicada', 'no_go', 'perdida', 'descartada']
   const estadoLabel: Record<string, string> = {
@@ -563,7 +572,7 @@ function TabLicitaciones({ informeLic, exportarCSV }: any) {
         actions={
           <>
             <BtnExcel onClick={() => exportarLicitacionesExcel(informeLic)} />
-            <BtnPDF   onClick={() => window.print()} />
+            <BtnPDF   onClick={handlePDF} generando={genPDF} />
             {informeLic.ultimas_oportunidades?.length > 0 && (
               <button onClick={() => exportarCSV(informeLic.ultimas_oportunidades, 'licitaciones')}
                 className="flex items-center gap-1.5 px-3 py-1.5 text-xs bg-slate-100 hover:bg-slate-200 rounded-lg font-semibold">
@@ -599,6 +608,8 @@ function TabLicitaciones({ informeLic, exportarCSV }: any) {
 // ════════════════════════════════════════════════════════════════════════════
 
 function TabRRHH({ informeRRHH, exportarCSV }: any) {
+  const [genPDF, setGenPDF] = React.useState(false)
+  const handlePDF = async () => { setGenPDF(true); try { await descargarPDF(<PDFRRHH informeRRHH={informeRRHH} />, 'informe_rrhh.pdf') } finally { setGenPDF(false) } }
   const p = informeRRHH.plantilla  || {}
   const f = informeRRHH.fichajes   || {}
   const a = informeRRHH.ausencias  || {}
@@ -729,7 +740,7 @@ function TabRRHH({ informeRRHH, exportarCSV }: any) {
         actions={
           <>
             <BtnExcel onClick={() => exportarRRHHExcel(informeRRHH)} />
-            <BtnPDF   onClick={() => window.print()} />
+            <BtnPDF   onClick={handlePDF} generando={genPDF} />
             {informeRRHH.empleados_detalle?.length > 0 && (
               <button onClick={() => exportarCSV(informeRRHH.empleados_detalle, 'rrhh_plantilla')}
                 className="flex items-center gap-1.5 px-3 py-1.5 text-xs bg-slate-100 hover:bg-slate-200 rounded-lg font-semibold">
@@ -777,6 +788,8 @@ function TabRRHH({ informeRRHH, exportarCSV }: any) {
 // ════════════════════════════════════════════════════════════════════════════
 
 function TabTerritorio({ informeTerr, mes }: any) {
+  const [genPDF, setGenPDF] = React.useState(false)
+  const handlePDF = async () => { setGenPDF(true); try { await descargarPDF(<PDFTerritorio informeTerr={informeTerr} mes={mes} />, `informe_territorio_${mes}.pdf`) } finally { setGenPDF(false) } }
   const op = informeTerr.operativo  || {}
   const ic = informeTerr.incidencias || {}
   const ca = informeTerr.calidad    || {}
@@ -819,7 +832,7 @@ function TabTerritorio({ informeTerr, mes }: any) {
         {/* Dona costes */}
         {costesData.length > 0 && (
           <ChartCard title={`Costes operativos — ${mes}`}
-            actions={<BtnExcel onClick={() => exportarTerritorioExcel(informeTerr)} />}>
+            actions={<><BtnExcel onClick={() => exportarTerritorioExcel(informeTerr)} /><BtnPDF onClick={handlePDF} generando={genPDF} /></>}>
             <div className="flex flex-col items-center">
               <ResponsiveContainer width="100%" height={160}>
                 <PieChart>
@@ -909,6 +922,8 @@ function TabTerritorio({ informeTerr, mes }: any) {
 // ════════════════════════════════════════════════════════════════════════════
 
 function TabRendimiento({ datos }: { datos: any }) {
+  const [genPDF, setGenPDF] = React.useState(false)
+  const handlePDF = async () => { setGenPDF(true); try { await descargarPDF(<PDFRendimiento informeRend={datos} />, 'informe_rendimiento.pdf') } finally { setGenPDF(false) } }
   const [selId, setSelId] = useState<string | null>(null)
   const proyectos: any[] = datos?.proyectos || []
   const r = datos?.resumen || {}
@@ -972,7 +987,7 @@ function TabRendimiento({ datos }: { datos: any }) {
         actions={
           <>
             <BtnExcel onClick={() => exportarRendimientoExcel(datos)} />
-            <BtnPDF   onClick={() => imprimirInformeRendimiento(datos)} />
+            <BtnPDF   onClick={handlePDF} generando={genPDF} />
           </>
         }>
         {proyectos.length === 0 && (
