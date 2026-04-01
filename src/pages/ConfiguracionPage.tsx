@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { api } from '../services/api'
 import FestivosManager from '../components/FestivosManager'
+import ConfirmModal from '../components/ConfirmModal'
 import {
   Settings, Upload, Trash2, Loader2, CheckCircle2, AlertCircle,
   ChevronDown, ChevronUp, BookOpen, CalendarDays, Euro, ExternalLink, Plus, Save, X,
@@ -192,8 +193,6 @@ function CosteRow({ bloque, item, guardando, onToggle, onUpdateValor, onDelete }
 
 export default function ConfiguracionPage() {
   const [tab, setTab] = useState<'filtros'|'convenios'|'costes'|'sistema'|'festivos'|'plantillas_cpv'>('filtros')
-
-  // Estados originales
   const [convenios, setConvenios] = useState<any[]>([])
   const [categorias, setCategorias] = useState<Record<string, any[]>>({})
   const [costesRef, setCostesRef] = useState<any>({ costes: {}, activos: {} })
@@ -206,20 +205,23 @@ export default function ConfiguracionPage() {
   const [nuevoItem, setNuevoItem] = useState<{bloque:string;concepto:string;unidad:string;valor:string;notas:string}|null>(null)
   const [nuevoConfig, setNuevoConfig] = useState<{tipo:string;valor:string;descripcion:string}|null>(null)
 
-  // Estados tab Sistema
+  // Sistema
   const [configGlobal, setConfigGlobal] = useState<Record<string,Record<string,string>>>({})
   const [editadoGlobal, setEditadoGlobal] = useState<Record<string,Record<string,string>>>({})
   const [seccionSistema, setSeccionSistema] = useState<Modulo>('empresa')
   const [cambiosPendientes, setCambiosPendientes] = useState(false)
   const [guardandoSistema, setGuardandoSistema] = useState(false)
 
-  // Estados tab Plantillas CPV
+  // Plantillas CPV
   const [plantillasCpv, setPlantillasCpv] = useState<any[]>([])
   const [filtroFamilia, setFiltroFamilia] = useState('')
-  const [editandoCpv, setEditandoCpv] = useState<any>(null)  // plantilla en edición
+  const [editandoCpv, setEditandoCpv] = useState<any>(null)
   const [nuevaPlantilla, setNuevaPlantilla] = useState(false)
   const [formCpv, setFormCpv] = useState({ familia_cpv: 'limpieza', tipo_documento: 'memoria_tecnica', titulo: '', contenido_base: '' })
   const [guardandoCpv, setGuardandoCpv] = useState('')
+
+  // Confirm genérico
+  const [confirm, setConfirm] = useState<{ label: string; onConfirm: () => void } | null>(null)
 
   const showMsg = (m: string, err = false) => {
     if (err) setError(m); else setMensaje(m)
@@ -260,7 +262,6 @@ export default function ConfiguracionPage() {
   useEffect(() => { cargarDatos(); cargarConfigGlobal() }, [])
   useEffect(() => { if (tab === 'plantillas_cpv') cargarPlantillasCpv() }, [tab, filtroFamilia])
 
-  // Handlers convenios
   const handleSubirConvenio = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]; if (!file) return
     if (!file.name.toLowerCase().endsWith('.pdf')) { setError('Solo PDF'); return }
@@ -272,14 +273,18 @@ export default function ConfiguracionPage() {
     } catch(err) { setError('Error subiendo. Puede tardar 1-3 min.') }
     finally { setSubiendo(false); e.target.value = '' }
   }
-  const handleEliminarConvenio = async (id: string, nombre: string) => {
-    if (!confirm(`¿Eliminar "${nombre}"?`)) return
-    setGuardando(id)
-    try { const r = await api.eliminarConvenio(id); if (r.ok) { setMensaje('Convenio eliminado'); await cargarDatos() } else setError(r.error) }
-    catch(e) { setError('Error') } finally { setGuardando('') }
+
+  const handleEliminarConvenio = (id: string, nombre: string) => {
+    setConfirm({
+      label: `¿Eliminar "${nombre}"?`,
+      onConfirm: async () => {
+        setGuardando(id)
+        try { const r = await api.eliminarConvenio(id); if (r.ok) { setMensaje('Convenio eliminado'); await cargarDatos() } else setError(r.error) }
+        catch(e) { setError('Error') } finally { setGuardando('') }
+      }
+    })
   }
 
-  // Handlers costes
   const handleToggleCoste = async (bloque: string, concepto: string, activo: boolean) => {
     setGuardando(bloque+concepto)
     try { await api.updateCosteRef({ bloque, concepto_original: concepto, activo: !activo }); await cargarDatos() }
@@ -290,12 +295,17 @@ export default function ConfiguracionPage() {
     try { await api.updateCosteRef({ bloque, concepto_original: concepto, valor: v }); await cargarDatos() }
     catch(e) { setError('Error') } finally { setGuardando('') }
   }
-  const handleDeleteCoste = async (bloque: string, concepto: string) => {
-    if (!confirm(`¿Eliminar "${concepto}"?`)) return
-    setGuardando(bloque+concepto)
-    try { await api.deleteCosteRef(bloque, concepto); await cargarDatos() }
-    catch(e) { setError('Error') } finally { setGuardando('') }
+  const handleDeleteCoste = (bloque: string, concepto: string) => {
+    setConfirm({
+      label: `¿Eliminar "${concepto}"?`,
+      onConfirm: async () => {
+        setGuardando(bloque+concepto)
+        try { await api.deleteCosteRef(bloque, concepto); await cargarDatos() }
+        catch(e) { setError('Error') } finally { setGuardando('') }
+      }
+    })
   }
+
   const handleAddCoste = async () => {
     if (!nuevoItem?.bloque || !nuevoItem?.concepto) { setError('Bloque y concepto obligatorios'); return }
     setGuardando('nuevo')
@@ -305,17 +315,20 @@ export default function ConfiguracionPage() {
     } catch(e) { setError('Error') } finally { setGuardando('') }
   }
 
-  // Handlers filtros config
   const handleToggleConfig = async (fila: number, activo: boolean) => {
     setGuardando('cfg'+fila)
     try { await api.updateConfig({ fila, activo: !activo }); await cargarDatos() }
     catch(e) { setError('Error') } finally { setGuardando('') }
   }
-  const handleDeleteConfig = async (fila: number, valor: string) => {
-    if (!confirm(`¿Eliminar "${valor}"?`)) return
-    setGuardando('cfg'+fila)
-    try { await api.deleteConfig(fila); await cargarDatos() }
-    catch(e) { setError('Error') } finally { setGuardando('') }
+  const handleDeleteConfig = (fila: number, valor: string) => {
+    setConfirm({
+      label: `¿Eliminar "${valor}"?`,
+      onConfirm: async () => {
+        setGuardando('cfg'+fila)
+        try { await api.deleteConfig(fila); await cargarDatos() }
+        catch(e) { setError('Error') } finally { setGuardando('') }
+      }
+    })
   }
   const handleAddConfig = async () => {
     if (!nuevoConfig?.tipo || !nuevoConfig?.valor) { setError('Tipo y valor obligatorios'); return }
@@ -326,7 +339,6 @@ export default function ConfiguracionPage() {
     } catch(e) { setError('Error') } finally { setGuardando('') }
   }
 
-  // Handlers sistema global
   const getValSistema = (modulo: Modulo, clave: string) => editadoGlobal[modulo]?.[clave] ?? configGlobal[modulo]?.[clave] ?? ''
   const setValSistema = (modulo: Modulo, clave: string, valor: string) => {
     setEditadoGlobal(prev => ({ ...prev, [modulo]: { ...(prev[modulo]||{}), [clave]: valor } }))
@@ -350,7 +362,6 @@ export default function ConfiguracionPage() {
     finally { setGuardandoSistema(false) }
   }
 
-  // Handlers plantillas CPV
   const handleGuardarPlantillaCpv = async () => {
     if (!formCpv.titulo || !formCpv.contenido_base) { showMsg('Título y contenido obligatorios', true); return }
     setGuardandoCpv('save')
@@ -367,15 +378,19 @@ export default function ConfiguracionPage() {
     finally { setGuardandoCpv('') }
   }
 
-  const handleEliminarPlantillaCpv = async (id: string, titulo: string) => {
-    if (!confirm(`¿Eliminar "${titulo}"?`)) return
-    setGuardandoCpv(id)
-    try {
-      const r = await api.eliminarPlantillaCPV(id)
-      if (r.ok) { showMsg('Plantilla eliminada'); await cargarPlantillasCpv() }
-      else showMsg(r.error || 'Error', true)
-    } catch(e) { showMsg('Error', true) }
-    finally { setGuardandoCpv('') }
+  const handleEliminarPlantillaCpv = (id: string, titulo: string) => {
+    setConfirm({
+      label: `¿Eliminar la plantilla "${titulo}"?`,
+      onConfirm: async () => {
+        setGuardandoCpv(id)
+        try {
+          const r = await api.eliminarPlantillaCPV(id)
+          if (r.ok) { showMsg('Plantilla eliminada'); await cargarPlantillasCpv() }
+          else showMsg(r.error || 'Error', true)
+        } catch(e) { showMsg('Error', true) }
+        finally { setGuardandoCpv('') }
+      }
+    })
   }
 
   const handleEditarPlantillaCpv = (p: any) => {
@@ -411,6 +426,16 @@ export default function ConfiguracionPage() {
 
   return (
     <div className="p-6 lg:p-8 max-w-4xl">
+
+      <ConfirmModal
+        open={!!confirm}
+        titulo="¿Confirmar eliminación?"
+        mensaje={confirm?.label || ''}
+        labelOk="Sí, eliminar" peligroso
+        onConfirm={() => { confirm?.onConfirm(); setConfirm(null) }}
+        onCancel={() => setConfirm(null)}
+      />
+
       <div className="flex items-center gap-4 mb-6">
         <div className="p-2.5 bg-gradient-to-br from-[#1a3c34] to-[#2d5a4e] rounded-xl shadow-lg"><Settings size={22} className="text-white" /></div>
         <div><h1 className="text-2xl font-bold text-slate-900">Configuración</h1><p className="text-sm text-slate-500">Filtros, convenios, costes y parámetros del sistema</p></div>
@@ -662,7 +687,6 @@ export default function ConfiguracionPage() {
                 <Plus size={14} /> Nueva plantilla
               </button>
             </div>
-            {/* Filtro por familia */}
             <div className="flex gap-2 mt-4 flex-wrap">
               <button onClick={() => setFiltroFamilia('')}
                 className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${!filtroFamilia ? 'bg-[#1a3c34] text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>
@@ -680,7 +704,6 @@ export default function ConfiguracionPage() {
             </div>
           </div>
 
-          {/* Formulario nueva/editar */}
           {(nuevaPlantilla || editandoCpv) && (
             <div className="bg-[#1a3c34]/5 border border-[#1a3c34]/20 rounded-2xl p-5 mb-4">
               <h3 className="text-sm font-bold text-slate-900 mb-4">
@@ -731,7 +754,6 @@ export default function ConfiguracionPage() {
             </div>
           )}
 
-          {/* Lista de plantillas */}
           {plantillasFiltradas.length === 0 ? (
             <div className="flex flex-col items-center py-12 text-center">
               <FileText size={40} className="text-slate-300 mb-3" />
@@ -767,7 +789,6 @@ export default function ConfiguracionPage() {
                         </button>
                       </div>
                     </div>
-                    {/* Preview del texto */}
                     <div className="px-4 pb-4 border-t border-slate-50 pt-3">
                       <p className="text-xs text-slate-500 line-clamp-2">{p.contenido_base?.substring(0, 200)}...</p>
                     </div>
