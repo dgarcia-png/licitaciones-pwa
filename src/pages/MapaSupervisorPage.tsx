@@ -60,13 +60,11 @@ function cargarLeaflet(): Promise<void> {
   if (leafletPromise) return leafletPromise
 
   leafletPromise = new Promise((resolve, reject) => {
-    // CSS
     const link = document.createElement('link')
     link.rel = 'stylesheet'
     link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css'
     document.head.appendChild(link)
 
-    // JS
     const script = document.createElement('script')
     script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js'
     script.onload = () => { leafletLoaded = true; resolve() }
@@ -137,7 +135,6 @@ export default function MapaSupervisorPage() {
     if (!leafletOk || !mapRef.current || leafletMap.current) return
     const L = (window as any).L
 
-    // Centro en Almonte (Huelva) — sede de Forgeser
     leafletMap.current = L.map(mapRef.current, {
       center: [37.2586, -6.5266],
       zoom: 11,
@@ -168,22 +165,9 @@ export default function MapaSupervisorPage() {
       const inicial = (op.nombre.split(' ')[0] || '?')[0].toUpperCase()
       const icono = crearIcono(op.estado, inicial)
 
+      // Sin bindPopup — el panel React de la esquina ya muestra el detalle
       const marker = L.marker([op.lat, op.lng], { icon: icono })
         .addTo(map)
-        .bindPopup(`
-          <div style="font-family:sans-serif;min-width:180px">
-            <p style="font-weight:700;font-size:14px;margin:0 0 4px">${op.nombre}</p>
-            <p style="font-size:11px;color:#64748b;margin:0 0 6px">${op.centro || '—'}</p>
-            <p style="font-size:11px;margin:0 0 2px">
-              <b>Estado:</b> ${ESTADO_LABEL[op.estado] || op.estado}
-            </p>
-            <p style="font-size:11px;margin:0 0 2px">
-              <b>Fuente:</b> ${FUENTE_LABEL[op.fuente] || op.fuente}
-            </p>
-            ${op.tipo_servicio ? `<p style="font-size:11px;margin:0 0 2px"><b>Servicio:</b> ${op.tipo_servicio}</p>` : ''}
-            ${op.hora ? `<p style="font-size:11px;margin:0"><b>Hora:</b> ${op.hora}</p>` : ''}
-          </div>
-        `)
         .on('click', () => setSeleccionado(op))
 
       markers.current[op.id] = marker
@@ -212,7 +196,6 @@ export default function MapaSupervisorPage() {
     setSeleccionado(op)
     if (!op.tiene_gps || !leafletMap.current) return
     leafletMap.current.setView([op.lat, op.lng], 15)
-    markers.current[op.id]?.openPopup()
   }
 
   return (
