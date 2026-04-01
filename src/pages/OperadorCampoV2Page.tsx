@@ -93,6 +93,7 @@ export default function OperadorCampoV2Page() {
   // ── Estado Fichar ──────────────────────────────────────────────────────────
   const [estadoFichaje, setEstadoFichaje] = useState<any>(null)
   const [fichando, setFichando] = useState(false)
+  const [fichajeSync, setFichajeSync] = useState(false)
   const [resumenFichajes, setResumenFichajes] = useState<any>(null)
   const [mesFichaje, setMesFichaje] = useState(new Date().getMonth() + 1)
   const [anioFichaje, setAnioFichaje] = useState(new Date().getFullYear())
@@ -377,42 +378,90 @@ export default function OperadorCampoV2Page() {
 
   const handleFichar = async () => {
     if (!empleado) return
+    const accion = estadoFichaje?.fichado ? 'salida' : 'entrada'
+    const horaLocal = fmtHoraStr()
+
+    // ── OPTIMISTIC: actualizar UI inmediatamente ──────────────────────────
+    const estadoPrevio = estadoFichaje
+    setEstadoFichaje((prev: any) => ({
+      ...prev,
+      fichado: accion === 'entrada',
+      fichajes_hoy: accion === 'entrada'
+        ? [...(prev?.fichajes_hoy || []), { tipo: 'entrada', hora: horaLocal }]
+        : [...(prev?.fichajes_hoy || []), { tipo: 'salida', hora: horaLocal }],
+    }))
     setFichando(true)
+    setFichajeSync(true)
+
     try {
-      const accion = estadoFichaje?.fichado ? 'salida' : 'entrada'
       const r = await api.fichar({ id_empleado: empleado.id, tipo: accion, lat: gps?.lat, lng: gps?.lng })
       if (r.ok) {
         showMsg(accion === 'entrada' ? '✅ Entrada registrada' : '✅ Salida registrada')
         Object.keys(localStorage).filter(k => k.startsWith('fc_')).forEach(k => localStorage.removeItem(k))
-        await new Promise(res => setTimeout(res, 1500))
-        const est = await api.estadoFichaje(empleado.id)
-        setEstadoFichaje(est)
-        const res = await api.resumenDiarioFichajes(empleado.id, String(mesFichaje), String(anioFichaje))
-        setResumenFichajes(res)
-      } else showMsg(r.error || 'Error al fichar', 'err')
-    } catch { showMsg('Error de conexión', 'err') }
-    finally { setFichando(false) }
+        // Actualizar con datos reales del servidor (sin bloquear la UI)
+        api.estadoFichaje(empleado.id).then(setEstadoFichaje).catch(() => {})
+        api.resumenDiarioFichajes(empleado.id, String(mesFichaje), String(anioFichaje)).then(setResumenFichajes).catch(() => {})
+      } else {
+        // REVERT si el servidor rechaza
+        setEstadoFichaje(estadoPrevio)
+        showMsg(r.error || 'Error al fichar', 'err')
+      }
+    } catch {
+      // REVERT si no hay conexión
+      setEstadoFichaje(estadoPrevio)
+      showMsg('Sin conexión — inténtalo de nuevo', 'err')
+    }
+    finally { setFichando(false); setFichajeSync(false) }
   }
 
   // ═══ LÓGICA AUSENCIAS ════════════════════════════════════════════════════
 
   const handleSolicitarAusencia = async () => {
     if (!formAus.tipo || !formAus.fecha_inicio || !formAus.fecha_fin) { showMsg('Rellena todos los campos', 'err'); return }
+
+    // ── OPTIMISTIC: añadir a la lista inmediatamente ──────────────────────
+    const ausenciaOptimista = {
+      id: `opt_${Date.now()}`,
+      tipo: formAus.tipo,
+      fecha_inicio: formAus.fecha_inicio,
+      fecha_fin: formAus.fecha_fin,
+      motivo: formAus.motivo || '',
+      estado: 'pendiente',
+      _pendiente: true,
+    }
+    setAusencias(prev => [ausenciaOptimista, ...prev])
+    setMostrarFormAus(false)
+    const formGuardado = { ...formAus }
+    setFormAus({})
+    showMsg('✅ Solicitud enviada')
+
     setGuardandoAus(true)
     try {
       const r = await api.solicitarAusencia({
-        ...formAus,
+        ...formGuardado,
         id_empleado: empleado?.id,
         nombre_empleado: `${empleado?.nombre || ''} ${empleado?.apellidos || ''}`,
         dni: empleado?.dni
       })
       if (r.ok) {
-        showMsg('✅ Solicitud enviada')
-        setMostrarFormAus(false); setFormAus({})
-        const aus = await api.ausencias({ id_empleado: empleado?.id })
-        setAusencias(aus.ausencias || [])
-      } else showMsg(r.error || 'Error', 'err')
-    } catch { showMsg('Error de conexión', 'err') }
+        // Reemplazar el optimista con datos reales del servidor
+        api.ausencias({ id_empleado: empleado?.id })
+          .then((aus: any) => setAusencias(aus.ausencias || []))
+          .catch(() => {})
+      } else {
+        // REVERT: eliminar el optimista
+        setAusencias(prev => prev.filter(a => a.id !== ausenciaOptimista.id))
+        setMostrarFormAus(true)
+        setFormAus(formGuardado)
+        showMsg(r.error || 'Error al enviar solicitud', 'err')
+      }
+    } catch {
+      // REVERT
+      setAusencias(prev => prev.filter(a => a.id !== ausenciaOptimista.id))
+      setMostrarFormAus(true)
+      setFormAus(formGuardado)
+      showMsg('Sin conexión — inténtalo de nuevo', 'err')
+    }
     finally { setGuardandoAus(false) }
   }
 
@@ -869,7 +918,10 @@ export default function OperadorCampoV2Page() {
                     <LogIn size={36} className="text-white" />}
               </button>
               <p className="text-white font-black text-xl">{fichado ? 'Registrar salida' : 'Registrar entrada'}</p>
-              <p className="text-white/60 text-sm mt-1">{hora}</p>
+              {fichajeSync
+                ? <p className="text-white/60 text-xs mt-1 flex items-center gap-1 justify-center"><span className="w-1.5 h-1.5 bg-white/60 rounded-full animate-ping" /> Sincronizando...</p>
+                : <p className="text-white/60 text-sm mt-1">{hora}</p>
+              }
               {!gps && <button onClick={obtenerGPS} className="mt-3 text-white/60 text-xs flex items-center gap-1 mx-auto hover:text-white/90"><MapPin size={11} /> Activar ubicación</button>}
               {gps && <p className="text-white/60 text-xs mt-2 flex items-center gap-1 justify-center"><MapPin size={11} /> Ubicación activa</p>}
               {gpsError && <p className="text-white/50 text-xs mt-1">{gpsError}</p>}
@@ -985,7 +1037,7 @@ export default function OperadorCampoV2Page() {
             ) : (
               <div className="space-y-2">
                 {ausencias.slice().reverse().map((a: any) => (
-                  <div key={a.id} className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100">
+                  <div key={a.id} className={`rounded-2xl p-4 shadow-sm border ${a._pendiente ? 'bg-slate-50 border-dashed border-slate-300 opacity-70' : 'bg-white border-slate-100'}`}>
                     <div className="flex items-center gap-2 mb-1">
                       <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${TIPOS_AUSENCIA_COLOR[a.tipo] || 'bg-slate-100 text-slate-700'}`}>
                         {a.tipo?.replace(/_/g, ' ').toUpperCase()}
