@@ -6,6 +6,7 @@ import {
   AlertTriangle, X, Save, RefreshCw, Trash2, Eye, Copy,
   ChevronDown, ChevronUp, Shield, Search
 } from 'lucide-react'
+import ConfirmModal from '../components/ConfirmModal'
 
 const COLORES_MODULO: Record<string, string> = {
   PRL:          'bg-orange-100 text-orange-800 border-orange-200',
@@ -30,8 +31,8 @@ export default function PlantillasPage() {
   const [modo, setModo] = useState<'lista' | 'nueva_desde_url' | 'nueva_vacia' | 'previsualizar'>('lista')
   const [plantillaSel, setPlantillaSel] = useState<any>(null)
   const [generando, setGenerando] = useState(false)
+  const [confirmDesactivar, setConfirmDesactivar] = useState<any>(null)
 
-  // Forms
   const [formUrl, setFormUrl] = useState({ id_doc: '', nombre: '', modulo: '', descripcion: '' })
   const [formVacia, setFormVacia] = useState({ nombre: '', modulo: '', descripcion: '' })
   const [datosGeneracion, setDatosGeneracion] = useState<Record<string, string>>({})
@@ -51,7 +52,6 @@ export default function PlantillasPage() {
 
   useEffect(() => { cargar() }, [filtroModulo])
 
-  // Extraer ID de Google Doc desde URL o ID directo
   const extraerIdDoc = (urlOId: string): string => {
     const match = urlOId.match(/\/d\/([a-zA-Z0-9_-]+)/)
     return match ? match[1] : urlOId.trim()
@@ -85,17 +85,17 @@ export default function PlantillasPage() {
     finally { setGuardando(false) }
   }
 
-  const handleDesactivar = async (p: any) => {
-    if (!confirm(`¿${p.activa ? 'Desactivar' : 'Activar'} la plantilla "${p.nombre}"?`)) return
+  const handleDesactivarConfirmado = async () => {
+    if (!confirmDesactivar) return
     try {
-      const r = await api.actualizarPlantilla({ id: p.id, activa: !p.activa })
+      const r = await api.actualizarPlantilla({ id: confirmDesactivar.id, activa: !confirmDesactivar.activa })
       if (r.ok) { showMsg('✅ Actualizado'); cargar() }
     } catch (e: any) { showMsg('❌ Error') }
+    finally { setConfirmDesactivar(null) }
   }
 
   const abrirPrevisualizar = (p: any) => {
     setPlantillaSel(p)
-    // Inicializar campos de prueba vacíos por cada etiqueta
     const init: Record<string, string> = {}
     ;(p.etiquetas || []).forEach((et: string) => { init[et] = '' })
     setDatosGeneracion(init)
@@ -106,7 +106,6 @@ export default function PlantillasPage() {
     if (!plantillaSel) return
     setGenerando(true)
     try {
-      // Convertir etiquetas {{campo}} → campo sin llaves para el backend
       const datosLimpios: Record<string, string> = {}
       Object.entries(datosGeneracion).forEach(([k, v]) => {
         const clave = k.replace(/[{}]/g, '')
@@ -123,9 +122,19 @@ export default function PlantillasPage() {
     (!busqueda || p.nombre?.toLowerCase().includes(busqueda.toLowerCase()) || p.descripcion?.toLowerCase().includes(busqueda.toLowerCase()))
   )
 
-  // ── LISTA ──────────────────────────────────────────────────────
   if (modo === 'lista') return (
     <div className="max-w-5xl">
+
+      <ConfirmModal
+        open={!!confirmDesactivar}
+        titulo={confirmDesactivar?.activa ? '¿Desactivar plantilla?' : '¿Activar plantilla?'}
+        mensaje={`Se ${confirmDesactivar?.activa ? 'desactivará' : 'activará'} la plantilla "${confirmDesactivar?.nombre}".`}
+        labelOk={confirmDesactivar?.activa ? 'Sí, desactivar' : 'Sí, activar'}
+        peligroso={confirmDesactivar?.activa}
+        onConfirm={handleDesactivarConfirmado}
+        onCancel={() => setConfirmDesactivar(null)}
+      />
+
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-4">
           <div className="p-2.5 bg-gradient-to-br from-violet-700 to-indigo-700 rounded-xl shadow-lg shadow-violet-200">
@@ -150,7 +159,6 @@ export default function PlantillasPage() {
 
       {msg && <div className={`mb-4 p-3 rounded-xl text-sm font-medium ${msg.includes('✅') ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-red-50 text-red-700 border border-red-200'}`}>{msg}</div>}
 
-      {/* Filtros */}
       <div className="flex gap-3 mb-5 flex-wrap">
         <div className="relative flex-1 min-w-[200px]">
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
@@ -191,7 +199,6 @@ export default function PlantillasPage() {
                       {p.error && <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-red-100 text-red-700">⚠️ Doc no encontrado</span>}
                     </div>
                     {p.descripcion && <p className="text-xs text-slate-500 mb-2">{p.descripcion}</p>}
-                    {/* Etiquetas */}
                     {p.etiquetas?.length > 0 && (
                       <div className="flex gap-1 flex-wrap">
                         {p.etiquetas.slice(0, 5).map((et: string) => (
@@ -218,7 +225,7 @@ export default function PlantillasPage() {
                       {expandidaId === p.id ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
                     </button>
                     {esAdmin && (
-                      <button onClick={() => handleDesactivar(p)}
+                      <button onClick={() => setConfirmDesactivar(p)}
                         className={`p-2 rounded-lg ${p.activa ? 'text-slate-400 hover:text-red-600 hover:bg-red-50' : 'text-emerald-600 hover:bg-emerald-50'}`}
                         title={p.activa ? 'Desactivar' : 'Activar'}>
                         {p.activa ? <Trash2 size={14} /> : <CheckCircle2 size={14} />}
@@ -228,7 +235,6 @@ export default function PlantillasPage() {
                 </div>
               </div>
 
-              {/* Expandido — todas las etiquetas */}
               {expandidaId === p.id && (
                 <div className="border-t border-slate-100 p-4 bg-slate-50">
                   <p className="text-xs font-bold text-slate-700 mb-2 flex items-center gap-1.5"><Tag size={12} />Etiquetas detectadas en esta plantilla</p>
@@ -254,7 +260,6 @@ export default function PlantillasPage() {
         </div>
       )}
 
-      {/* Referencia de etiquetas */}
       {Object.keys(etiquetas).length > 0 && (
         <details className="mt-6">
           <summary className="text-sm font-bold text-slate-700 cursor-pointer hover:text-violet-700 flex items-center gap-2 py-3 border-t border-slate-200">
@@ -273,7 +278,6 @@ export default function PlantillasPage() {
     </div>
   )
 
-  // ── REGISTRAR DESDE URL ────────────────────────────────────────
   if (modo === 'nueva_desde_url') return (
     <div className="max-w-2xl">
       <div className="flex items-center gap-3 mb-6">
@@ -332,7 +336,6 @@ export default function PlantillasPage() {
     </div>
   )
 
-  // ── CREAR PLANTILLA VACÍA ──────────────────────────────────────
   if (modo === 'nueva_vacia') return (
     <div className="max-w-2xl">
       <div className="flex items-center gap-3 mb-6">
@@ -379,7 +382,6 @@ export default function PlantillasPage() {
     </div>
   )
 
-  // ── PREVISUALIZAR / PROBAR ─────────────────────────────────────
   if (modo === 'previsualizar' && plantillaSel) return (
     <div className="max-w-2xl">
       <div className="flex items-center gap-3 mb-6">

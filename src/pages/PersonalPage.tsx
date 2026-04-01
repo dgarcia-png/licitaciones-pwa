@@ -27,7 +27,6 @@ function fmtDate(d: any) {
   if (!d) return ''
   try {
     const str = String(d)
-    // Ignorar fechas inválidas del backend (1899, epoch, etc.)
     if (str.includes('1899') || str.includes('1900') || str === '0' || str === 'undefined') return ''
     const date = new Date(d)
     if (isNaN(date.getTime())) return ''
@@ -51,15 +50,9 @@ export default function PersonalPage() {
   const [guardando, setGuardando] = useState(false)
   const [msg, setMsg] = useState('')
   const [editando, setEditando] = useState(false)
-
-  // Tabs del detalle
   const [tabDetalle, setTabDetalle] = useState<'datos'|'expediente'|'prl'>('datos')
-
-  // Expediente digital
   const [expediente, setExpediente] = useState<any>(null)
   const [cargandoExpediente, setCargandoExpediente] = useState(false)
-
-  // Asignaciones
   const [asignaciones, setAsignaciones] = useState<any[]>([])
   const [historialCentros, setHistorialCentros] = useState<any>(null)
   const [cargandoCentros, setCargandoCentros] = useState(false)
@@ -67,14 +60,10 @@ export default function PersonalPage() {
   const [capacidad, setCapacidad] = useState<any>(null)
   const [oportunidades, setOportunidades] = useState<any[]>([])
   const [asigForm, setAsigForm] = useState<any>({ nombre_proyecto: '', id_proyecto: '', cliente: '', porcentaje: 100, rol: '', subrogable: 'No', notas: '' })
-
-  // PRL del empleado
   const [prlEpis, setPrlEpis] = useState<any[]>([])
   const [prlRecos, setPrlRecos] = useState<any[]>([])
   const [prlFormacion, setPrlFormacion] = useState<any[]>([])
   const [prlAccidentes, setPrlAccidentes] = useState<any[]>([])
-
-  // Form nuevo empleado
   const [form, setForm] = useState<any>({
     nombre: '', apellidos: '', dni: '', fecha_nacimiento: '', direccion: '',
     telefono: '', email: '', nss: '', cuenta_banco: '', categoria: '', grupo: '',
@@ -84,15 +73,13 @@ export default function PersonalPage() {
     vehiculo: '', talla: '', competencias: '', contacto_emergencia: '', tel_emergencia: '',
     disponible_sustituciones: 'Sí'
   })
-
-  // Convenios y categorías
   const [convenios, setConvenios] = useState<any[]>([])
   const [categoriasConv, setCategoriasConv] = useState<any[]>([])
   const [cargandoCats, setCargandoCats] = useState(false)
-
-  // Complementos salariales
   const [complementos, setComplementos] = useState<{concepto: string; importe: number}[]>([])
   const [complementosDet, setComplementosDet] = useState<{concepto: string; importe: number}[]>([])
+  const [confirmBaja, setConfirmBaja] = useState(false)
+  const [confirmFinalizarAsig, setConfirmFinalizarAsig] = useState<string | null>(null)
 
   const addComplemento = (target: 'form' | 'detalle') => {
     if (target === 'form') setComplementos([...complementos, { concepto: '', importe: 0 }])
@@ -166,7 +153,6 @@ export default function PersonalPage() {
   useEffect(() => { cargar() }, [busqueda])
 
   const abrirDetalle = (emp: any) => {
-    // Apertura instantánea — solo estado local, cero API
     setEmpleadoSel(emp)
     setVista('detalle')
     setTabDetalle('datos')
@@ -175,19 +161,15 @@ export default function PersonalPage() {
     setAsignaciones([])
     setCapacidad(null)
     setPrlEpis([]); setPrlRecos([]); setPrlFormacion([]); setPrlAccidentes([])
-    // Cargar datos extra en segundo plano sin bloquear
     cargarDetalleFondo(emp.id)
   }
 
   const cargarDetalleFondo = async (id: string) => {
-    // Cargar empleado y asignaciones
     try {
       const data = await api.batch(['empleado', 'asignaciones_emp'], id)
       if (data.empleado?.ok) setEmpleadoSel(data.empleado.empleado)
       setAsignaciones(data.asignaciones?.asignaciones || [])
     } catch(e) {}
-
-    // Cargar historial centros territorio
     setCargandoCentros(true)
     try {
       const hist = await api.historialCentrosEmpleado(id)
@@ -240,8 +222,6 @@ export default function PersonalPage() {
     finally { setGuardando(false) }
   }
 
-  const [confirmBaja, setConfirmBaja] = useState(false)
-
   const handleBaja = async () => {
     setGuardando(true)
     try {
@@ -272,12 +252,13 @@ export default function PersonalPage() {
     finally { setGuardando(false) }
   }
 
-  const handleFinalizarAsig = async (asigId: string) => {
-    if (!confirm('¿Finalizar esta asignación?')) return
+  const handleFinalizarAsigConfirmado = async () => {
+    if (!confirmFinalizarAsig) return
     try {
-      await api.finalizarAsignacion({ id: asigId })
+      await api.finalizarAsignacion({ id: confirmFinalizarAsig })
       cargarDetalle(empleadoSel.id)
     } catch (e: any) { console.error(e) }
+    finally { setConfirmFinalizarAsig(null) }
   }
 
   const cargarOportunidadesParaAsig = async () => {
@@ -301,6 +282,15 @@ export default function PersonalPage() {
         onConfirm={() => { setConfirmBaja(false); handleBaja() }}
         onCancel={() => setConfirmBaja(false)}
       />
+      <ConfirmModal
+        open={!!confirmFinalizarAsig}
+        titulo="¿Finalizar asignación?"
+        mensaje="Se marcará esta asignación como finalizada. El empleado quedará disponible para otros proyectos."
+        labelOk="Sí, finalizar" peligroso
+        onConfirm={handleFinalizarAsigConfirmado}
+        onCancel={() => setConfirmFinalizarAsig(null)}
+      />
+
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-4">
@@ -333,7 +323,6 @@ export default function PersonalPage() {
               <option value="baja">Baja</option>
             </select>
           </div>
-
           {empFiltrados.length === 0 ? (
             <div className="text-center py-16"><Users size={48} className="text-slate-300 mx-auto mb-3" /><p className="text-slate-500">Sin personal registrado{busqueda ? ' con esa búsqueda' : ''}</p></div>
           ) : (
@@ -355,9 +344,7 @@ export default function PersonalPage() {
                         {emp.centro && <span>· 📍 {emp.centro}</span>}
                       </div>
                     </div>
-                    <button
-                      onClick={() => abrirDetalle(emp)}
-                      className="flex items-center gap-2 px-4 py-2 bg-[#1a3c34] hover:bg-[#2d5a4e] text-white text-xs font-bold rounded-xl shrink-0">
+                    <button onClick={() => abrirDetalle(emp)} className="flex items-center gap-2 px-4 py-2 bg-[#1a3c34] hover:bg-[#2d5a4e] text-white text-xs font-bold rounded-xl shrink-0">
                       <User size={13} /> Ver ficha
                     </button>
                   </div>
@@ -382,7 +369,6 @@ export default function PersonalPage() {
             <div className="md:col-span-2"><label className="text-[10px] text-slate-500 uppercase font-semibold">Dirección</label><input type="text" value={form.direccion} onChange={(e: any) => setForm({...form, direccion: e.target.value})} className="w-full mt-1 px-3 py-2 border border-slate-200 rounded-lg text-sm" /></div>
             <div><label className="text-[10px] text-slate-500 uppercase font-semibold">Nº Seguridad Social</label><input type="text" value={form.nss} onChange={(e: any) => setForm({...form, nss: e.target.value})} className="w-full mt-1 px-3 py-2 border border-slate-200 rounded-lg text-sm" /></div>
             <div><label className="text-[10px] text-slate-500 uppercase font-semibold">Cuenta bancaria</label><input type="text" value={form.cuenta_banco} onChange={(e: any) => setForm({...form, cuenta_banco: e.target.value})} className="w-full mt-1 px-3 py-2 border border-slate-200 rounded-lg text-sm" /></div>
-
             <div className="md:col-span-2 border-t border-slate-100 pt-4 mt-2"><h3 className="text-sm font-bold text-slate-700 mb-3">Datos laborales</h3></div>
             <div><label className="text-[10px] text-slate-500 uppercase font-semibold">Convenio aplicable</label>
               <select value={form.convenio} onChange={(e: any) => seleccionarConvenio(e.target.value, 'form')} className="w-full mt-1 px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white">
@@ -409,8 +395,6 @@ export default function PersonalPage() {
             <div><label className="text-[10px] text-slate-500 uppercase font-semibold">Turno</label><select value={form.turno} onChange={(e: any) => setForm({...form, turno: e.target.value})} className="w-full mt-1 px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white">{TURNOS.map((t: string) => <option key={t} value={t}>{t}</option>)}</select></div>
             <div><label className="text-[10px] text-slate-500 uppercase font-semibold">Salario base convenio {form.salario > 0 && categoriasConv.length > 0 ? '(según tablas)' : ''}</label><input type="number" value={form.salario} onChange={(e: any) => setForm({...form, salario: parseFloat(e.target.value)||0})} className={`w-full mt-1 px-3 py-2 border border-slate-200 rounded-lg text-sm ${form.salario > 0 && categoriasConv.length > 0 ? 'bg-emerald-50 border-emerald-300 font-semibold' : ''}`} /></div>
             <div></div>
-
-            {/* Complementos salariales */}
             <div className="md:col-span-2 bg-slate-50 rounded-xl p-4 border border-slate-200">
               <div className="flex items-center justify-between mb-2">
                 <h4 className="text-xs font-bold text-slate-600">Complementos salariales</h4>
@@ -431,7 +415,6 @@ export default function PersonalPage() {
                 </div>
               )}
             </div>
-
             <div className="md:col-span-2 border-t border-slate-100 pt-4 mt-2"><h3 className="text-sm font-bold text-slate-700 mb-3">Datos operativos (Territorio)</h3></div>
             <div><label className="text-[10px] text-slate-500 uppercase font-semibold">Horario entrada</label><input type="time" value={form.horario_entrada} onChange={(e: any) => setForm({...form, horario_entrada: e.target.value})} className="w-full mt-1 px-3 py-2 border border-slate-200 rounded-lg text-sm" /></div>
             <div><label className="text-[10px] text-slate-500 uppercase font-semibold">Horario salida</label><input type="time" value={form.horario_salida} onChange={(e: any) => setForm({...form, horario_salida: e.target.value})} className="w-full mt-1 px-3 py-2 border border-slate-200 rounded-lg text-sm" /></div>
@@ -443,7 +426,6 @@ export default function PersonalPage() {
             <div><label className="text-[10px] text-slate-500 uppercase font-semibold">Contacto emergencia</label><input type="text" value={form.contacto_emergencia} onChange={(e: any) => setForm({...form, contacto_emergencia: e.target.value})} className="w-full mt-1 px-3 py-2 border border-slate-200 rounded-lg text-sm" placeholder="Nombre familiar" /></div>
             <div><label className="text-[10px] text-slate-500 uppercase font-semibold">Teléfono emergencia</label><input type="tel" value={form.tel_emergencia} onChange={(e: any) => setForm({...form, tel_emergencia: e.target.value})} className="w-full mt-1 px-3 py-2 border border-slate-200 rounded-lg text-sm" /></div>
             <div><label className="text-[10px] text-slate-500 uppercase font-semibold">Disponible sustituciones</label><select value={form.disponible_sustituciones} onChange={(e: any) => setForm({...form, disponible_sustituciones: e.target.value})} className="w-full mt-1 px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white"><option value="Sí">Sí</option><option value="No">No</option><option value="Según disponibilidad">Según disponibilidad</option></select></div>
-
             <div className="md:col-span-2"><label className="text-[10px] text-slate-500 uppercase font-semibold">Notas</label><textarea value={form.notas} onChange={(e: any) => setForm({...form, notas: e.target.value})} rows={2} className="w-full mt-1 px-3 py-2 border border-slate-200 rounded-lg text-sm resize-none" /></div>
           </div>
           <div className="flex items-center gap-3 mt-6">
@@ -458,13 +440,11 @@ export default function PersonalPage() {
       {/* ═══ DETALLE EMPLEADO ═══ */}
       {vista === 'detalle' && empleadoSel && (
         <div>
-          {/* Banner carga en fondo */}
           {asignaciones.length === 0 && (
             <div className="flex items-center gap-2 mb-3 px-4 py-2 bg-blue-50 border border-blue-200 rounded-xl text-xs text-blue-700">
               <Loader2 size={12} className="animate-spin" /> Actualizando datos completos...
             </div>
           )}
-          {/* Cabecera */}
           <div className="bg-gradient-to-r from-[#1a3c34] to-[#2d5a4e] rounded-2xl p-6 mb-4 text-white">
             <div className="flex items-center gap-5">
               <div className="w-16 h-16 rounded-2xl bg-white/20 backdrop-blur flex items-center justify-center text-white text-xl font-black shrink-0">
@@ -496,32 +476,15 @@ export default function PersonalPage() {
                 )}
               </div>
             </div>
-            {/* Quick stats */}
             <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mt-5">
-              <div className="bg-white/10 backdrop-blur rounded-xl p-3 text-center">
-                <p className="text-[10px] text-emerald-200/60 uppercase font-bold">Alta</p>
-                <p className="text-sm font-bold">{fmtDate(empleadoSel.fecha_alta) || '—'}</p>
-              </div>
-              <div className="bg-white/10 backdrop-blur rounded-xl p-3 text-center">
-                <p className="text-[10px] text-emerald-200/60 uppercase font-bold">Contrato</p>
-                <p className="text-sm font-bold">{empleadoSel.tipo_contrato || '—'}</p>
-              </div>
-              <div className="bg-white/10 backdrop-blur rounded-xl p-3 text-center">
-                <p className="text-[10px] text-emerald-200/60 uppercase font-bold">Jornada</p>
-                <p className="text-sm font-bold">{empleadoSel.jornada ? empleadoSel.jornada + 'h/sem' : '—'}</p>
-              </div>
-              <div className="bg-white/10 backdrop-blur rounded-xl p-3 text-center">
-                <p className="text-[10px] text-emerald-200/60 uppercase font-bold">Salario</p>
-                <p className="text-sm font-bold">{empleadoSel.salario ? fmt(empleadoSel.salario) : '—'}</p>
-              </div>
-              <div className="bg-white/10 backdrop-blur rounded-xl p-3 text-center">
-                <p className="text-[10px] text-emerald-200/60 uppercase font-bold">Expediente</p>
-                <p className="text-sm font-bold">{empleadoSel.documentos?.length || 0} docs</p>
-              </div>
+              <div className="bg-white/10 backdrop-blur rounded-xl p-3 text-center"><p className="text-[10px] text-emerald-200/60 uppercase font-bold">Alta</p><p className="text-sm font-bold">{fmtDate(empleadoSel.fecha_alta) || '—'}</p></div>
+              <div className="bg-white/10 backdrop-blur rounded-xl p-3 text-center"><p className="text-[10px] text-emerald-200/60 uppercase font-bold">Contrato</p><p className="text-sm font-bold">{empleadoSel.tipo_contrato || '—'}</p></div>
+              <div className="bg-white/10 backdrop-blur rounded-xl p-3 text-center"><p className="text-[10px] text-emerald-200/60 uppercase font-bold">Jornada</p><p className="text-sm font-bold">{empleadoSel.jornada ? empleadoSel.jornada + 'h/sem' : '—'}</p></div>
+              <div className="bg-white/10 backdrop-blur rounded-xl p-3 text-center"><p className="text-[10px] text-emerald-200/60 uppercase font-bold">Salario</p><p className="text-sm font-bold">{empleadoSel.salario ? fmt(empleadoSel.salario) : '—'}</p></div>
+              <div className="bg-white/10 backdrop-blur rounded-xl p-3 text-center"><p className="text-[10px] text-emerald-200/60 uppercase font-bold">Expediente</p><p className="text-sm font-bold">{empleadoSel.documentos?.length || 0} docs</p></div>
             </div>
           </div>
 
-          {/* Tabs selector */}
           <div className="flex gap-1 bg-slate-100 p-1 rounded-xl mb-4">
             {[
               { id: 'datos',      label: '👤 Datos & Asignaciones' },
@@ -539,7 +502,6 @@ export default function PersonalPage() {
           </div>
 
           {tabDetalle === 'datos' && (<div>
-          {/* Datos personales + laborales */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
             <div className={`bg-white border-2 rounded-2xl p-5 ${editando ? "border-violet-300 bg-violet-50/30" : "border-slate-200"}`}>
               <h3 className="text-sm font-bold text-slate-900 mb-4 flex items-center gap-2"><User size={16} className="text-blue-600" /> Datos personales</h3>
@@ -626,10 +588,7 @@ export default function PersonalPage() {
 
           {editando && (
             <div className="bg-violet-600 text-white rounded-xl p-4 mb-4 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <Edit3 size={18} />
-                <span className="text-sm font-bold">Modo edición activo — modifica los campos y pulsa Guardar</span>
-              </div>
+              <div className="flex items-center gap-3"><Edit3 size={18} /><span className="text-sm font-bold">Modo edición activo — modifica los campos y pulsa Guardar</span></div>
               <div className="flex gap-3">
                 <button onClick={handleGuardar} disabled={guardando} className="flex items-center gap-2 px-6 py-2.5 bg-white text-violet-700 text-sm font-bold rounded-xl hover:bg-violet-50 shadow-lg transition-all">
                   {guardando ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />} Guardar cambios
@@ -642,7 +601,7 @@ export default function PersonalPage() {
           )}
           {msg && !editando && <div className={`mb-4 p-3 rounded-xl text-center text-sm font-medium ${msg.includes('✅') ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-red-50 text-red-700 border border-red-200'}`}>{msg}</div>}
 
-          {/* Datos operativos (Territorio) */}
+          {/* Datos operativos */}
           <div className={`bg-white border-2 rounded-2xl p-5 mb-4 ${editando ? "border-violet-300 bg-violet-50/30" : "border-slate-200"}`}>
             <h3 className="text-sm font-bold text-slate-900 mb-4 flex items-center gap-2"><MapPin size={16} className="text-orange-600" /> Datos operativos (Territorio)</h3>
             {editando ? (
@@ -673,7 +632,7 @@ export default function PersonalPage() {
             )}
           </div>
 
-          {/* ═══ ASIGNACIONES A PROYECTOS ═══ */}
+          {/* Asignaciones */}
           <div className={`bg-white border-2 rounded-2xl p-5 mb-4 ${editando ? "border-violet-300 bg-violet-50/30" : "border-slate-200"}`}>
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2"><Briefcase size={16} className="text-blue-600" /> Asignación a proyectos</h3>
@@ -684,8 +643,6 @@ export default function PersonalPage() {
                 </button>
               )}
             </div>
-
-            {/* Barra capacidad */}
             {capacidad && (
               <div className="mb-4 p-3 bg-slate-50 rounded-xl">
                 <div className="flex items-center justify-between mb-1.5">
@@ -709,8 +666,6 @@ export default function PersonalPage() {
                 )}
               </div>
             )}
-
-            {/* Form nueva asignación */}
             {mostrarAddAsig && (
               <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-4">
                 <h4 className="text-xs font-bold text-blue-800 mb-3">Nueva asignación</h4>
@@ -731,31 +686,15 @@ export default function PersonalPage() {
                       <input type="text" value={asigForm.nombre_proyecto} onChange={(e: any) => setAsigForm({...asigForm, nombre_proyecto: e.target.value})} placeholder="Nombre del proyecto" className="w-full mt-1 px-3 py-2 border border-slate-200 rounded-lg text-xs" />
                     )}
                   </div>
-                  <div>
-                    <label className="text-[10px] text-slate-500 uppercase font-semibold">Cliente / Organismo</label>
-                    <input type="text" value={asigForm.cliente} onChange={(e: any) => setAsigForm({...asigForm, cliente: e.target.value})} className="w-full mt-1 px-3 py-2 border border-slate-200 rounded-lg text-xs" />
-                  </div>
+                  <div><label className="text-[10px] text-slate-500 uppercase font-semibold">Cliente / Organismo</label><input type="text" value={asigForm.cliente} onChange={(e: any) => setAsigForm({...asigForm, cliente: e.target.value})} className="w-full mt-1 px-3 py-2 border border-slate-200 rounded-lg text-xs" /></div>
                   <div>
                     <label className="text-[10px] text-slate-500 uppercase font-semibold">% Dedicación</label>
-                    <input type="number" min={1} max={capacidad?.disponible || 100} value={asigForm.porcentaje} onChange={(e: any) => setAsigForm({...asigForm, porcentaje: parseInt(e.target.value)||0})}
-                      className="w-full mt-1 px-3 py-2 border border-slate-200 rounded-lg text-xs" />
+                    <input type="number" min={1} max={capacidad?.disponible || 100} value={asigForm.porcentaje} onChange={(e: any) => setAsigForm({...asigForm, porcentaje: parseInt(e.target.value)||0})} className="w-full mt-1 px-3 py-2 border border-slate-200 rounded-lg text-xs" />
                     <span className="text-[9px] text-slate-400">Máximo disponible: {capacidad?.disponible || 100}%</span>
                   </div>
-                  <div>
-                    <label className="text-[10px] text-slate-500 uppercase font-semibold">Rol</label>
-                    <input type="text" value={asigForm.rol} onChange={(e: any) => setAsigForm({...asigForm, rol: e.target.value})} placeholder={empleadoSel.categoria || 'Ej: Limpiador/a'} className="w-full mt-1 px-3 py-2 border border-slate-200 rounded-lg text-xs" />
-                  </div>
-                  <div>
-                    <label className="text-[10px] text-slate-500 uppercase font-semibold">Subrogable</label>
-                    <select value={asigForm.subrogable} onChange={(e: any) => setAsigForm({...asigForm, subrogable: e.target.value})} className="w-full mt-1 px-3 py-2 border border-slate-200 rounded-lg text-xs bg-white">
-                      <option value="Sí">Sí</option><option value="No">No</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="text-[10px] text-slate-500 uppercase font-semibold">Coste mensual estimado</label>
-                    <p className="text-sm font-bold text-blue-700 mt-1">{empleadoSel.salario ? (Math.round(empleadoSel.salario / 12 * (asigForm.porcentaje / 100) * 1.33)).toLocaleString('es-ES') + ' €' : '—'}</p>
-                    <span className="text-[9px] text-slate-400">Salario/12 × {asigForm.porcentaje}% × 1.33 (SS)</span>
-                  </div>
+                  <div><label className="text-[10px] text-slate-500 uppercase font-semibold">Rol</label><input type="text" value={asigForm.rol} onChange={(e: any) => setAsigForm({...asigForm, rol: e.target.value})} placeholder={empleadoSel.categoria || 'Ej: Limpiador/a'} className="w-full mt-1 px-3 py-2 border border-slate-200 rounded-lg text-xs" /></div>
+                  <div><label className="text-[10px] text-slate-500 uppercase font-semibold">Subrogable</label><select value={asigForm.subrogable} onChange={(e: any) => setAsigForm({...asigForm, subrogable: e.target.value})} className="w-full mt-1 px-3 py-2 border border-slate-200 rounded-lg text-xs bg-white"><option value="Sí">Sí</option><option value="No">No</option></select></div>
+                  <div><label className="text-[10px] text-slate-500 uppercase font-semibold">Coste mensual estimado</label><p className="text-sm font-bold text-blue-700 mt-1">{empleadoSel.salario ? (Math.round(empleadoSel.salario / 12 * (asigForm.porcentaje / 100) * 1.33)).toLocaleString('es-ES') + ' €' : '—'}</p><span className="text-[9px] text-slate-400">Salario/12 × {asigForm.porcentaje}% × 1.33 (SS)</span></div>
                 </div>
                 <div className="flex gap-2">
                   <button onClick={handleAddAsignacion} disabled={guardando} className="flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white text-xs font-semibold rounded-lg">
@@ -765,27 +704,16 @@ export default function PersonalPage() {
                 </div>
               </div>
             )}
-
-            {/* Lista asignaciones */}
             {asignaciones.filter((a: any) => a.estado === 'activa').length === 0 && !mostrarAddAsig ? (
               <p className="text-xs text-slate-400 text-center py-4">Sin asignaciones activas. Asignar a un proyecto desde aquí.</p>
             ) : (
               <div className="space-y-2">
                 {asignaciones.filter((a: any) => a.estado === 'activa').map((a: any) => (
                   <div key={a.id} className="flex items-center gap-3 p-3 bg-blue-50 border border-blue-200 rounded-xl">
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs font-bold text-slate-900">{a.nombre_proyecto}</p>
-                      <p className="text-[10px] text-slate-500">{a.cliente} · {a.rol || a.categoria}</p>
-                    </div>
-                    <div className="text-center shrink-0">
-                      <p className="text-lg font-black text-blue-700">{a.porcentaje}%</p>
-                      <p className="text-[9px] text-slate-400">{a.horas_semana}h/sem</p>
-                    </div>
-                    <div className="text-right shrink-0">
-                      <p className="text-xs font-bold text-emerald-700">{a.coste_mensual ? a.coste_mensual.toLocaleString('es-ES') + ' €/mes' : ''}</p>
-                      {a.subrogable === 'Sí' && <span className="text-[8px] text-amber-600 font-bold">SUBROGABLE</span>}
-                    </div>
-                    <button onClick={() => handleFinalizarAsig(a.id)} className="text-red-400 hover:text-red-600 shrink-0" title="Finalizar asignación"><XCircle size={14} /></button>
+                    <div className="flex-1 min-w-0"><p className="text-xs font-bold text-slate-900">{a.nombre_proyecto}</p><p className="text-[10px] text-slate-500">{a.cliente} · {a.rol || a.categoria}</p></div>
+                    <div className="text-center shrink-0"><p className="text-lg font-black text-blue-700">{a.porcentaje}%</p><p className="text-[9px] text-slate-400">{a.horas_semana}h/sem</p></div>
+                    <div className="text-right shrink-0"><p className="text-xs font-bold text-emerald-700">{a.coste_mensual ? a.coste_mensual.toLocaleString('es-ES') + ' €/mes' : ''}</p>{a.subrogable === 'Sí' && <span className="text-[8px] text-amber-600 font-bold">SUBROGABLE</span>}</div>
+                    <button onClick={() => setConfirmFinalizarAsig(a.id)} className="text-red-400 hover:text-red-600 shrink-0" title="Finalizar asignación"><XCircle size={14} /></button>
                   </div>
                 ))}
                 {asignaciones.filter((a: any) => a.estado === 'finalizada').length > 0 && (
@@ -806,8 +734,7 @@ export default function PersonalPage() {
             )}
           </div>
 
-
-          {/* Expediente — checklist básico en tab datos */}
+          {/* Docs obligatorios */}
           <div className="bg-white border-2 border-slate-200 rounded-2xl p-5 mb-4">
             <div className="flex items-center justify-between mb-3">
               <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2"><FileText size={16} className="text-violet-600" /> Docs. obligatorios</h3>
@@ -827,12 +754,10 @@ export default function PersonalPage() {
             </div>
           </div>
 
-          {/* Historial de centros de territorio */}
+          {/* Historial centros */}
           <div className="bg-white border-2 border-slate-200 rounded-2xl p-5 mb-4">
             <div className="flex items-center justify-between mb-3">
-              <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-                🏢 Centros de trabajo asignados
-              </h3>
+              <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">🏢 Centros de trabajo asignados</h3>
               {historialCentros && (
                 <div className="flex items-center gap-2 text-xs text-slate-500">
                   <span className="bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full font-semibold">{historialCentros.activos} activo(s)</span>
@@ -851,16 +776,10 @@ export default function PersonalPage() {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-0.5">
                         <p className="text-xs font-bold text-slate-900 truncate">{c.nombre_centro}</p>
-                        <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full shrink-0 ${c.estado === 'activo' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}>
-                          {c.estado}
-                        </span>
+                        <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full shrink-0 ${c.estado === 'activo' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}>{c.estado}</span>
                       </div>
                       <p className="text-[10px] text-slate-500">{c.organismo} · {c.tipo_servicio} · {c.turno}</p>
-                      <p className="text-[10px] text-slate-400">
-                        {c.horas_semanales}h/sem · {c.categoria}
-                        {c.fecha_inicio && ` · desde ${c.fecha_inicio}`}
-                        {c.fecha_fin && ` → ${c.fecha_fin}`}
-                      </p>
+                      <p className="text-[10px] text-slate-400">{c.horas_semanales}h/sem · {c.categoria}{c.fecha_inicio && ` · desde ${c.fecha_inicio}`}{c.fecha_fin && ` → ${c.fecha_fin}`}</p>
                     </div>
                   </div>
                 ))}
@@ -868,7 +787,7 @@ export default function PersonalPage() {
             )}
           </div>
 
-          {/* Historial */}
+          {/* Historial cambios */}
           {empleadoSel.historial?.length > 0 && (
             <div className="bg-white border-2 border-slate-200 rounded-2xl p-5">
               <h3 className="text-sm font-bold text-slate-900 mb-3">📜 Historial de cambios</h3>
@@ -887,9 +806,9 @@ export default function PersonalPage() {
               </div>
             </div>
           )}
-          </div>)} {/* fin tab datos */}
+          </div>)}
 
-          {/* ═══ TAB EXPEDIENTE DIGITAL ═══ */}
+          {/* TAB EXPEDIENTE */}
           {tabDetalle === 'expediente' && (
             <div>
               {cargandoExpediente ? (
@@ -902,7 +821,6 @@ export default function PersonalPage() {
                 </div>
               ) : (
                 <div>
-                  {/* Cabecera */}
                   <div className="bg-white border-2 border-violet-200 rounded-2xl p-5 mb-4">
                     <div className="flex items-start justify-between gap-4 mb-4">
                       <div>
@@ -922,11 +840,9 @@ export default function PersonalPage() {
                         <button onClick={() => cargarExpediente(empleadoSel.id)} className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg"><RefreshCw size={14} /></button>
                       </div>
                     </div>
-                    {/* Barra progreso */}
                     <div className="w-full h-2 bg-slate-100 rounded-full mb-4">
                       <div className={`h-full rounded-full ${(expediente.completitud_pct||0) >= 80 ? 'bg-emerald-500' : (expediente.completitud_pct||0) >= 50 ? 'bg-amber-500' : 'bg-red-400'}`} style={{ width: (expediente.completitud_pct||0) + '%' }} />
                     </div>
-                    {/* Alertas */}
                     {expediente.alertas?.length > 0 && (
                       <div className="space-y-2 mb-4">
                         {expediente.alertas.map((a: any, i: number) => (
@@ -938,7 +854,6 @@ export default function PersonalPage() {
                         ))}
                       </div>
                     )}
-                    {/* Checklist */}
                     <p className="text-[10px] font-bold text-slate-500 uppercase mb-2">Documentos obligatorios</p>
                     <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
                       {DOCS_OBLIGATORIOS.map((req: any) => {
@@ -957,7 +872,6 @@ export default function PersonalPage() {
                       })}
                     </div>
                   </div>
-                  {/* Subcarpetas Drive */}
                   {expediente.subcarpetas?.length > 0 && (
                     <div className="bg-white border-2 border-slate-200 rounded-2xl p-5 mb-4">
                       <p className="text-sm font-bold text-slate-900 mb-3 flex items-center gap-2"><FolderArchive size={15} className="text-violet-600" /> Subcarpetas en Drive</p>
@@ -965,19 +879,13 @@ export default function PersonalPage() {
                         {expediente.subcarpetas.map((sub: any) => (
                           <div key={sub.nombre} className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl">
                             <div className="w-8 h-8 rounded-lg bg-violet-100 flex items-center justify-center flex-shrink-0"><FolderOpen size={14} className="text-violet-600" /></div>
-                            <div className="flex-1 min-w-0">
-                              <p className="text-xs font-bold text-slate-800 truncate">{sub.nombre}</p>
-                              <p className="text-[10px] text-slate-500 truncate">{sub.descripcion}</p>
-                            </div>
-                            {expediente.carpeta_raiz_url && (
-                              <a href={expediente.carpeta_raiz_url} target="_blank" rel="noopener noreferrer" className="p-1.5 text-slate-400 hover:text-violet-600 rounded-lg"><ExternalLink size={13} /></a>
-                            )}
+                            <div className="flex-1 min-w-0"><p className="text-xs font-bold text-slate-800 truncate">{sub.nombre}</p><p className="text-[10px] text-slate-500 truncate">{sub.descripcion}</p></div>
+                            {expediente.carpeta_raiz_url && <a href={expediente.carpeta_raiz_url} target="_blank" rel="noopener noreferrer" className="p-1.5 text-slate-400 hover:text-violet-600 rounded-lg"><ExternalLink size={13} /></a>}
                           </div>
                         ))}
                       </div>
                     </div>
                   )}
-                  {/* Docs registrados */}
                   {expediente.documentos?.length > 0 && (
                     <div className="bg-white border-2 border-slate-200 rounded-2xl p-5">
                       <p className="text-sm font-bold text-slate-900 mb-3"><FileText size={15} className="inline mr-1.5 text-violet-600" />Documentos registrados ({expediente.total_docs})</p>
@@ -987,10 +895,7 @@ export default function PersonalPage() {
                           return (
                             <div key={i} className={`flex items-center gap-3 p-3 rounded-xl border ${vence ? 'bg-amber-50 border-amber-200' : 'bg-slate-50 border-slate-200'}`}>
                               <FileText size={14} className={`flex-shrink-0 ${vence ? 'text-amber-600' : 'text-slate-400'}`} />
-                              <div className="flex-1 min-w-0">
-                                <p className="text-xs font-semibold text-slate-800 truncate">{doc.nombre || doc.tipo}</p>
-                                <span className="text-[10px] text-slate-400">{doc.tipo} · {doc.categoria}</span>
-                              </div>
+                              <div className="flex-1 min-w-0"><p className="text-xs font-semibold text-slate-800 truncate">{doc.nombre || doc.tipo}</p><span className="text-[10px] text-slate-400">{doc.tipo} · {doc.categoria}</span></div>
                               {doc.vencimiento && <span className={`text-[10px] flex-shrink-0 font-medium ${vence ? 'text-amber-700' : 'text-slate-400'}`}>{vence ? '⚠️ ' : '📅 '}{fmtDate(doc.vencimiento)}</span>}
                               {doc.url && <a href={doc.url} target="_blank" rel="noopener noreferrer" className="p-1.5 bg-white border border-slate-200 rounded-lg hover:bg-slate-100 flex-shrink-0"><ExternalLink size={11} className="text-slate-400" /></a>}
                             </div>
@@ -1004,7 +909,7 @@ export default function PersonalPage() {
             </div>
           )}
 
-          {/* ═══ TAB PRL ═══ */}
+          {/* TAB PRL */}
           {tabDetalle === 'prl' && (
             <div>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
