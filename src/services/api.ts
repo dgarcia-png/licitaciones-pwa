@@ -421,4 +421,8 @@ export const api = {
   restaurarPapelera:    (id_papelera: string) => postAPI({ action: 'restaurar_papelera', id_papelera }),
   // ═══ BÚSQUEDA GLOBAL ═══
   busquedaGlobal:       (q: string) => fetchAPI('busqueda_global', { q }),
+  // ── Métodos que faltan para OperadorCampoV2Page ──
+  iniciarParte:         (data: any) => postAPI({ action: 'crear_parte_v2', ...data }),
+  finalizarParte:       (data: any) => postAPI({ action: 'cerrar_parte_v2', ...data }),
+  actualizarChecklistExec:(data: any) => postAPI({ action: 'actualizar_checklist_ejecucion', ...data }),
 }
