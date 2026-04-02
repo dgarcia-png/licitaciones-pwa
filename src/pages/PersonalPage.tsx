@@ -106,10 +106,10 @@ export default function PersonalPage() {
         setEmpleados(emps); setStats(data.stats || {})
       } else {
         const data = await api.empleados()
-        let emps = data.empleados?.empleados || []
+        let emps = data.empleados || []
         if (!puedeVerTodaPlantilla && centrosAsignados.length > 0)
           emps = emps.filter((e: any) => centrosAsignados.includes(e.centro) || centrosAsignados.includes(e.zona))
-        setEmpleados(emps); setStats(data.empleados?.stats || {}); setConvenios(data.mapa_convenios?.provincias || [])
+        setEmpleados(emps); setStats({}); setConvenios([])
       }
     } catch (e: any) { console.error(e) }
     finally { setCargando(false) }
