@@ -230,7 +230,7 @@ export default function OperadorCampoV2Page() {
     if (!empleado) return
     setProcesando(true)
     try {
-      const r = await api.iniciarParte({
+      const r = await api.crearParteV2({
         centro_id: centro.id || centro.centro_id,
         empleado_id: empleado.id,
         nombre_empleado: `${empleado.nombre} ${empleado.apellidos}`,
@@ -253,7 +253,7 @@ export default function OperadorCampoV2Page() {
     const nuevo = !item.completado
     setChecklist(prev => prev.map(i => i.id === item.id ? { ...i, completado: nuevo } : i))
     try {
-      await api.actualizarChecklistExec({ id: item.id, completada: nuevo, parte_id: parteActual?.id })
+      await api.actualizarChecklistEjecucion({ id: item.id, completada: nuevo, parte_id: parteActual?.id })
     } catch (e) { setChecklist(prev => prev.map(i => i.id === item.id ? { ...i, completado: !nuevo } : i)) }
   }
 
@@ -262,7 +262,7 @@ export default function OperadorCampoV2Page() {
     const firmaData = canvasRef.current?.toDataURL('image/png') || ''
     setProcesando(true)
     try {
-      const r = await api.finalizarParte({
+      const r = await api.cerrarParteV2({
         id: parteActual.id,
         empleado_id: empleado?.id,
         nombre_empleado: `${empleado?.nombre} ${empleado?.apellidos}`,
