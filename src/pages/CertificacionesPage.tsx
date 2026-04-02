@@ -52,7 +52,7 @@ export default function CertificacionesPage() {
   const cargar = async () => {
     setCargando(true)
     try {
-      const batch = await api.batchCertificaciones()
+      const batch = await api.certificaciones()
       setCerts(batch.certificaciones?.certificaciones || [])
       setEmpleados((batch.empleados?.empleados || []).filter((e: any) => e.estado === 'activo'))
       setDashboard(batch.dashboard || null)

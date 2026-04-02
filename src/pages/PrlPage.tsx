@@ -44,7 +44,7 @@ export default function PrlPage() {
   const cargar = async () => {
     setCargando(true)
     try {
-      const data = await api.batch(['prl_dashboard', 'empleados'])
+      const data = await Promise.all([api.prlDashboard(), api.empleados()]).then(([d, e]) => ({ prl_dashboard: d, empleados: e }))
       setDashboard(data.prl_dashboard || null)
       setEmpleados(data.empleados?.empleados || [])
     } catch (e: any) { console.error(e) }

@@ -31,7 +31,7 @@ export default function RgpdPage() {
   const cargar = async () => {
     setCargando(true)
     try {
-      const data = await api.batch(['rgpd_dashboard', 'empleados'])
+      const data = await Promise.all([api.rgpdDashboard(), api.empleados()]).then(([d, e]) => ({ rgpd_dashboard: d, empleados: e }))
       setDashboard(data.rgpd_dashboard || null)
       setEmpleados(data.empleados?.empleados || [])
     } catch (e: any) { console.error(e) }
