@@ -134,24 +134,50 @@ export default function OperadorCampoV2Page() {
     const cargar = async () => {
       setCargandoInicial(true)
       try {
-        // 1. Empleados — crítico, va solo
+        // 1. Buscar empleado por email o empleado_id del usuario logueado
         const emps = await api.empleados()
         const lista = emps.empleados || []
         const emp = lista.find((e: any) =>
-          e.email === usuario?.email || e.id === (usuario as any)?.empleado_id || e.id === (usuario as any)?.id_empleado)
+          e.email === usuario?.email ||
+          e.id === (usuario as any)?.empleado_id ||
+          e.id === (usuario as any)?.id_empleado
+        )
 
-        if (emp) {
-          setEmpleado(emp)
-          // 2. Datos del empleado en paralelo
-          const [tareas, est, aus, ords] = await Promise.all([
-            api.tareasDia(emp.id),
-            api.estadoFichaje(emp.id),
-            api.ausencias({ id_empleado: emp.id }).catch(() => ({ ausencias: [], tipos: [] })),
-            api.ordenes({ empleado_id: emp.id, estado: 'pendiente' }).catch(() => ({ ordenes: [] }))
-          ])
-          setCentros(tareas.centros || [])
-          setOrdenesDia(ords.ordenes || [])
-          setEstadoFichaje(est)
+        if (!emp) {
+          setCargandoInicial(false)
+          return
+        }
+
+        setEmpleado(emp)
+
+        // 2. Cargar datos operativos en paralelo (todos van a Cloud Run)
+        const [tareas, est] = await Promise.all([
+          api.tareasDia(emp.id),
+          api.estadoFichaje(emp.id),
+        ])
+
+        // 3. Construir centros únicos desde las órdenes del día
+        const ordenesHoy: any[] = tareas.ordenes || []
+        setOrdenesDia(ordenesHoy)
+
+        const centrosMap: Record<string, any> = {}
+        ordenesHoy.forEach((o: any) => {
+          if (o.centro_id && !centrosMap[o.centro_id]) {
+            centrosMap[o.centro_id] = {
+              id: o.centro_id,
+              centro_id: o.centro_id,
+              nombre: o.centro_nombre || '',
+              tipo_servicio: (o.tipo || '').toLowerCase(),
+              municipio: o.municipio || '',
+            }
+          }
+        })
+        setCentros(Object.values(centrosMap))
+        setEstadoFichaje(est)
+
+        // 4. Ausencias — va a GAS, falla silenciosamente
+        try {
+          const aus = await api.ausencias({ id_empleado: emp.id })
           setAusencias(aus.ausencias || [])
           setTiposAusencia(aus.tipos?.length > 0 ? aus.tipos : [
             { id: 'vacaciones', nombre: 'Vacaciones' },
@@ -162,20 +188,22 @@ export default function OperadorCampoV2Page() {
             { id: 'maternidad', nombre: 'Maternidad / Paternidad' },
             { id: 'otros', nombre: 'Otros' }
           ])
-          // 3. Parte en curso si existe
-          try {
-            const asis = await api.asistenciaDia(emp.id)
-            if (asis?.en_curso) {
-              setParteActual(asis.en_curso)
-              const centro = (tareas.centros || []).find((c: any) => c.centro_id === asis.en_curso.centro_id)
-              if (centro) setCentroSel(centro)
-              await cargarDatosParte(asis.en_curso.id)
-              setPaso('checklist')
-            }
-          } catch (e) { console.warn('asistenciaDia no disponible', e) }
-        }
+        } catch { /* sin ausencias, ok */ }
 
-        // 4. Catálogos — no críticos, fallan sin romper nada
+        // 5. Parte en curso — buscar partes abiertos de hoy
+        try {
+          const partesHoy = await api.partesV2({ empleado_id: emp.id, estado: 'abierto' })
+          const enCurso = (partesHoy.partes || [])[0] || null
+          if (enCurso) {
+            setParteActual(enCurso)
+            const centroParte = centrosMap[enCurso.centro_id]
+            if (centroParte) setCentroSel(centroParte)
+            await cargarDatosParte(enCurso.id)
+            setPaso('checklist')
+          }
+        } catch { /* sin parte en curso, ok */ }
+
+        // 6. Catálogos — no críticos
         try {
           const [cats, catm] = await Promise.all([
             api.catalogoMateriales(),
@@ -183,7 +211,7 @@ export default function OperadorCampoV2Page() {
           ])
           setCatalogoMats(cats?.materiales || [])
           setCatalogoMaqui(catm?.maquinaria || [])
-        } catch (e) { console.warn('Catálogos no disponibles', e) }
+        } catch { /* catálogos vacíos, ok */ }
 
       } catch (e) { console.error('Error carga inicial:', e) }
       finally { setCargandoInicial(false) }
@@ -570,7 +598,7 @@ export default function OperadorCampoV2Page() {
                               <div className="flex items-start justify-between gap-2">
                                 <div className="flex-1">
                                   <p className="text-sm font-bold text-slate-900">{ot.titulo}</p>
-                                  <p className="text-xs text-slate-500">{ot.centro_nombre} · {ot.hora_inicio || 'Sin hora'}</p>
+                                  <p className="text-xs text-slate-500">{ot.centro_nombre} · {ot.hora || 'Sin hora'}</p>
                                   {ot.descripcion && <p className="text-xs text-slate-400 mt-0.5">{ot.descripcion}</p>}
                                 </div>
                                 <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 ${
