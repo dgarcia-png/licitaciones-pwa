@@ -146,7 +146,7 @@ export default function OperadorCampoV2Page() {
           const [tareas, est, aus, ords] = await Promise.all([
             api.tareasDia(emp.id),
             api.estadoFichaje(emp.id),
-            api.ausencias({ id_empleado: emp.id }),
+            api.ausencias({ id_empleado: emp.id }).catch(() => ({ ausencias: [], tipos: [] })),
             api.ordenes({ empleado_id: emp.id, estado: 'pendiente' }).catch(() => ({ ordenes: [] }))
           ])
           setCentros(tareas.centros || [])
