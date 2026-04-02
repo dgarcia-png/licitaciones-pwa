@@ -77,10 +77,10 @@ export default function PrlPage() {
     setGuardando(true); setMsg('')
     try {
       let result: any
-      if (tab === 'epis') result = await api.addEpi(form)
-      else if (tab === 'reconocimientos') result = await api.addReconocimiento(form)
-      else if (tab === 'formacion') result = await api.addFormacionPrl(form)
-      else if (tab === 'accidentes') result = await api.addAccidente(form)
+      if (tab === 'epis') result = await api.agregarEpi(form)
+      else if (tab === 'reconocimientos') result = await api.agregarReconocimiento(form)
+      else if (tab === 'formacion') result = await api.agregarFormacionPrl(form)
+      else if (tab === 'accidentes') result = await api.agregarAccidente(form)
       if (result?.ok) { setMsg('✅ Registrado'); setMostrarForm(false); setForm({}); cargarTab(tab); cargar(); setTimeout(() => setMsg(''), 3000) }
       else setMsg('❌ ' + (result?.error || 'Error'))
     } catch (e: any) { setMsg('❌ Error de conexión') }

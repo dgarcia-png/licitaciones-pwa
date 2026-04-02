@@ -67,7 +67,7 @@ async function fetchAPI(action: string, params?: Record<string, string>): Promis
   const r = await fetch(url)
   if (!r.ok) throw new Error('HTTP ' + r.status)
   const data = await r.json()
-  if (data.code === 401) { console.warn('GAS 401 - token no válido para GAS'); throw new Error('No autorizado') }
+  if (data.code === 401) { console.warn('GAS 401 - módulo en GAS no accesible'); return {} }
   cacheSet(cacheKey, data)
   return data
 }
@@ -125,7 +125,7 @@ async function fetchFAST(path: string, params?: Record<string, string>): Promise
   const r = await fetch(url, { headers: { 'x-token': getToken() } })
   if (!r.ok) throw new Error('HTTP ' + r.status)
   const data = await r.json()
-  if (data.code === 401) { console.warn('GAS 401 - token no válido para GAS'); throw new Error('No autorizado') }
+  if (data.code === 401) { console.warn('GAS 401 - módulo en GAS no accesible'); return {} }
   return data
 }
 
