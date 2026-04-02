@@ -409,7 +409,7 @@ function doPost(e) {
 
     // ── FICHAJES ──
     } else if (action === 'fichar') {
-      result = registrarFichaje_(data);
+      result = fichar_(data);
     } else if (action === 'validar_fichaje') {
       result = validarFichaje_(data);
     } else if (action === 'aprobar_horas_extra') {
