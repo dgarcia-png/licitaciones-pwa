@@ -166,7 +166,7 @@ export interface Stats { total: number; nueva: number; en_analisis: number; go: 
 export const api = {
   invalidarCache: () => cacheInvalidate(),
   prefetch: () => prefetchCommonData(),
-  login: (email: string, password: string) => postAPI({ action: 'login', email, password }),
+  login: (email: string, password: string) => postFAST('/auth/login', { email, password }),
   extraerDatosPliego: (data: any) => postAPI({ action: 'extraer_datos_pliego', ...data }),
   batch: (acciones: string[], id?: string) => fetchAPI('batch', { acciones: acciones.join(','), ...(id ? { id } : {}) }),
   batchDecisiones:  (id: string) => { cacheInvalidate('batch_decisiones'); return fetchAPI('batch_decisiones', { id }) },
