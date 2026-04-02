@@ -1,7 +1,7 @@
 // src/services/api.ts — ACTUALIZADO 2/04/2026
 // [2/04] soft delete: archivar/restaurar oportunidades, reactivar empleados, papelera
 
-const API_BASE = 'https://script.google.com/macros/s/AKfycbwrUSLBq5M9rLuDdqISOD8aip5LCqBVJGhms4tf4-z0SlQEr_JbnBsDR-jQuSAmJahQlg/exec'
+const API_BASE = 'https://script.google.com/macros/s/AKfycbznMdKrUdul1AfeTaAIpoCXjBW7L8HIwynpdbQdJr2G3UVMiaFj94VKbetcqAWMNz_Q8w/exec'
 
 function getToken(): string { return localStorage.getItem('auth_token') || '' }
 
