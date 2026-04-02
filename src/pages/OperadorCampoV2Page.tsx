@@ -422,7 +422,7 @@ export default function OperadorCampoV2Page() {
     setFichajeSync(true)
 
     try {
-      const r = await api.fichar({ id_empleado: empleado.id, tipo: accion, lat: gps?.lat, lng: gps?.lng })
+      const r = await api.fichar({ empleado_id: empleado.id, nombre_empleado: empleado.nombre + ' ' + empleado.apellidos, tipo: accion, lat: gps?.lat, lng: gps?.lng })
       if (r.ok) {
         showMsg(accion === 'entrada' ? '✅ Entrada registrada' : '✅ Salida registrada')
         Object.keys(localStorage).filter(k => k.startsWith('fc_')).forEach(k => localStorage.removeItem(k))
