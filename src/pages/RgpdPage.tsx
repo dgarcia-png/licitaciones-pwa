@@ -33,7 +33,7 @@ export default function RgpdPage() {
     try {
       const data = await Promise.all([api.rgpdDashboard(), api.empleados()]).then(([d, e]) => ({ rgpd_dashboard: d, empleados: e }))
       setDashboard(data.rgpd_dashboard || null)
-      setEmpleados(data.empleados?.empleados || [])
+      setEmpleados(data.empleados?.empleados || data.empleados || [])
     } catch (e: any) { console.error(e) }
     finally { setCargando(false) }
   }

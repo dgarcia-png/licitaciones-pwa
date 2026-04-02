@@ -46,7 +46,7 @@ export default function PrlPage() {
     try {
       const data = await Promise.all([api.prlDashboard(), api.empleados()]).then(([d, e]) => ({ prl_dashboard: d, empleados: e }))
       setDashboard(data.prl_dashboard || null)
-      setEmpleados(data.empleados?.empleados || [])
+      setEmpleados(data.empleados?.empleados || data.empleados || [])
     } catch (e: any) { console.error(e) }
     finally { setCargando(false) }
     // Cargar datos para semáforos en background
