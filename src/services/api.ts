@@ -1,7 +1,9 @@
 // src/services/api.ts — ACTUALIZADO 2/04/2026
 // [2/04] soft delete: archivar/restaurar oportunidades, reactivar empleados, papelera
+// [2/04] nuevo backend Cloud Run para módulos rápidos (fichajes, partes, operario)
 
-const API_BASE = 'https://script.google.com/macros/s/AKfycbznMdKrUdul1AfeTaAIpoCXjBW7L8HIwynpdbQdJr2G3UVMiaFj94VKbetcqAWMNz_Q8w/exec'
+const API_BASE  = 'https://script.google.com/macros/s/AKfycbznMdKrUdul1AfeTaAIpoCXjBW7L8HIwynpdbQdJr2G3UVMiaFj94VKbetcqAWMNz_Q8w/exec'
+const API_FAST  = 'https://forgeser-backend-801944899567.europe-west1.run.app'
 
 function getToken(): string { return localStorage.getItem('auth_token') || '' }
 
@@ -113,6 +115,50 @@ function fileToBase64(file: File): Promise<string> {
     reader.onerror = reject
     reader.readAsDataURL(file)
   })
+}
+
+
+// ── Cloud Run helpers (rápido, sin cold start) ───────────────────────────────
+async function fetchFAST(path: string, params?: Record<string, string>): Promise<any> {
+  let url = `${API_FAST}${path}`
+  if (params) { const q = new URLSearchParams(params).toString(); if (q) url += '?' + q }
+  const r = await fetch(url, { headers: { 'x-token': getToken() } })
+  if (!r.ok) throw new Error('HTTP ' + r.status)
+  const data = await r.json()
+  if (data.code === 401) { localStorage.removeItem('auth_token'); localStorage.removeItem('usuario'); window.location.href = '/login'; throw new Error('No autorizado') }
+  return data
+}
+
+async function postFAST(path: string, data: any): Promise<any> {
+  const r = await fetch(`${API_FAST}${path}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'x-token': getToken() },
+    body: JSON.stringify(data)
+  })
+  if (!r.ok) throw new Error('HTTP ' + r.status)
+  const resp = await r.json()
+  if (resp.code === 401) { localStorage.removeItem('auth_token'); localStorage.removeItem('usuario'); window.location.href = '/login'; throw new Error('No autorizado') }
+  return resp
+}
+
+async function putFAST(path: string, data: any): Promise<any> {
+  const r = await fetch(`${API_FAST}${path}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', 'x-token': getToken() },
+    body: JSON.stringify(data)
+  })
+  if (!r.ok) throw new Error('HTTP ' + r.status)
+  return r.json()
+}
+
+async function deleteFAST(path: string, data?: any): Promise<any> {
+  const r = await fetch(`${API_FAST}${path}`, {
+    method: 'DELETE',
+    headers: { 'Content-Type': 'application/json', 'x-token': getToken() },
+    body: data ? JSON.stringify(data) : undefined
+  })
+  if (!r.ok) throw new Error('HTTP ' + r.status)
+  return r.json()
 }
 
 export interface Stats { total: number; nueva: number; en_analisis: number; go: number; no_go: number }
@@ -229,15 +275,16 @@ export const api = {
   addUsuario:       (data: any) => postAPI({ action: 'add_usuario', ...data }),
   updateUsuario:    (data: any) => postAPI({ action: 'update_usuario', ...data }),
   deleteUsuario:    (email: string) => postAPI({ action: 'delete_usuario', email }),
-  fichajes:         (params?: any) => fetchAPI('fichajes', params || {}),
-  estadoFichaje:    (id: string) => fetchAPI('estado_fichaje', { id_empleado: id }),
-  resumenDiarioFichajes:(id: string, mes: string, anio: string) => fetchAPI('resumen_diario_fichajes', { id_empleado: id, mes, anio }),
+  // ── FICHAJES → Cloud Run (rápido) ──
+  fichajes:         (params?: any) => fetchFAST('/fichajes', params || {}),
+  estadoFichaje:    (id: string) => fetchFAST('/fichajes/estado/' + id),
+  resumenDiarioFichajes:(id: string, mes: string, anio: string) => fetchFAST('/fichajes/resumen/' + id, { mes, anio }),
   resumenMensualFichajes:(mes: string, anio: string) => fetchAPI('resumen_mensual_fichajes', { mes, anio }),
   horasExtra:       (filtros?: any) => fetchAPI('horas_extra', filtros || {}),
   horasExtraEmpleado:(id: string) => fetchAPI('horas_extra', { empleado_id: id }),
   horasExtraAnual:   (anio?: number) => fetchAPI('horas_extra', anio ? { anio: String(anio) } : {}),
-  fichar:           (data: any) => postAPI({ action: 'fichar', ...data }),
-  validarFichaje:   (data: any) => postAPI({ action: 'validar_fichaje', ...data }),
+  fichar:           (data: any) => postFAST('/fichajes', data),
+  validarFichaje:   (data: any) => putFAST('/fichajes/' + data.id + '/validar', data),
   aprobarHorasExtra:(data: any) => postAPI({ action: 'aprobar_horas_extra', ...data }),
   generarInformeFichajes:(data: any) => postAPI({ action: 'generar_informe_fichajes', ...data }),
   batchSupervisionFichajes:(mes: string, anio: string) => fetchAPI('batch_supervision_fichajes', { mes, anio }),
@@ -300,7 +347,7 @@ export const api = {
   centros:          (filtros?: any) => fetchAPI('centros', filtros || {}),
   centro:           (id: string) => fetchAPI('centro', { id }),
   dashboardTerritorio:() => fetchAPI('dashboard_territorio'),
-  mapaOperarios:    () => fetchAPI('mapa_operarios'),
+  mapaOperarios:    () => fetchFAST('/centros/mapa/operarios'),
   partes:           (filtros?: any) => fetchAPI('partes', filtros || {}),
   dashboardSLA:     () => fetchAPI('dashboard_sla'),
   incidencias:      (filtros?: any) => fetchAPI('incidencias', filtros || {}),
@@ -320,8 +367,8 @@ export const api = {
   batchTerritorio:  () => fetchAPI('batch_territorio'),
   batchPartes:      () => fetchAPI('batch_partes'),
   batchOrdenes:     () => fetchAPI('batch_ordenes'),
-  partesV2:         (filtros?: any) => fetchAPI('partes_v2', filtros || {}),
-  parteCompleto:    (id: string) => fetchAPI('parte_completo', { id }),
+  partesV2:         (filtros?: any) => fetchFAST('/partes', filtros || {}),
+  parteCompleto:    (id: string) => fetchFAST('/partes/' + id),
   checklistCentro:  (id: string) => fetchAPI('checklist_centro', { id }),
   checklistEjecucion:(id: string) => fetchAPI('checklist_ejecucion', { id }),
   fotosParte:       (id: string) => fetchAPI('fotos_parte', { id }),
@@ -332,14 +379,15 @@ export const api = {
   plContrato:       (id: string, meses?: number) => fetchAPI('pl_contrato', { id, ...(meses ? { meses: String(meses) } : {}) }),
   plMesActual:      (id: string) => fetchAPI('pl_mes_actual', { id }),
   asistenciaDia:    (id: string, fecha: string) => fetchAPI('asistencia_dia', { id, fecha }),
-  tareasDia:        (id: string) => fetchAPI('tareas_dia', { id }),
-  crearParteV2:     (data: any) => postAPI({ action: 'crear_parte_v2', ...data }),
-  cerrarParteV2:    (data: any) => postAPI({ action: 'cerrar_parte_v2', ...data }),
-  eliminarParteV2:  (id: string) => postAPI({ action: 'eliminar_parte_v2', id }),
-  actualizarChecklistEjecucion:(data: any) => postAPI({ action: 'actualizar_checklist_ejecucion', ...data }),
-  registrarFotoParte:(data: any) => postAPI({ action: 'registrar_foto_parte', ...data }),
+  tareasDia:        (id: string) => fetchFAST('/ordenes/hoy/' + id),
+  // ── PARTES V2 → Cloud Run (rápido) ──
+  crearParteV2:     (data: any) => postFAST('/partes/iniciar', data),
+  cerrarParteV2:    (data: any) => postFAST('/partes/cerrar', data),
+  eliminarParteV2:  (id: string) => deleteFAST('/partes/' + id),
+  actualizarChecklistEjecucion:(data: any) => putFAST('/partes/' + data.parte_id + '/checklist/' + data.id, data),
+  registrarFotoParte:(data: any) => postFAST('/partes/' + data.parte_id + '/foto', data),
   registrarFirma:   (data: any) => postAPI({ action: 'registrar_firma', ...data }),
-  registrarMaterialParte:(data: any) => postAPI({ action: 'registrar_material_parte', ...data }),
+  registrarMaterialParte:(data: any) => postFAST('/partes/' + data.parte_id + '/material', data),
   eliminarMaterialParte:(id: string) => postAPI({ action: 'eliminar_material_parte', id }),
   registrarMaquinariaParte:(data: any) => postAPI({ action: 'registrar_maquinaria_parte', ...data }),
   crearChecklistItem:(data: any) => postAPI({ action: 'crear_checklist_item', ...data }),
@@ -349,12 +397,13 @@ export const api = {
   crearMaterialCatalogo:(data: any) => postAPI({ action: 'crear_material_catalogo', ...data }),
   crearMaquinariaCatalogo:(data: any) => postAPI({ action: 'crear_maquinaria_catalogo', ...data }),
   generarInformeMensual:(data: any) => postAPI({ action: 'generar_informe_mensual', ...data }),
-  ordenes:          (filtros?: any) => fetchAPI('ordenes', filtros || {}),
+  // ── ÓRDENES → Cloud Run (rápido) ──
+  ordenes:          (filtros?: any) => fetchFAST('/ordenes', filtros || {}),
   partesDeOrden:    (id: string) => fetchAPI('partes_de_orden', { id }),
   ordenesDeParte:   (id: string) => fetchAPI('ordenes_de_parte', { id }),
-  crearOrden:       (data: any) => postAPI({ action: 'crear_orden', ...data }),
-  actualizarEstadoOrden:(data: any) => postAPI({ action: 'actualizar_estado_orden', ...data }),
-  eliminarOrden:    (id: string) => postAPI({ action: 'eliminar_orden', id }),
+  crearOrden:       (data: any) => postFAST('/ordenes', data),
+  actualizarEstadoOrden:(data: any) => putFAST('/ordenes/' + data.id + '/estado', data),
+  eliminarOrden:    (id: string) => deleteFAST('/ordenes/' + id),
   stockCentro:      (id: string) => fetchAPI('stock_centro', { id }),
   alertasStock:     (id?: string) => fetchAPI('alertas_stock', id ? { id } : {}),
   pedidos:          (id?: string) => fetchAPI('pedidos', id ? { id } : {}),
@@ -421,8 +470,8 @@ export const api = {
   restaurarPapelera:    (id_papelera: string) => postAPI({ action: 'restaurar_papelera', id_papelera }),
   // ═══ BÚSQUEDA GLOBAL ═══
   busquedaGlobal:       (q: string) => fetchAPI('busqueda_global', { q }),
-  // ── Métodos que faltan para OperadorCampoV2Page ──
-  iniciarParte:         (data: any) => postAPI({ action: 'crear_parte_v2', ...data }),
-  finalizarParte:       (data: any) => postAPI({ action: 'cerrar_parte_v2', ...data }),
-  actualizarChecklistExec:(data: any) => postAPI({ action: 'actualizar_checklist_ejecucion', ...data }),
+  // ── Métodos para OperadorCampoV2Page → Cloud Run ──
+  iniciarParte:         (data: any) => postFAST('/partes/iniciar', data),
+  finalizarParte:       (data: any) => postFAST('/partes/cerrar', data),
+  actualizarChecklistExec:(data: any) => putFAST('/partes/' + data.parte_id + '/checklist/' + data.id, data),
 }
