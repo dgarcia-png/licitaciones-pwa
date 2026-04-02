@@ -105,7 +105,7 @@ export default function PersonalPage() {
           emps = emps.filter((e: any) => centrosAsignados.includes(e.centro) || centrosAsignados.includes(e.zona))
         setEmpleados(emps); setStats(data.stats || {})
       } else {
-        const data = await api.batch(['empleados', 'mapa_convenios'])
+        const data = await api.empleados()
         let emps = data.empleados?.empleados || []
         if (!puedeVerTodaPlantilla && centrosAsignados.length > 0)
           emps = emps.filter((e: any) => centrosAsignados.includes(e.centro) || centrosAsignados.includes(e.zona))
@@ -166,7 +166,7 @@ export default function PersonalPage() {
 
   const cargarDetalleFondo = async (id: string) => {
     try {
-      const data = await api.batch(['empleado', 'asignaciones_emp'], id)
+      const data = await api.empleado(id)
       if (data.empleado?.ok) setEmpleadoSel(data.empleado.empleado)
       setAsignaciones(data.asignaciones?.asignaciones || [])
     } catch(e) {}
@@ -176,7 +176,7 @@ export default function PersonalPage() {
       setHistorialCentros(hist)
     } catch(e) { console.warn('historial centros no disponible', e) }
     finally { setCargandoCentros(false) }
-    api.batch(['capacidad', 'prl_epis_emp', 'prl_reco_emp', 'prl_form_emp', 'prl_acc_emp'], id)
+    Promise.all([api.prlEpis(id), api.prlReconocimientos(id), api.prlFormacion(id)])
       .then((extra: any) => {
         setCapacidad(extra.capacidad || null)
         setPrlEpis(extra.prl_epis?.epis || [])
