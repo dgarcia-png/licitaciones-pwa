@@ -493,11 +493,11 @@ function doPost(e) {
 
     // ── PARTES V2 ──
     } else if (action === 'crear_parte_v2') {
-      result = crearParteV2API_(data);
+      result = iniciarParteAPI_(data);
     } else if (action === 'cerrar_parte_v2') {
-      result = cerrarParteV2API_(data);
+      result = finalizarParteAPI_(data);
     } else if (action === 'eliminar_parte_v2') {
-      result = eliminarParteV2API_(data.id);
+      result = eliminarParteV2_(data.id);
     } else if (action === 'actualizar_checklist_ejecucion') {
       result = actualizarChecklistEjecucionAPI_(data);
     } else if (action === 'registrar_foto_parte') {
