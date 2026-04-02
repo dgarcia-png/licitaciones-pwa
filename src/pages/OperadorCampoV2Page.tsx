@@ -328,11 +328,9 @@ export default function OperadorCampoV2Page() {
     if (!addMaq?.id) return
     setProcesando(true)
     try {
-      await api.registrarMaquinariaParte({ parte_id: parteActual?.id, maquinaria_id: addMaq.id, horas: addMaq.horas || 1 })
       setMaquinaria(prev => [...prev, { ...addMaq, horas: addMaq.horas || 1 }])
-      // Refrescar lista desde Cloud Run
-      api.maquinariaParte(parteActual?.id).then((r: any) => setMaquinaria(r.maquinaria || [])).catch(() => {})
       setAddMaq(null)
+      await api.registrarMaquinariaParte({ parte_id: parteActual?.id, maquinaria_id: addMaq.id, nombre: addMaq.nombre || '', horas: addMaq.horas || 1 })
     } catch (e) { showMsg('Error', 'err') }
     finally { setProcesando(false) }
   }
