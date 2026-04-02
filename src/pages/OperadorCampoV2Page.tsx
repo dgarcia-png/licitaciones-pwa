@@ -100,7 +100,16 @@ export default function OperadorCampoV2Page() {
 
   // ── Estado Ausencias ───────────────────────────────────────────────────────
   const [ausencias, setAusencias] = useState<any[]>([])
-  const [tiposAusencia, setTiposAusencia] = useState<any[]>([])
+  const [tiposAusencia, setTiposAusencia] = useState<any[]>([
+    { id: "vacaciones", nombre: "Vacaciones" },
+    { id: "enfermedad", nombre: "Enfermedad / Baja médica" },
+    { id: "at", nombre: "Accidente de trabajo" },
+    { id: "permiso_retribuido", nombre: "Permiso retribuido" },
+    { id: "permiso_no_retribuido", nombre: "Permiso no retribuido" },
+    { id: "maternidad", nombre: "Maternidad / Paternidad" },
+    { id: "asuntos_propios", nombre: "Asuntos propios" },
+    { id: "otros", nombre: "Otros" }
+  ])
   const [mostrarFormAus, setMostrarFormAus] = useState(false)
   const [guardandoAus, setGuardandoAus] = useState(false)
   const [formAus, setFormAus] = useState<any>({})
@@ -321,6 +330,8 @@ export default function OperadorCampoV2Page() {
     try {
       await api.registrarMaquinariaParte({ parte_id: parteActual?.id, maquinaria_id: addMaq.id, horas: addMaq.horas || 1 })
       setMaquinaria(prev => [...prev, { ...addMaq, horas: addMaq.horas || 1 }])
+      // Refrescar lista desde Cloud Run
+      api.maquinariaParte(parteActual?.id).then((r: any) => setMaquinaria(r.maquinaria || [])).catch(() => {})
       setAddMaq(null)
     } catch (e) { showMsg('Error', 'err') }
     finally { setProcesando(false) }
