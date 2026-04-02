@@ -138,7 +138,7 @@ export default function OperadorCampoV2Page() {
         const emps = await api.empleados()
         const lista = emps.empleados || []
         const emp = lista.find((e: any) =>
-          e.email === usuario?.email || e.id === (usuario as any)?.id_empleado)
+          e.email === usuario?.email || e.id === (usuario as any)?.empleado_id || e.id === (usuario as any)?.id_empleado)
 
         if (emp) {
           setEmpleado(emp)
