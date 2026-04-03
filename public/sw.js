@@ -42,7 +42,12 @@ self.addEventListener('fetch', (e) => {
   // ② Solo interceptar http/https — nunca chrome-extension:// etc.
   if (!url.startsWith('http')) return
 
-  // ③ API del GAS: network-first con respuesta offline si falla
+  // ③ API Cloud Run y GAS: network-first
+  if (req.url.includes('forgeser-backend') || req.url.includes('run.app')) {
+    e.respondWith(fetch(req))
+    return
+  }
+  // API del GAS: network-first con respuesta offline si falla
   if (url.includes(API_BASE)) {
     e.respondWith(networkFirstAPI(req))
     return
