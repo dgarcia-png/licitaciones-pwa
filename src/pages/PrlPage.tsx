@@ -111,8 +111,8 @@ export default function PrlPage() {
   const agruparPorPersona = (items: any[]) => {
     const map = new Map<string, { nombre: string; dni: string; centro: string; items: any[] }>()
     items.forEach((item: any) => {
-      const key = (item.dni || item.nombre || 'sin-identificar').toLowerCase()
-      if (!map.has(key)) map.set(key, { nombre: item.nombre, dni: item.dni, centro: item.centro, items: [] })
+      const key = (item.dni || item.nombre || item.nombre_empleado || 'sin-identificar').toLowerCase()
+      if (!map.has(key)) map.set(key, { nombre: item.nombre || item.nombre_empleado || 'Sin nombre', dni: item.dni || '', centro: item.centro || '', items: [] })
       map.get(key)!.items.push(item)
     })
     return Array.from(map.values()).sort((a: any, b: any) => a.nombre.localeCompare(b.nombre))
