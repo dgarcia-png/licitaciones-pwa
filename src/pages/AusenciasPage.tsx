@@ -16,6 +16,8 @@ export default function AusenciasPage() {
   const [tipos, setTipos] = useState<any[]>([])
   const [empleados, setEmpleados] = useState<any[]>([])
   const [dashboard, setDashboard] = useState<any>(null)
+  const [rechazandoId, setRechazandoId] = useState<string|null>(null)
+  const [motivoRechazo, setMotivoRechazo] = useState('')
   const [resumenVac, setResumenVac] = useState<any>(null)
   const [calendario, setCalendario] = useState<any>(null)
   const [mostrarForm, setMostrarForm] = useState(false)
@@ -107,18 +109,26 @@ export default function AusenciasPage() {
     finally { setGuardando(false); setTimeout(() => setMsg(''), 4000) }
   }
 
-  const aprobar = async (id: string, estado: string, motivoRechazo?: string) => {
-    if (estado === 'rechazada' && !motivoRechazo) {
-      const motivo = prompt('Motivo del rechazo (obligatorio):')
-      if (!motivo) return
-      return aprobar(id, estado, motivo)
+  const aprobar = async (id: string, estado: string, motivo?: string) => {
+    if (estado === 'rechazada') {
+      setRechazandoId(id); setMotivoRechazo(''); return
     }
     try {
-      const r = await api.aprobarAusencia({ id, estado, aprobado_por: usuario?.nombre || '', motivo_rechazo: motivoRechazo || '' })
+      const r = await api.aprobarAusencia({ id, estado, aprobado_por: usuario?.nombre || '', motivo_rechazo: motivo || '' })
       if (r.ok) {
         const msg = estado === 'aprobada' ? 'Aprobada' : estado === 'pendiente' ? 'Revertida a pendiente' : 'Rechazada'
-        setMsg('✅ ' + msg); cargar()
+        setMsg('✅ ' + msg); setRechazandoId(null); setMotivoRechazo(''); cargar()
       }
+    } catch(e) {}
+    setTimeout(() => setMsg(''), 3000)
+  }
+
+  const confirmarRechazo = async (id: string) => {
+    if (!motivoRechazo.trim()) { setMsg('❌ El motivo es obligatorio'); return }
+    await aprobar(id, 'rechazada_confirm', motivoRechazo)
+    try {
+      const r = await api.aprobarAusencia({ id, estado: 'rechazada', aprobado_por: usuario?.nombre || '', motivo_rechazo: motivoRechazo })
+      if (r.ok) { setMsg('✅ Rechazada'); setRechazandoId(null); setMotivoRechazo(''); cargar() }
     } catch(e) {}
     setTimeout(() => setMsg(''), 3000)
   }
@@ -261,6 +271,7 @@ export default function AusenciasPage() {
                         </div>
                         <p className="text-xs text-slate-500">{a.subtipo || a.tipo} · {fmtDate(a.fecha_inicio)} → {fmtDate(a.fecha_fin)} · {a.dias} día{a.dias !== 1 ? 's' : ''}</p>
                         {a.notas && <p className="text-[10px] text-slate-400 mt-0.5">{a.notas}</p>}
+                        {a.estado === 'rechazada' && a.motivo_rechazo && <p className="text-[10px] text-red-500 mt-0.5 font-medium">Motivo: {a.motivo_rechazo}</p>}
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
@@ -274,6 +285,22 @@ export default function AusenciasPage() {
                       {a.estado === 'pendiente' && <button onClick={() => eliminar(a.id)} className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg"><Trash2 size={16} /></button>}
                     </div>
                   </div>
+                  {rechazandoId === a.id && (
+                    <div className="mt-3 pt-3 border-t border-red-200 bg-red-50 rounded-xl p-3">
+                      <p className="text-xs font-bold text-red-700 mb-2">Motivo del rechazo <span className="text-red-500">*</span></p>
+                      <textarea
+                        value={motivoRechazo}
+                        onChange={e => setMotivoRechazo(e.target.value)}
+                        placeholder="Indica el motivo del rechazo (visible para el trabajador)..."
+                        className="w-full text-sm border border-red-200 rounded-lg p-2 resize-none focus:outline-none focus:ring-2 focus:ring-red-300"
+                        rows={2}
+                      />
+                      <div className="flex gap-2 mt-2">
+                        <button onClick={() => confirmarRechazo(a.id)} className="flex-1 py-2 bg-red-500 hover:bg-red-600 text-white text-xs font-bold rounded-lg">Confirmar rechazo</button>
+                        <button onClick={() => { setRechazandoId(null); setMotivoRechazo('') }} className="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-bold rounded-lg">Cancelar</button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )
             })}</div>
