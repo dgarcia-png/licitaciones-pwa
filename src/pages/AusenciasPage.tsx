@@ -41,13 +41,13 @@ export default function AusenciasPage() {
 
       // Trabajador: solo ve sus propias ausencias
       if (soloSusDatos) {
-        ausFiltered = ausFiltered.filter((a: any) => a.id_empleado === (empsFiltered.find((e: any) => e.email === usuario?.email)?.id))
+        ausFiltered = ausFiltered.filter((a: any) => (a.empleado_id || a.id_empleado) === (empsFiltered.find((e: any) => e.email === usuario?.email)?.id))
       }
       // Supervisor: solo ve su equipo
       else if (esSupervisor && !esAdmin && centrosAsignados.length > 0) {
         empsFiltered = empsFiltered.filter((e: any) => centrosAsignados.includes(e.centro) || centrosAsignados.includes(e.zona))
         const idsEquipo = new Set(empsFiltered.map((e: any) => e.id))
-        ausFiltered = ausFiltered.filter((a: any) => idsEquipo.has(a.id_empleado))
+        ausFiltered = ausFiltered.filter((a: any) => idsEquipo.has(a.empleado_id || a.id_empleado))
       }
 
       setAusencias(ausFiltered)
