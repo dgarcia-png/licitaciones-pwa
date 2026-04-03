@@ -129,7 +129,7 @@ export default function AusenciasPage() {
     setTimeout(() => setMsg(''), 3000)
   }
 
-  const s = dashboard?.stats || {}
+  const s = dashboard?.stats || dashboard || {}
   if (cargando && ausencias.length === 0 && !dashboard) return <div className="p-6 lg:p-8"><SkeletonPage /></div>
 
   // Generar días del mes para calendario
