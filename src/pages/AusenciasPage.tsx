@@ -264,7 +264,7 @@ export default function AusenciasPage() {
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
-                      {puedeAprobarAusencias && a.estado === 'pendiente' && (
+                      {puedeAprobarAusencias && (
                         <>
                           {a.estado === 'pendiente' && <button onClick={() => aprobar(a.id, 'aprobada')} className="flex items-center gap-1 px-3 py-2 bg-emerald-100 hover:bg-emerald-200 text-emerald-700 text-xs font-bold rounded-lg"><CheckCircle2 size={14} /> Aprobar</button>}
                           {a.estado === 'pendiente' && <button onClick={() => aprobar(a.id, 'rechazada')} className="flex items-center gap-1 px-3 py-2 bg-red-100 hover:bg-red-200 text-red-700 text-xs font-bold rounded-lg"><XCircle size={14} /> Rechazar</button>}
