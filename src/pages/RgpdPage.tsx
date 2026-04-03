@@ -56,10 +56,10 @@ export default function RgpdPage() {
     setGuardando(true); setMsg('')
     try {
       let result: any
-      if (tab === 'consentimientos') result = await api.addConsentimiento(form)
-      else if (tab === 'arco') result = await api.addArco(form)
-      else if (tab === 'tratamientos') result = await api.addTratamiento(form)
-      else if (tab === 'brechas') result = await api.addBrecha(form)
+      if (tab === 'consentimientos') result = await api.agregarConsentimiento(form)
+      else if (tab === 'arco') result = await api.agregarArco(form)
+      else if (tab === 'tratamientos') result = await api.agregarTratamiento(form)
+      else if (tab === 'brechas') result = await api.agregarBrecha(form)
       if (result?.ok) { setMsg('✅ Registrado'); setMostrarForm(false); setForm({}); cargarTab(tab); cargar(); setTimeout(() => setMsg(''), 3000) }
       else setMsg('❌ ' + (result?.error || 'Error'))
     } catch (e: any) { setMsg('❌ Error') }
