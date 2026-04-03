@@ -107,10 +107,18 @@ export default function AusenciasPage() {
     finally { setGuardando(false); setTimeout(() => setMsg(''), 4000) }
   }
 
-  const aprobar = async (id: string, estado: string) => {
+  const aprobar = async (id: string, estado: string, motivoRechazo?: string) => {
+    if (estado === 'rechazada' && !motivoRechazo) {
+      const motivo = prompt('Motivo del rechazo (obligatorio):')
+      if (!motivo) return
+      return aprobar(id, estado, motivo)
+    }
     try {
-      const r = await api.aprobarAusencia({ id, estado, aprobado_por: usuario?.nombre || '' })
-      if (r.ok) { setMsg('✅ ' + (estado === 'aprobada' ? 'Aprobada' : 'Rechazada')); cargar() }
+      const r = await api.aprobarAusencia({ id, estado, aprobado_por: usuario?.nombre || '', motivo_rechazo: motivoRechazo || '' })
+      if (r.ok) {
+        const msg = estado === 'aprobada' ? 'Aprobada' : estado === 'pendiente' ? 'Revertida a pendiente' : 'Rechazada'
+        setMsg('✅ ' + msg); cargar()
+      }
     } catch(e) {}
     setTimeout(() => setMsg(''), 3000)
   }
@@ -258,8 +266,9 @@ export default function AusenciasPage() {
                     <div className="flex items-center gap-2">
                       {puedeAprobarAusencias && a.estado === 'pendiente' && (
                         <>
-                          <button onClick={() => aprobar(a.id, 'aprobada')} className="flex items-center gap-1 px-3 py-2 bg-emerald-100 hover:bg-emerald-200 text-emerald-700 text-xs font-bold rounded-lg"><CheckCircle2 size={14} /> Aprobar</button>
-                          <button onClick={() => aprobar(a.id, 'rechazada')} className="flex items-center gap-1 px-3 py-2 bg-red-100 hover:bg-red-200 text-red-700 text-xs font-bold rounded-lg"><XCircle size={14} /> Rechazar</button>
+                          {a.estado === 'pendiente' && <button onClick={() => aprobar(a.id, 'aprobada')} className="flex items-center gap-1 px-3 py-2 bg-emerald-100 hover:bg-emerald-200 text-emerald-700 text-xs font-bold rounded-lg"><CheckCircle2 size={14} /> Aprobar</button>}
+                          {a.estado === 'pendiente' && <button onClick={() => aprobar(a.id, 'rechazada')} className="flex items-center gap-1 px-3 py-2 bg-red-100 hover:bg-red-200 text-red-700 text-xs font-bold rounded-lg"><XCircle size={14} /> Rechazar</button>}
+                          {(a.estado === 'aprobada' || a.estado === 'rechazada') && <button onClick={() => aprobar(a.id, 'pendiente')} className="flex items-center gap-1 px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-lg">↩ Revertir</button>}
                         </>
                       )}
                       {a.estado === 'pendiente' && <button onClick={() => eliminar(a.id)} className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg"><Trash2 size={16} /></button>}
