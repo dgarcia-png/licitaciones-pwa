@@ -75,7 +75,6 @@ const CAMPOS_SISTEMA: Record<Modulo, { clave: string, label: string, tipo: 'text
     { clave: 'jornada_semanal_horas',      label: 'Jornada semanal (horas)',          tipo: 'number', descripcion: 'Horas de jornada laboral semanal' },
     { clave: 'limite_horas_extra_anual',   label: 'Límite horas extra/año',           tipo: 'number', descripcion: 'Máximo horas extra anuales (art. 35 ET)' },
     { clave: 'dias_vacaciones',            label: 'Días vacaciones anuales',          tipo: 'number', descripcion: 'Días de vacaciones anuales por convenio' },
-    { clave: 'ss_empresa_pct',             label: 'SS empresa (%)',                   tipo: 'number', descripcion: '% Seguridad Social a cargo de la empresa' },
     { clave: 'hora_cierre_fichajes',       label: 'Hora cierre fichajes',             tipo: 'time',   descripcion: 'Hora de cierre automático de fichajes abiertos' },
     { clave: 'dias_aviso_contrato_vencer', label: 'Días aviso vencimiento contrato',  tipo: 'number', descripcion: 'Días de antelación para alerta de vencimiento' },
     { clave: 'hora_busqueda_licitaciones', label: 'Hora búsqueda licitaciones',       tipo: 'time',   descripcion: 'Hora de búsqueda automática diaria de licitaciones' },
