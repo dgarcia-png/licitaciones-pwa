@@ -36,12 +36,13 @@ const FORM_VACIO = {
   nombre: '', organismo: '', tipo: 'dependencia_municipal', direccion: '',
   municipio: '', provincia: 'Huelva', superficie_m2: '', tipo_servicio: 'limpieza',
   frecuencia: '', horario: '', responsable: '', presupuesto_anual: '',
-  fecha_inicio: '', fecha_fin: '', estado: 'activo', notas: ''
+  fecha_inicio: '', fecha_fin: '', estado: 'activo', notas: '', oportunidad_id: ''
 }
 
 export default function TerritorioPage() {
   const navigate = useNavigate()
   const [centros, setCentros] = useState<any[]>([])
+  const [contratos, setContratos] = useState<any[]>([])
   const [dashboard, setDashboard] = useState<any>(null)
   const [cargando, setCargando] = useState(true)
   const [vista, setVista] = useState<'lista' | 'nuevo' | 'detalle'>('lista')
@@ -64,6 +65,10 @@ export default function TerritorioPage() {
     if (err) setError(m); else setMsg(m)
     setTimeout(() => { setMsg(''); setError('') }, 3500)
   }
+
+  useEffect(() => {
+    api.resumenContratos().then((r: any) => setContratos(r.contratos || [])).catch(() => {})
+  }, [])
 
   const cargar = async () => {
     setCargando(true)
@@ -365,6 +370,17 @@ export default function TerritorioPage() {
           </div>
         </div>
         <div>
+          <label className="block text-xs font-semibold text-slate-500 uppercase mb-1.5">Contrato asociado</label>
+          <select value={form.oportunidad_id} onChange={e => setForm({ ...form, oportunidad_id: e.target.value })}
+            className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none">
+            <option value="">— Sin contrato asociado —</option>
+            {contratos.map((c: any) => (
+              <option key={c.id} value={c.id}>{c.titulo?.substring(0, 60) || c.id}</option>
+            ))}
+          </select>
+          <p className="text-[10px] text-slate-400 mt-1">Vincula este centro a un contrato ganado para imputar costes automáticamente</p>
+        </div>
+        <div>
           <label className="block text-xs font-semibold text-slate-500 uppercase mb-1.5">Notas</label>
           <textarea value={form.notas} onChange={e => setForm({ ...form, notas: e.target.value })} rows={3} placeholder="Observaciones..." className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#1a3c34] resize-none" />
         </div>
@@ -471,7 +487,7 @@ export default function TerritorioPage() {
             </div>
           </div>
           <div className="flex gap-2">
-            <button onClick={() => { setForm({ ...centroSel }); setEditando(true); setVista('nuevo') }}
+            <button onClick={() => { setForm({ ...centroSel, oportunidad_id: centroSel.oportunidad_id || '' }); setEditando(true); setVista('nuevo') }}
               className="flex items-center gap-1.5 px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl">
               <Edit2 size={13} /> Editar
             </button>

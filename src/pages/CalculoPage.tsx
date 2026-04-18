@@ -6,7 +6,7 @@ import { exportarCalculoPDF } from '../utils/exportPDF'
 import {
   Calculator, Users, Package, Shield, Settings, TrendingUp, Loader2, Plus, Trash2,
   ChevronDown, ChevronUp, AlertTriangle, CheckCircle2, XCircle, Brain, Wrench,
-  RotateCcw, UserPlus, Save, ArrowLeft, ArrowRight, FileText, Truck, BarChart3, Download
+  RotateCcw, UserPlus, Save, ArrowLeft, ArrowRight, FileText, Truck, BarChart3, Download, Lightbulb
 } from 'lucide-react'
 
 interface LineaPersonal {
@@ -17,6 +17,7 @@ interface LineaCoste {
   id: string; concepto: string; cantidad: number; costeUnitario: number; meses: number; unidad: string
 }
 interface ItemCatalogo { concepto: string; unidad: string; valor: number; notas: string; activo: boolean }
+interface MejoraValorable { id: string; descripcion: string; coste: number; seleccionada: boolean; puntos: number }
 
 function uid() { return Math.random().toString(36).substring(2, 8) }
 function fmt(n: number) { return n.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €' }
@@ -139,8 +140,12 @@ export default function CalculoPage() {
   const [factorAbsentismo, setFactorAbsentismo] = useState(1.12)
   const [importandoSubrogados, setImportandoSubrogados] = useState(false)
   const [subrogadosImportados, setSubrogadosImportados] = useState(false)
+  const [datosPrecargados, setDatosPrecargados] = useState(false)
+  const [buscandoConvenio, setBuscandoConvenio] = useState(false)
+  const [convenioEncontrado, setConvenioEncontrado] = useState<string>('')
   const [pidiendo, setPidiendo] = useState(false)
   const [recomendacion, setRecomendacion] = useState<any>(null)
+  const [mejorasValorables, setMejorasValorables] = useState<MejoraValorable[]>([])
 
   useEffect(() => {
     (async () => {
@@ -167,7 +172,7 @@ export default function CalculoPage() {
 
   useEffect(() => {
     if (!selectedId) return
-    setSubrogadosImportados(false); setRecomendacion(null); setGuardadoOk(false)
+    setSubrogadosImportados(false); setRecomendacion(null); setGuardadoOk(false); setDatosPrecargados(false); setConvenioEncontrado('')
     setPersonal([]); setUniformidad([]); setMateriales([]); setMaquinaria([])
     setPrl([]); setSeguros([]); setGestion([]); setTransporte([]); setOtrosIndirectos([]);
     (async () => {
@@ -176,13 +181,27 @@ export default function CalculoPage() {
         if (data.error) return
         setOportunidad(data); setPresupuestoLicitacion(Number(data.presupuesto)||0)
         const an = await api.obtenerAnalisis(selectedId)
+        let analisisCompleto: any = null
         if (an.existe) {
           setAnalisis(an); const ac = an.analisis_completo||{}
+          analisisCompleto = ac
+          // Precargar mejoras valorables del análisis
+          const mvs = ac.mejoras_valorables || []
+          if (Array.isArray(mvs) && mvs.length > 0) {
+            setMejorasValorables(mvs.map((m: any, i: number) => ({
+              id: 'MV-' + i, descripcion: typeof m === 'string' ? m : m.descripcion || m.mejora || JSON.stringify(m),
+              coste: typeof m === 'object' ? (m.coste_estimado_num || m.coste || 0) : 0,
+              seleccionada: false, puntos: typeof m === 'object' ? (m.puntos || m.puntuacion || 0) : 0
+            })))
+          }
           if (ac.datos_basicos?.duracion_contrato) {
             const dur = ac.datos_basicos.duracion_contrato.toLowerCase()
             const mA = dur.match(/(\d+)\s*año/); const mM = dur.match(/(\d+)\s*mes/)
             if (mA) setDuracionMeses(parseInt(mA[1])*12); else if (mM) setDuracionMeses(parseInt(mM[1]))
           }
+          // Precargar nº centros
+          const centros = ac.servicios_requeridos?.centros_o_zonas || []
+          if (centros.length > 1) setNumCentros(centros.length)
         }
         // Cargar lotes de esta oportunidad
         try {
@@ -212,6 +231,10 @@ export default function CalculoPage() {
             if (d.duracionMeses) setDuracionMeses(d.duracionMeses); if (d.numCentros) setNumCentros(d.numCentros)
             if (d.pctGG !== undefined) setPctGG(d.pctGG); if (d.pctBI !== undefined) setPctBI(d.pctBI)
             if (d.factorAbsentismo) setFactorAbsentismo(d.factorAbsentismo)
+            if (d.mejorasValorables) setMejorasValorables(d.mejorasValorables)
+          } else if (analisisCompleto) {
+            // Sin cálculo guardado → precargar desde análisis IA
+            precargarDesdeAnalisis(analisisCompleto)
           }
         } catch { /* no saved calc */ }
       } catch(e) { console.error(e) }
@@ -229,6 +252,7 @@ export default function CalculoPage() {
   const totalMaquinaria = sumaLineas(maquinaria); const totalPRL = sumaLineas(prl)
   const totalSeguros = sumaLineas(seguros); const totalGestion = sumaLineas(gestion)
   const totalTransporte = sumaLineas(transporte); const totalOtrosInd = sumaLineas(otrosIndirectos)
+  const totalMejoras = mejorasValorables.filter(m => m.seleccionada).reduce((s, m) => s + (m.coste || 0), 0)
   const costesDirectos = totalPersonal + totalUniformidad + totalMateriales + totalMaquinaria
   const costesIndirectos = totalPRL + totalSeguros + totalGestion + totalTransporte + totalOtrosInd
   const base = costesDirectos + costesIndirectos
@@ -239,7 +263,7 @@ export default function CalculoPage() {
   const baja = presSinIVA > 0 ? ((presSinIVA - totalSinIVA) / presSinIVA * 100) : 0
   const margenReal = presSinIVA > 0 ? ((presSinIVA - costesDirectos - costesIndirectos - importeGG) / presSinIVA * 100) : 0
   const esRentable = totalSinIVA < presSinIVA && presSinIVA > 0
-  const haySubrogacion = analisis?.existe && analisis?.analisis_completo?.personal_requerido?.subrogacion === 'Sí'
+  const haySubrogacion = analisis?.existe && /^s[ií]$/i.test(analisis?.analisis_completo?.personal_requerido?.subrogacion || '') || /^s[ií]$/i.test(analisis?.analisis_completo?.personal_subrogacion?.aplica || '')
 
   const escenarios = useMemo(() => [
     { nombre: 'Conservador', gg: pctGG+2, bi: pctBI+1 },
@@ -255,7 +279,7 @@ export default function CalculoPage() {
     if (!selectedId) return; setGuardando(true); setGuardadoOk(false)
     try {
       const datos = {
-        personal, uniformidad, materiales, maquinaria, prl, seguros, gestion, transporte, otrosIndirectos,
+        personal, uniformidad, materiales, maquinaria, prl, seguros, gestion, transporte, otrosIndirectos, mejorasValorables,
         duracionMeses, numCentros, pctGG, pctBI, pctIVA, factorAbsentismo, ssTotal, presupuestoLicitacion,
         lote_id: selectedLoteId || null,
         resumen: {
@@ -338,7 +362,123 @@ export default function CalculoPage() {
       return u
     }))
   }
-  const limpiarTodo = () => { setPersonal([]); setUniformidad([]); setMateriales([]); setMaquinaria([]); setPrl([]); setSeguros([]); setGestion([]); setTransporte([]); setOtrosIndirectos([]) }
+  const limpiarTodo = () => { setPersonal([]); setUniformidad([]); setMateriales([]); setMaquinaria([]); setPrl([]); setSeguros([]); setGestion([]); setTransporte([]); setOtrosIndirectos([]); setMejorasValorables([]); setDatosPrecargados(false); setConvenioEncontrado('') }
+
+  const precargarDesdeAnalisis = (ac: any) => {
+    if (!ac) return
+    setDatosPrecargados(false)
+    let algoPrecargado = false
+
+    // ── Personal desde medios_minimos_requeridos + dimensionamiento ──────────
+    const personalPliego = (ac.medios_minimos_requeridos?.personal || []).filter((p: any) => p.categoria)
+    const numOp = ac.dimensionamiento_estimado?.operarios_estimados || 0
+    const numEnc = ac.dimensionamiento_estimado?.encargados_estimados || 0
+
+    // Buscar convenio en sistema
+    const convenioNombre = ((ac.estructura_economica?.convenio_referencia || ac.personal_requerido?.convenio_aplicable) || '').toLowerCase()
+    const convenioMatch = convenios.find((cv: any) => {
+      const sector = (cv.sector || '').toLowerCase()
+      return convenioNombre.length > 5 && (sector.includes(convenioNombre.substring(0, 12)) || convenioNombre.includes(sector.substring(0, 10)))
+    })
+    const convenioId = convenioMatch?.id || ''
+    const cats = convenioId ? (categoriasPorConvenio[convenioId] || []) : []
+    if (convenioId) setConvenioEncontrado(convenioMatch?.sector || '')
+
+    const matchCat = (nombre: string) => {
+      const n = (nombre || '').toLowerCase()
+      return cats.find((cat: any) => {
+        const c = (cat.categoria || '').toLowerCase()
+        return c.includes(n.substring(0, 8)) || n.includes(c.substring(0, 8))
+      })
+    }
+
+    const nuevasLineas: LineaPersonal[] = []
+
+    if (personalPliego.length > 0) {
+      for (const p of personalPliego) {
+        const catMatch = matchCat(p.categoria)
+        nuevasLineas.push({
+          id: uid(), convenioId,
+          categoria: catMatch?.categoria || p.categoria || '',
+          grupo: catMatch?.grupo || '', nivel: catMatch?.nivel || '',
+          cantidad: p.num_minimo || 1,
+          horasSemanales: p.jornada_horas_semana || 38,
+          meses: duracionMeses,
+          totalAnualBruto: catMatch?.total_anual_bruto || 0
+        })
+      }
+    } else if (numOp > 0 || numEnc > 0) {
+      const catOp = cats.find((c: any) => /oficial|peón|operario|limpiador/i.test(c.categoria || '')) || cats[0]
+      const catEnc = cats.find((c: any) => /encargado|jefe equipo/i.test(c.categoria || ''))
+      if (numOp > 0) nuevasLineas.push({
+        id: uid(), convenioId,
+        categoria: catOp?.categoria || 'Operario/a limpieza',
+        grupo: catOp?.grupo || '', nivel: catOp?.nivel || '',
+        cantidad: numOp, horasSemanales: 38, meses: duracionMeses,
+        totalAnualBruto: catOp?.total_anual_bruto || 0
+      })
+      if (numEnc > 0) nuevasLineas.push({
+        id: uid(), convenioId,
+        categoria: catEnc?.categoria || 'Encargado/a',
+        grupo: catEnc?.grupo || '', nivel: catEnc?.nivel || '',
+        cantidad: numEnc, horasSemanales: 38, meses: duracionMeses,
+        totalAnualBruto: catEnc?.total_anual_bruto || 0
+      })
+    }
+    if (nuevasLineas.length > 0) { setPersonal(nuevasLineas); algoPrecargado = true }
+
+    // ── Maquinaria del pliego → C. Directos ──────────────────────────────────
+    const maqPliego: LineaCoste[] = []
+    for (const m of (ac.medios_minimos_requeridos?.maquinaria || [])) {
+      if (m.tipo && (m.unidades || 0) > 0) {
+        maqPliego.push({ id: uid(), concepto: m.tipo + (m.especificaciones ? ` — ${m.especificaciones.substring(0,40)}` : ''), cantidad: m.unidades, costeUnitario: 0, meses: 1, unidad: 'unidad' })
+      }
+    }
+    // Vehículos del pliego → también como maquinaria
+    for (const v of (ac.medios_minimos_requeridos?.vehiculos || [])) {
+      if (v.tipo && (v.unidades || 0) > 0) {
+        maqPliego.push({ id: uid(), concepto: v.tipo + (v.capacidad ? ` (${v.capacidad})` : ''), cantidad: v.unidades, costeUnitario: 0, meses: 1, unidad: 'unidad' })
+      }
+    }
+    if (maqPliego.length > 0) { setMaquinaria(maqPliego); algoPrecargado = true }
+
+    if (algoPrecargado) setDatosPrecargados(true)
+  }
+
+  const buscarConvenioInternet = async () => {
+    if (!analisis?.analisis_completo) return
+    const ac = analisis.analisis_completo
+    const nombreConvenio = ac.estructura_economica?.convenio_referencia || ac.personal_requerido?.convenio_aplicable || ''
+    if (!nombreConvenio) return alert('No se detectó convenio en el análisis IA')
+    setBuscandoConvenio(true)
+    try {
+      const res = await api.buscarConvenioInternet({ nombre: nombreConvenio, organismo: analisis.organismo || '' })
+      if (res.ok && res.categorias?.length > 0) {
+        // Crear líneas de personal con los salarios encontrados
+        const nuevas: LineaPersonal[] = res.categorias.map((cat: any) => ({
+          id: uid(), convenioId: '',
+          categoria: cat.categoria || cat.nombre || '',
+          grupo: cat.grupo || '', nivel: cat.nivel || '',
+          cantidad: 1, horasSemanales: cat.horas_semana || 38,
+          meses: duracionMeses,
+          totalAnualBruto: cat.salario_bruto_anual || cat.salario_base_anual || 0
+        }))
+        setPersonal(prev => [...prev, ...nuevas])
+        setDatosPrecargados(true)
+        // Recargar convenios del sistema para que aparezca en el desplegable
+        const convData = await api.convenios()
+        const nuevosConvenios = convData.convenios || []
+        setConvenios(nuevosConvenios)
+        const cats: Record<string, any[]> = {}
+        for (const conv of nuevosConvenios) { const d = await api.categoriasConvenio(conv.id); cats[conv.id] = d.categorias || [] }
+        setCategoriasPorConvenio(cats)
+        alert(`✅ Convenio guardado y cargado: ${res.nombre_convenio || nombreConvenio}\n${res.categorias.length} categorías importadas. Ya disponible en el desplegable.`)
+      } else {
+        alert(res.error || 'No se encontraron tablas salariales para este convenio')
+      }
+    } catch(e) { alert('Error buscando convenio') }
+    finally { setBuscandoConvenio(false) }
+  }
 
   const catProps = { numTrab: totalTrabajadores||1, numCentros, duracion: duracionMeses }
   const inp = "w-full px-3 py-2 border border-[#dce5e1] rounded-xl text-sm focus:border-[#2d5a4e] focus:outline-none focus:ring-1 focus:ring-[#2d5a4e]/20"
@@ -369,6 +509,31 @@ export default function CalculoPage() {
 
   const stepPersonal = (<>
     {convenios.length === 0 && <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl mb-4 flex items-center gap-2"><AlertTriangle size={14} className="text-amber-600"/><span className="text-xs text-amber-800">No hay convenios cargados. Ve a Configuración para subir un PDF.</span></div>}
+    {datosPrecargados && (
+      <div className="p-4 bg-blue-50 border border-blue-200 rounded-2xl mb-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Brain size={15} className="text-blue-600 shrink-0"/>
+            <div>
+              <p className="text-xs font-bold text-blue-900">Datos precargados desde análisis IA del pliego</p>
+              <p className="text-[11px] text-blue-600 mt-0.5">
+                {convenioEncontrado ? `Convenio detectado: ${convenioEncontrado}` : 'Sin convenio en sistema — introduce salarios manualmente o búscalo en internet'}
+              </p>
+            </div>
+          </div>
+          {!convenioEncontrado && analisis?.analisis_completo?.personal_requerido?.convenio_aplicable && (
+            <button onClick={buscarConvenioInternet} disabled={buscandoConvenio}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white text-xs font-bold rounded-lg hover:bg-blue-700 disabled:opacity-50 shrink-0">
+              {buscandoConvenio ? <Loader2 size={12} className="animate-spin"/> : <Brain size={12}/>}
+              {buscandoConvenio ? 'Buscando...' : 'Buscar convenio en internet'}
+            </button>
+          )}
+        </div>
+        {analisis?.analisis_completo?.personal_requerido?.convenio_aplicable && (
+          <p className="text-[10px] text-blue-500 mt-2">📋 Convenio del pliego: {analisis.analisis_completo.personal_requerido.convenio_aplicable}</p>
+        )}
+      </div>
+    )}
     {haySubrogacion && !subrogadosImportados && (<button onClick={importarSubrogados} disabled={importandoSubrogados} className="flex items-center justify-center gap-2 w-full px-4 py-3.5 mb-5 text-sm font-bold text-white bg-gradient-to-r from-[#1a3c34] to-[#3a7a6a] hover:from-[#2d5a4e] hover:to-[#4a8a7a] rounded-xl shadow-lg shadow-[#1a3c34]/20 transition-all disabled:opacity-60">{importandoSubrogados ? <Loader2 size={16} className="animate-spin"/> : <UserPlus size={16}/>}{importandoSubrogados ? 'Importando...' : `Incorporar plantilla subrogada (${analisis.analisis_completo.personal_requerido.num_trabajadores_subrogar} trabajadores)`}</button>)}
     {subrogadosImportados && <div className="flex items-center gap-2 p-3 bg-emerald-50 border border-emerald-200 rounded-xl mb-4"><CheckCircle2 size={16} className="text-emerald-600"/><span className="text-xs font-medium text-emerald-800">Plantilla subrogada incorporada. El coste bruto ya incluye SS empresa — revisa y ajusta.</span></div>}
     {personal.map((l, idx) => (<div key={l.id} className="p-4 bg-[#f8faf9] rounded-xl mb-3 border border-[#e8eeeb]">
@@ -396,6 +561,21 @@ export default function CalculoPage() {
   </>)
 
   const stepDirectos = (<>
+    {analisis?.existe && (
+      <button onClick={() => precargarDesdeAnalisis(analisis.analisis_completo)}
+        className="flex items-center gap-2 px-4 py-2.5 mb-4 text-xs font-bold text-blue-700 bg-blue-50 border border-blue-200 rounded-xl hover:bg-blue-100 transition-colors w-full justify-center">
+        <span>⚡</span> Recargar maquinaria y vehículos del pliego desde análisis IA
+      </button>
+    )}
+    {datosPrecargados && maquinaria.length > 0 && (
+      <div className="p-3 bg-blue-50 border border-blue-200 rounded-xl mb-4 flex items-center gap-2">
+        <Brain size={14} className="text-blue-600 shrink-0"/>
+        <div>
+          <p className="text-xs font-bold text-blue-900">Medios mínimos del pliego precargados</p>
+          <p className="text-[11px] text-blue-600">{maquinaria.length} elemento(s) de maquinaria/vehículos del pliego — añade los costes unitarios</p>
+        </div>
+      </div>
+    )}
     <Bloque title="Uniformidad y EPIs" icon={Shield} badge={totalUniformidad > 0 ? fmt(totalUniformidad) : undefined}><TablaCatalogo lineas={uniformidad} setLineas={setUniformidad} catalogo={catalogoPorBloque['Uniformidad']||[]} conMeses={false} {...catProps}/></Bloque>
     <Bloque title="Materiales y suministros" icon={Package} badge={totalMateriales > 0 ? fmt(totalMateriales) : undefined}><TablaCatalogo lineas={materiales} setLineas={setMateriales} catalogo={catalogoPorBloque['Productos']||[]} conMeses={true} {...catProps}/></Bloque>
     <Bloque title="Maquinaria y utillaje" icon={Wrench} badge={totalMaquinaria > 0 ? fmt(totalMaquinaria) : undefined}><TablaCatalogo lineas={maquinaria} setLineas={setMaquinaria} catalogo={catalogoPorBloque['Maquinaria']||[]} conMeses={false} {...catProps}/></Bloque>
@@ -444,6 +624,44 @@ export default function CalculoPage() {
         </div>
       </div>)}
     </div>
+    {selectedId && totalSinIVA > 0 && mejorasValorables.length > 0 && (
+      <div className="bg-white border border-[#dce5e1] rounded-2xl p-5 mb-4">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="p-2 bg-yellow-100 rounded-xl"><Lightbulb size={16} className="text-yellow-600"/></div>
+          <div className="flex-1">
+            <h3 className="text-sm font-bold text-[#1a2e28]">Mejoras valorables</h3>
+            <p className="text-[10px] text-[#8a9e96]">Selecciona las mejoras a incluir en la oferta — se pasarán al generador de documentos</p>
+          </div>
+          {totalMejoras > 0 && <span className="text-sm font-extrabold text-yellow-700 bg-yellow-50 px-3 py-1 rounded-full">{fmt(totalMejoras)}</span>}
+        </div>
+        <div className="space-y-2">
+          {mejorasValorables.map((m, i) => (
+            <div key={m.id} className={`p-3 rounded-xl border transition-all ${m.seleccionada ? 'bg-yellow-50 border-yellow-300' : 'bg-[#f8faf9] border-[#e8eeeb]'}`}>
+              <div className="flex items-start gap-3">
+                <input type="checkbox" checked={m.seleccionada} onChange={e => setMejorasValorables(prev => prev.map((x, j) => j === i ? { ...x, seleccionada: e.target.checked } : x))}
+                  className="mt-1 w-4 h-4 rounded border-slate-300 text-[#1a3c34] focus:ring-[#2d5a4e] cursor-pointer" />
+                <div className="flex-1 space-y-2">
+                  <textarea value={m.descripcion} onChange={e => setMejorasValorables(prev => prev.map((x, j) => j === i ? { ...x, descripcion: e.target.value } : x))}
+                    rows={2} className="w-full px-3 py-2 border border-[#dce5e1] rounded-lg text-xs focus:border-[#2d5a4e] focus:outline-none resize-none" />
+                  <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] text-[#8a9e96]">Coste €</span>
+                      <input type="number" step="0.01" value={m.coste} onChange={e => setMejorasValorables(prev => prev.map((x, j) => j === i ? { ...x, coste: parseFloat(e.target.value) || 0 } : x))}
+                        className="w-28 px-2 py-1 border border-[#dce5e1] rounded-lg text-xs text-center focus:border-[#2d5a4e] focus:outline-none" />
+                    </div>
+                    {(m.puntos || 0) > 0 && <span className="text-[10px] text-blue-600 font-bold bg-blue-50 px-2 py-0.5 rounded">+{m.puntos} pts</span>}
+                  </div>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+        <div className="flex items-center justify-between mt-3 pt-3 border-t border-[#e8eeeb]">
+          <span className="text-xs text-[#8a9e96]">{mejorasValorables.filter(m => m.seleccionada).length} de {mejorasValorables.length} seleccionadas</span>
+          <span className="text-sm font-extrabold text-[#1a3c34]">Coste mejoras: {fmt(totalMejoras)}</span>
+        </div>
+      </div>
+    )}
     {selectedId && totalSinIVA > 0 && (<div className="bg-white border border-[#dce5e1] rounded-2xl p-5 mb-4">
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2"><Brain size={18} className="text-[#3a7a6a]"/><h3 className="text-sm font-bold text-[#1a2e28]">Recomendación precio IA</h3></div>

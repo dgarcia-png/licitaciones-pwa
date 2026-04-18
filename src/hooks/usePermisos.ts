@@ -37,7 +37,7 @@ export const MENU_POR_ROL: Record<Rol, string[]> = {
   SUPER_ADMIN: ['*'],
 
   DIRECTOR_GERENTE: [
-    'dashboard', 'informes',
+    'dashboard', 'informes', 'alertas',
     'oportunidades', 'seguimiento',
     'personal', 'ausencias', 'fichajes', 'horas-extras',
     'prl', 'rgpd', 'configuracion', 'usuarios',
@@ -46,7 +46,7 @@ export const MENU_POR_ROL: Record<Rol, string[]> = {
   ],
 
   ADMIN_LICITACIONES: [
-    'dashboard', 'informes',
+    'dashboard', 'informes', 'alertas',
     'licitaciones-dashboard',
     'oportunidades', 'nueva', 'analisis', 'calculo',
     'decisiones', 'oferta', 'seguimiento',
@@ -54,14 +54,14 @@ export const MENU_POR_ROL: Record<Rol, string[]> = {
   ],
 
   ADMIN_RRHH: [
-    'dashboard', 'informes',
+    'dashboard', 'informes', 'alertas',
     'personal', 'subrogacion', 'fichajes', 'ausencias', 'horas-extras',
     'prl', 'rgpd', 'plantillas', 'usuarios',
     'dashboard-rrhh', 'escaneo-documentos', 'certificaciones',
   ],
 
   ADMIN_TERRITORIO: [
-    'dashboard', 'informes',
+    'dashboard', 'informes', 'alertas',
     'personal', 'fichajes', 'ausencias',
     'dashboard-territorio',
     'territorio', 'partes', 'incidencias', 'ordenes',
@@ -72,30 +72,30 @@ export const MENU_POR_ROL: Record<Rol, string[]> = {
   ],
 
   RESPONSABLE_COMERCIAL: [
-    'dashboard',
+    'dashboard', 'alertas',
     'licitaciones-dashboard',
     'oportunidades', 'nueva', 'analisis', 'calculo',
     'decisiones', 'oferta', 'seguimiento', 'conocimiento',
   ],
 
   RESPONSABLE_PRL: [
-    'dashboard',
+    'dashboard', 'alertas',
     'personal', 'prl', 'certificaciones', 'escaneo-documentos',
   ],
 
   RESPONSABLE_RGPD: [
-    'dashboard',
+    'dashboard', 'alertas',
     'personal', 'rgpd',
   ],
 
   ENCARGADO_ZONA: [
-    'dashboard',
+    'dashboard', 'alertas',
     'fichajes', 'ausencias', 'mapa-supervisor',
     'dashboard-territorio',
   ],
 
   SUPERVISOR_TERRITORIO: [
-    'dashboard',
+    'dashboard', 'alertas',
     'personal', 'fichajes', 'ausencias', 'horas-extras', 'mapa-supervisor',
     'dashboard-territorio',
   ],

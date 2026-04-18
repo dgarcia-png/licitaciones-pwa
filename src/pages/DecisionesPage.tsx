@@ -6,9 +6,10 @@ import {
   FileCheck, Brain, Calculator, Euro, Users, AlertTriangle, CheckCircle2,
   XCircle, Loader2, ChevronDown, ChevronUp, Target, Shield, Award,
   TrendingUp, ThumbsUp, ThumbsDown, MessageSquare, Calendar, Building2,
-  Clock, FileText, ClipboardCheck, Scale, Lightbulb, Ban, ArrowRight, Wrench, Search, UserCheck, Stamp
+  Clock, FileText, ClipboardCheck, Scale, Lightbulb, Ban, ArrowRight, Wrench, Search, UserCheck, Stamp, BarChart3
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Cell, ReferenceLine } from 'recharts'
 
 function fmt(n: number) { return n.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €' }
 function fmtPct(n: number) { return n.toFixed(2) + ' %' }
@@ -100,7 +101,6 @@ export default function DecisionesPage() {
     const cargarOpo = async () => {
       setCargando(true)
       try {
-        // Invalidar caché para obtener datos frescos
         const batch = await api.batchDecisiones(selectedId)
         const opos = batch.oportunidades?.oportunidades || []
         if (opos.length > 0) setOportunidades(opos)
@@ -171,9 +171,7 @@ export default function DecisionesPage() {
 
   return (
     <div className="p-6 lg:p-8 max-w-4xl">
-      {/* Pipeline de navegación */}
       <PipelineBar currentStep="decisiones" />
-      {/* Cabecera */}
       <div className="flex items-center gap-4 mb-6">
         <div className="p-2.5 bg-gradient-to-br from-violet-500 to-purple-600 rounded-xl shadow-lg shadow-violet-200"><FileCheck size={22} className="text-white" /></div>
         <div><h1 className="text-2xl font-bold text-slate-900">Decisión GO / NO-GO</h1><p className="text-sm text-slate-500">Toda la información para decidir</p></div>
@@ -248,12 +246,8 @@ export default function DecisionesPage() {
               <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-3">Comparativa: nuestra oferta vs presupuesto máximo</h3>
               <div className="relative h-10 bg-slate-100 rounded-full overflow-hidden mb-2">
                 <div className="absolute inset-y-0 left-0 bg-blue-500 rounded-full transition-all" style={{ width: `${Math.min(pctOferta, 100)}%` }} />
-                <div className="absolute inset-y-0 right-0 flex items-center pr-3">
-                  <span className="text-xs font-bold text-slate-600">100%</span>
-                </div>
-                <div className="absolute inset-y-0 left-0 flex items-center pl-3" style={{ width: `${Math.min(pctOferta, 100)}%` }}>
-                  <span className="text-xs font-bold text-white">{pctOferta.toFixed(1)}%</span>
-                </div>
+                <div className="absolute inset-y-0 right-0 flex items-center pr-3"><span className="text-xs font-bold text-slate-600">100%</span></div>
+                <div className="absolute inset-y-0 left-0 flex items-center pl-3" style={{ width: `${Math.min(pctOferta, 100)}%` }}><span className="text-xs font-bold text-white">{pctOferta.toFixed(1)}%</span></div>
               </div>
               <div className="flex justify-between text-xs">
                 <span className="text-blue-600 font-medium">Nuestra oferta: {fmt(ofertaSinIVA)}</span>
@@ -263,7 +257,7 @@ export default function DecisionesPage() {
             </div>
           )}
 
-          {/* ═══ INVESTIGACIÓN HISTÓRICA ═══ */}
+          {/* ═══ INVESTIGACIÓN HISTÓRICA ═══ [6/04] Corregido field mapping + recharts + competidores + 3 precios */}
           <div className="bg-white border border-slate-200 rounded-2xl p-5 mb-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
@@ -289,11 +283,35 @@ export default function DecisionesPage() {
 
             {investigacion?.datos && (() => {
               const inv = investigacion.datos
+              // [6/04] Compatibilidad: Gemini puede devolver nombres distintos
               const ia = inv.analisis_ia || {}
+              const resumenHist = ia.resumen || ia.resumen_historico || ''
+              const recomendacion = ia.recomendacion_estrategia || ia.recomendacion_final || '?'
+              const preciosRec = ia.precio_oferta_recomendado || ia.precio_recomendado || {}
+              const precioAgr = preciosRec.agresivo || preciosRec.minimo || 0
+              const precioEqu = preciosRec.equilibrado || preciosRec.optimo || 0
+              const precioCon = preciosRec.conservador || preciosRec.maximo || 0
+              const factores = ia.factores_clave || ia.recomendaciones_estrategicas || []
+              const competidores = ia.competidores_principales || []
+              const rangoPrecios = ia.rango_precios_historico || {}
+              const alertas = ia.alertas || []
+
+              // Datos para gráfico de precios históricos
+              const coincConPrecio = (inv.coincidencias || [])
+                .filter((c: any) => c.presupuesto > 0 || c.importe_adjudicacion > 0)
+                .sort((a: any, b: any) => (a.fecha || '').localeCompare(b.fecha || ''))
+              const chartData = coincConPrecio.map((c: any) => ({
+                nombre: (c.titulo || '').substring(0, 25) + '…',
+                presupuesto: Math.round(Number(c.presupuesto || 0)),
+                adjudicacion: Math.round(Number(c.importe_adjudicacion || 0)),
+                fecha: c.fecha || ''
+              }))
+
               return (
-                <div className="mt-4 space-y-3">
+                <div className="mt-4 space-y-4">
                   {inv.tiene_historico ? (
                     <>
+                      {/* KPIs */}
                       <div className="grid grid-cols-3 gap-3">
                         <div className="p-3 bg-teal-50 rounded-xl text-center">
                           <span className="text-[10px] text-teal-600 uppercase">Ediciones previas</span>
@@ -305,14 +323,43 @@ export default function DecisionesPage() {
                         </div>
                         <div className="p-3 bg-teal-50 rounded-xl text-center">
                           <span className="text-[10px] text-teal-600 uppercase">Recomendación</span>
-                          <p className={`text-sm font-bold ${(ia.recomendacion_final || '').includes('GO') && !(ia.recomendacion_final || '').includes('NO') ? 'text-emerald-700' : 'text-amber-700'}`}>{ia.recomendacion_final || '?'}</p>
+                          <p className={`text-sm font-bold ${recomendacion.includes('GO') && !recomendacion.includes('NO') ? 'text-emerald-700' : recomendacion.includes('NO') ? 'text-red-700' : 'text-amber-700'}`}>{recomendacion}</p>
                         </div>
                       </div>
 
-                      {ia.resumen_historico && <p className="text-xs text-slate-700 p-3 bg-slate-50 rounded-xl">{ia.resumen_historico}</p>}
+                      {/* Resumen */}
+                      {resumenHist && <p className="text-xs text-slate-700 p-3 bg-slate-50 rounded-xl">{resumenHist}</p>}
                       {ia.patron_adjudicacion && <p className="text-xs text-slate-600"><strong>Patrón:</strong> {ia.patron_adjudicacion}</p>}
 
-                      {inv.adjudicatarios?.length > 0 && (
+                      {/* [6/04] Competidores principales */}
+                      {competidores.length > 0 && (
+                        <div>
+                          <p className="text-xs font-bold text-slate-600 mb-2">Competidores principales</p>
+                          <div className="overflow-x-auto">
+                            <table className="w-full text-xs">
+                              <thead><tr className="bg-slate-50">
+                                <th className="text-left px-2 py-2 font-semibold text-slate-500">Empresa</th>
+                                <th className="text-center px-2 py-2 font-semibold text-slate-500">Veces ganado</th>
+                                <th className="text-left px-2 py-2 font-semibold text-slate-500">Perfil</th>
+                              </tr></thead>
+                              <tbody>
+                                {competidores.map((c: any, i: number) => (
+                                  <tr key={i} className="border-b border-slate-50">
+                                    <td className="px-2 py-1.5 font-medium text-slate-800">{c.nombre}</td>
+                                    <td className="px-2 py-1.5 text-center">
+                                      <span className="inline-flex px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full font-bold text-[10px]">{c.veces_ganado || c.veces || 0}x</span>
+                                    </td>
+                                    <td className="px-2 py-1.5 text-slate-600">{c.perfil || '—'}</td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Adjudicatarios anteriores (si no hay competidores IA) */}
+                      {competidores.length === 0 && inv.adjudicatarios?.length > 0 && (
                         <div>
                           <p className="text-xs font-bold text-slate-600 mb-1">Adjudicatarios anteriores</p>
                           {inv.adjudicatarios.map((a: any, i: number) => (
@@ -323,28 +370,77 @@ export default function DecisionesPage() {
                         </div>
                       )}
 
-                      {inv.tendencia_precios && (
-                        <p className="text-xs text-slate-600"><strong>Tendencia precios:</strong> {inv.tendencia_precios.descripcion}</p>
-                      )}
-
-                      {ia.precio_recomendado && (
-                        <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl">
-                          <p className="text-xs font-bold text-amber-800 mb-1">Precio recomendado (basado en histórico)</p>
-                          <p className="text-xs text-amber-700">
-                            Rango: {Number(ia.precio_recomendado.minimo || 0).toLocaleString('es-ES')}€ — {Number(ia.precio_recomendado.maximo || 0).toLocaleString('es-ES')}€
-                            {ia.precio_recomendado.optimo > 0 && <> | Óptimo: <strong>{Number(ia.precio_recomendado.optimo).toLocaleString('es-ES')}€</strong></>}
-                          </p>
-                          {ia.precio_recomendado.justificacion && <p className="text-[11px] text-amber-600 mt-1">{ia.precio_recomendado.justificacion}</p>}
-                        </div>
-                      )}
-
-                      {ia.recomendaciones_estrategicas?.length > 0 && (
+                      {/* [6/04] Gráfico tendencia de precios (recharts) */}
+                      {chartData.length >= 2 && (
                         <div>
-                          <p className="text-xs font-bold text-slate-600 mb-1">Recomendaciones estratégicas</p>
-                          {ia.recomendaciones_estrategicas.map((r: string, i: number) => <p key={i} className="text-xs text-slate-700 mb-1">→ {r}</p>)}
+                          <p className="text-xs font-bold text-slate-600 mb-2">Evolución de precios históricos</p>
+                          <div className="h-52 w-full">
+                            <ResponsiveContainer width="100%" height="100%">
+                              <BarChart data={chartData} margin={{ top: 5, right: 5, left: 5, bottom: 5 }}>
+                                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                                <XAxis dataKey="fecha" tick={{ fontSize: 10 }} angle={-30} textAnchor="end" height={50} />
+                                <YAxis tick={{ fontSize: 10 }} tickFormatter={(v: number) => (v / 1000).toFixed(0) + 'k'} />
+                                <Tooltip formatter={(v: number) => v.toLocaleString('es-ES') + ' €'} labelStyle={{ fontSize: 11 }} contentStyle={{ fontSize: 11 }} />
+                                <Bar dataKey="presupuesto" name="Presupuesto" fill="#94a3b8" radius={[4, 4, 0, 0]} />
+                                <Bar dataKey="adjudicacion" name="Adjudicación" radius={[4, 4, 0, 0]}>
+                                  {chartData.map((_: any, i: number) => (
+                                    <Cell key={i} fill={i === chartData.length - 1 ? '#0d9488' : '#5eead4'} />
+                                  ))}
+                                </Bar>
+                                {presupuesto > 0 && <ReferenceLine y={presupuesto / 1.21} stroke="#ef4444" strokeDasharray="5 5" label={{ value: 'Actual', fontSize: 10, fill: '#ef4444' }} />}
+                              </BarChart>
+                            </ResponsiveContainer>
+                          </div>
+                          {rangoPrecios.media > 0 && (
+                            <p className="text-[11px] text-slate-500 mt-1 text-center">
+                              Rango histórico: {Number(rangoPrecios.minimo || 0).toLocaleString('es-ES')}€ — {Number(rangoPrecios.maximo || 0).toLocaleString('es-ES')}€ · Media: <strong>{Number(rangoPrecios.media).toLocaleString('es-ES')}€</strong>
+                            </p>
+                          )}
                         </div>
                       )}
 
+                      {/* [6/04] Precios recomendados: agresivo / equilibrado / conservador */}
+                      {(precioAgr > 0 || precioEqu > 0 || precioCon > 0) && (
+                        <div>
+                          <p className="text-xs font-bold text-slate-600 mb-2">Precio recomendado (basado en histórico)</p>
+                          <div className="grid grid-cols-3 gap-3">
+                            <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-center">
+                              <span className="text-[9px] text-red-600 uppercase font-semibold">Agresivo</span>
+                              <p className="text-sm font-bold text-red-800 mt-1">{precioAgr > 0 ? Number(precioAgr).toLocaleString('es-ES') + '€' : '—'}</p>
+                              <p className="text-[9px] text-red-500 mt-0.5">Mayor riesgo, máx. competitividad</p>
+                            </div>
+                            <div className="p-3 bg-emerald-50 border-2 border-emerald-300 rounded-xl text-center">
+                              <span className="text-[9px] text-emerald-600 uppercase font-semibold">Equilibrado</span>
+                              <p className="text-sm font-bold text-emerald-800 mt-1">{precioEqu > 0 ? Number(precioEqu).toLocaleString('es-ES') + '€' : '—'}</p>
+                              <p className="text-[9px] text-emerald-500 mt-0.5">Recomendado</p>
+                            </div>
+                            <div className="p-3 bg-blue-50 border border-blue-200 rounded-xl text-center">
+                              <span className="text-[9px] text-blue-600 uppercase font-semibold">Conservador</span>
+                              <p className="text-sm font-bold text-blue-800 mt-1">{precioCon > 0 ? Number(precioCon).toLocaleString('es-ES') + '€' : '—'}</p>
+                              <p className="text-[9px] text-blue-500 mt-0.5">Mayor margen, menor competitividad</p>
+                            </div>
+                          </div>
+                          {preciosRec.justificacion && <p className="text-[11px] text-slate-600 mt-2 p-2 bg-slate-50 rounded-lg">{preciosRec.justificacion}</p>}
+                        </div>
+                      )}
+
+                      {/* Factores clave / Recomendaciones estratégicas */}
+                      {factores.length > 0 && (
+                        <div>
+                          <p className="text-xs font-bold text-slate-600 mb-1">Factores clave</p>
+                          {factores.map((r: string, i: number) => <p key={i} className="text-xs text-slate-700 mb-1">→ {r}</p>)}
+                        </div>
+                      )}
+
+                      {/* Alertas */}
+                      {alertas.length > 0 && (
+                        <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl">
+                          <p className="text-xs font-bold text-amber-800 mb-1">Alertas</p>
+                          {alertas.map((a: string, i: number) => <p key={i} className="text-xs text-amber-700">⚠ {a}</p>)}
+                        </div>
+                      )}
+
+                      {/* Coincidencias detalle */}
                       {inv.coincidencias?.length > 0 && (
                         <details className="mt-2">
                           <summary className="text-xs text-slate-500 cursor-pointer hover:text-slate-700">Ver {inv.coincidencias.length} licitaciones encontradas</summary>
@@ -354,6 +450,7 @@ export default function DecisionesPage() {
                                 <span className="font-medium text-slate-800">{c.titulo?.substring(0, 80)}</span>
                                 <span className="text-slate-400 ml-2">{c.presupuesto > 0 ? Number(c.presupuesto).toLocaleString('es-ES') + '€' : ''}</span>
                                 {c.adjudicatario && <span className="text-emerald-600 ml-2">→ {c.adjudicatario}</span>}
+                                {c.importe_adjudicacion > 0 && <span className="text-blue-600 ml-1">({Number(c.importe_adjudicacion).toLocaleString('es-ES')}€)</span>}
                                 <span className="text-[10px] text-slate-400 ml-2">[{c.fuente}]</span>
                               </div>
                             ))}
@@ -379,6 +476,7 @@ export default function DecisionesPage() {
               <DataRow label="Presupuesto base (IVA incl.)" value={presupuesto > 0 ? fmt(presupuesto) : undefined} />
               <DataRow label="Presupuesto base (sin IVA)" value={presSinIVA > 0 ? fmt(presSinIVA) : undefined} />
               <DataRow label="Procedimiento" value={oportunidad.procedimiento} />
+              <DataRow label="Garantía provisional" value={ac.garantias?.provisional} />
               <DataRow label="Garantía definitiva" value={ac.garantias?.definitiva} />
             </Bloque>
           )}
@@ -447,7 +545,6 @@ export default function DecisionesPage() {
                   <span className="text-sm font-bold">Prob. éxito: {ac.estrategia_para_ganar.probabilidad_exito}%</span>
                 </div>
               </div>
-
               {ac.estrategia_para_ganar.ventajas_competitivas?.length > 0 && (
                 <div className="mb-3">
                   <p className="text-xs font-bold text-emerald-700 mb-2">Ventajas competitivas</p>
@@ -460,7 +557,6 @@ export default function DecisionesPage() {
                   {ac.estrategia_para_ganar.debilidades.map((d: string, i: number) => <p key={i} className="text-xs text-red-700 mb-1">✗ {d}</p>)}
                 </div>
               )}
-
               {ac.estrategia_para_ganar.mejoras_recomendadas?.length > 0 && (
                 <div className="mb-3">
                   <p className="text-xs font-bold text-slate-700 mb-2">Mejoras recomendadas (coste/beneficio)</p>
@@ -479,7 +575,6 @@ export default function DecisionesPage() {
                   ))}
                 </div>
               )}
-
               {ac.estrategia_para_ganar.equipo_recomendado?.length > 0 && (
                 <div className="mb-3">
                   <p className="text-xs font-bold text-slate-700 mb-2">Equipo recomendado</p>
@@ -493,7 +588,6 @@ export default function DecisionesPage() {
                   ))}
                 </div>
               )}
-
               {ac.estrategia_para_ganar.maquinaria_recomendada?.length > 0 && (
                 <div className="mb-3">
                   <p className="text-xs font-bold text-slate-700 mb-2">Maquinaria/equipos recomendados</p>
@@ -506,7 +600,6 @@ export default function DecisionesPage() {
                   ))}
                 </div>
               )}
-
               {ac.estrategia_para_ganar.estrategia_baja && (
                 <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl">
                   <p className="text-xs font-bold text-amber-800 mb-1">Estrategia de baja económica</p>
@@ -668,7 +761,6 @@ export default function DecisionesPage() {
               <h3 className="text-lg font-bold text-slate-900">Tomar decisión</h3>
             </div>
 
-            {/* A favor / En contra */}
             <div className="grid grid-cols-2 gap-4 mb-5">
               <div className="space-y-1.5">
                 <p className="text-xs font-bold text-emerald-700 uppercase mb-2">A favor</p>
@@ -738,7 +830,6 @@ export default function DecisionesPage() {
                 </div>
               </div>
 
-              {/* Si ya hay aprobación */}
               {aprobacion && (
                 <div className={`rounded-xl p-4 mb-4 ${aprobacion.estado === 'aprobado' ? 'bg-white border border-emerald-200' : aprobacion.estado === 'rechazado' ? 'bg-white border border-red-200' : 'bg-white border border-amber-200'}`}>
                   <div className="flex items-center gap-3 mb-3">
@@ -768,10 +859,8 @@ export default function DecisionesPage() {
                 </div>
               )}
 
-              {/* Formulario de aprobación (si no hay aprobación aún) */}
               {!aprobacion && (
                 <div>
-                  {/* Resumen ejecutivo para el Director */}
                   <div className="bg-white rounded-xl p-4 border border-slate-200 mb-4">
                     <h4 className="text-xs font-bold text-slate-500 uppercase mb-3">Resumen ejecutivo</h4>
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
@@ -789,7 +878,6 @@ export default function DecisionesPage() {
                     )}
                   </div>
 
-                  {/* Escenario y precio */}
                   <div className="grid grid-cols-2 gap-3 mb-3">
                     <div>
                       <label className="text-[10px] text-slate-500 uppercase font-semibold">Escenario elegido</label>

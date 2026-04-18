@@ -290,7 +290,7 @@ export default function ConfiguracionPage() {
   const handleEliminarConvenio = async (id: string, nombre: string) => {
     if (!confirm(`¿Eliminar "${nombre}"?`)) return
     setGuardando(id)
-    try { const r = await api.eliminarConvenio(id); if (r.ok) { setMensaje('Convenio eliminado'); await cargarDatos() } else setError(r.error) }
+    try { const r = await api.eliminarConvenio(id); if (r.ok) { setMensaje('Convenio eliminado'); setConvenios(prev => prev.filter(c => c.id !== id)); setCategoriasPorConvenio(prev => { const n = {...prev}; delete n[id]; return n }) } else setError(r.error || 'Error al eliminar') }
     catch(e) { setError('Error') } finally { setGuardando('') }
   }
 

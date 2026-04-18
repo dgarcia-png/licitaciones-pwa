@@ -81,7 +81,7 @@ export default function PrlPage() {
       else if (tab === 'reconocimientos') result = await api.agregarReconocimiento(form)
       else if (tab === 'formacion') result = await api.agregarFormacionPrl(form)
       else if (tab === 'accidentes') result = await api.agregarAccidente(form)
-      if (result?.ok) { setMsg('✅ Registrado'); setMostrarForm(false); setForm({}); cargarTab(tab); cargar(); setTimeout(() => setMsg(''), 3000) }
+      if (result?.ok) { setMsg('✅ Registrado'); setMostrarForm(false); setForm({}); setTimeout(() => { cargarTab(tab); cargar() }, 500); setTimeout(() => setMsg(''), 3000) }
       else setMsg('❌ ' + (result?.error || 'Error'))
     } catch (e: any) { setMsg('❌ Error de conexión') }
     finally { setGuardando(false) }

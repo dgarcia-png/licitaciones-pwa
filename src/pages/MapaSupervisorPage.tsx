@@ -114,11 +114,9 @@ export default function MapaSupervisorPage() {
     setCargando(true)
     try {
       const r = await api.mapaOperarios()
-      if (r.ok) {
-        setOperarios(r.operarios || [])
-        setResumen(r)
-        setUltimaActualizacion(new Date().toLocaleTimeString('es-ES'))
-      }
+      setOperarios(r.operarios || [])
+      setResumen(r)
+      setUltimaActualizacion(new Date().toLocaleTimeString('es-ES'))
     } catch(e) { console.error(e) }
     finally { setCargando(false) }
   }, [])

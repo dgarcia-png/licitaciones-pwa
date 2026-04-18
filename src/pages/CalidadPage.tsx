@@ -133,9 +133,9 @@ export default function CalidadPage() {
       {dashboard && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">
           {[
-            { label:'Media calidad', valor: dashboard.media_calidad?.toFixed(1)+'/5', color: puntuacionColor(dashboard.media_calidad||0) },
+            { label:'Media calidad', valor: (dashboard.nps_media??0).toFixed(1)+'/5', color: puntuacionColor(dashboard.nps_media||0) },
             { label:'Inspecciones mes', valor: dashboard.inspecciones_mes||0, color:'text-slate-700' },
-            { label:'Alertas calidad', valor: dashboard.alertas_calidad||0, color: (dashboard.alertas_calidad||0)>0?'text-red-600':'text-emerald-600' },
+            { label:'Alertas calidad', valor: dashboard.acciones_abiertas||0, color: (dashboard.acciones_abiertas||0)>0?'text-red-600':'text-emerald-600' },
             { label:'Acciones abiertas', valor: dashboard.acciones_abiertas||0, color: (dashboard.acciones_abiertas||0)>0?'text-amber-600':'text-emerald-600' },
           ].map((k,i) => (
             <div key={i} className="bg-white border border-slate-200 rounded-2xl p-4 text-center">

@@ -51,6 +51,29 @@ export default function VehiculosPage() {
     setCombustible(r)
   }
 
+  const [editandoVeh, setEditandoVeh] = useState<any>(null)
+
+  const handleEditar = async () => {
+    if (!editandoVeh) return
+    setGuardando(true)
+    try {
+      const r = await api.actualizarVehiculo(editandoVeh)
+      if (r.ok) { showMsg('✅ Vehículo actualizado'); setEditandoVeh(null); await cargar() }
+      else showMsg(r.error || 'Error', true)
+    } catch { showMsg('Error', true) }
+    finally { setGuardando(false) }
+  }
+
+  const handleEliminar = async (id: string) => {
+    if (!window.confirm('¿Eliminar este vehículo?')) return
+    setGuardando(true)
+    try {
+      const r = await api.eliminarVehiculo(id)
+      if (r.ok) { showMsg('✅ Vehículo eliminado'); setVehSel(null); await cargar() }
+    } catch { showMsg('Error', true) }
+    finally { setGuardando(false) }
+  }
+
   const handleCrear = async () => {
     if (!form.matricula) { showMsg('Matrícula obligatoria', true); return }
     setGuardando(true)
@@ -257,6 +280,14 @@ export default function VehiculosPage() {
                 </div>
               </div>
               <div className="flex gap-2 pt-3 border-t border-slate-100">
+                <button onClick={() => setEditandoVeh({...v})}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl">
+                  ✏️ Editar
+                </button>
+                <button onClick={() => handleEliminar(v.id)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-red-50 hover:bg-red-100 text-red-600 rounded-xl">
+                  🗑️ Borrar
+                </button>
                 <button onClick={()=>{ setVehSel(v); setFormRepostaje({litros:'',precio_litro:'1.70',km:v.km,fecha:new Date().toISOString().split('T')[0]}); cargarCombustible(v.id) }}
                   className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-100 hover:bg-amber-200 text-amber-800 text-xs font-bold rounded-xl">
                   <Fuel size={12}/> Repostar
@@ -269,6 +300,62 @@ export default function VehiculosPage() {
               </div>
             </div>
           ))}
+        </div>
+      )}
+      {/* Modal editar vehículo */}
+      {editandoVeh && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/50" onClick={() => setEditandoVeh(null)}/>
+          <div className="relative bg-white rounded-2xl shadow-2xl max-w-md w-full z-10 p-6 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-4">
+              <p className="font-bold text-slate-900">✏️ Editar vehículo</p>
+              <button onClick={() => setEditandoVeh(null)}><X size={16}/></button>
+            </div>
+            <div className="grid grid-cols-2 gap-3 mb-4">
+              {[
+                ['Matrícula', 'matricula', 'text'],
+                ['Marca', 'marca', 'text'],
+                ['Modelo', 'modelo', 'text'],
+                ['Año', 'anio', 'number'],
+                ['Color', 'color', 'text'],
+                ['KM actuales', 'km', 'number'],
+              ].map(([label, field, type]) => (
+                <div key={field as string}>
+                  <label className="text-xs font-semibold text-slate-600 block mb-1">{label as string}</label>
+                  <input type={type as string} value={(editandoVeh as any)[field as string] || ''}
+                    onChange={e => setEditandoVeh({...editandoVeh, [field as string]: type === 'number' ? parseFloat(e.target.value)||0 : e.target.value})}
+                    className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm"/>
+                </div>
+              ))}
+              {[
+                ['Fecha ITV', 'fecha_itv'],
+                ['Fecha seguro', 'fecha_seguro'],
+              ].map(([label, field]) => (
+                <div key={field as string}>
+                  <label className="text-xs font-semibold text-slate-600 block mb-1">{label as string}</label>
+                  <input type="date" value={(editandoVeh as any)[field as string] || ''}
+                    onChange={e => setEditandoVeh({...editandoVeh, [field as string]: e.target.value})}
+                    className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm"/>
+                </div>
+              ))}
+              <div className="col-span-2">
+                <label className="text-xs font-semibold text-slate-600 block mb-1">Notas</label>
+                <input value={editandoVeh.notas || ''}
+                  onChange={e => setEditandoVeh({...editandoVeh, notas: e.target.value})}
+                  className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm"/>
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <button onClick={() => setEditandoVeh(null)}
+                className="flex-1 py-2.5 border border-slate-200 rounded-xl text-sm text-slate-600 hover:bg-slate-50">
+                Cancelar
+              </button>
+              <button onClick={handleEditar} disabled={guardando}
+                className="flex-1 py-2.5 bg-[#1a3c34] text-white rounded-xl text-sm font-bold disabled:opacity-50">
+                {guardando ? '...' : 'Guardar'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

@@ -1,177 +1,86 @@
-// sw.js — Service Worker Forgeser PWA v2.0
-// Fixes: respondWith(undefined), non-GET interception, chrome-extension URLs
-
-const CACHE_VERSION  = 'v10'
-const CACHE_NAME     = `forgeser-${CACHE_VERSION}`
-const API_BASE       = 'https://script.google.com/macros/s/'
-
-const ASSETS_TO_CACHE = [
-  '/',
-  '/index.html',
-  '/manifest.json',
+// public/sw.js — Forgeser PWA v7 — Network-first + precache index.html
+const CACHE_NAME = 'forgeser-v7'
+const API_HOSTS = [
+  'forgeser-backend-801944899567.europe-west1.run.app',
+  'script.google.com',
+  'generativelanguage.googleapis.com'
 ]
 
-// ── Instalación ──────────────────────────────────────────────────────────────
-self.addEventListener('install', (e) => {
-  e.waitUntil(
+self.addEventListener('install', event => {
+  event.waitUntil(
     caches.open(CACHE_NAME)
-      .then(cache => cache.addAll(ASSETS_TO_CACHE))
+      .then(c => c.add(new Request('/index.html', { cache: 'reload' })))
       .then(() => self.skipWaiting())
   )
 })
 
-// ── Activación ───────────────────────────────────────────────────────────────
-self.addEventListener('activate', (e) => {
-  e.waitUntil(
+self.addEventListener('activate', event => {
+  event.waitUntil(
     caches.keys()
-      .then(keys => Promise.all(
-        keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k))
-      ))
+      .then(keys => Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k))))
       .then(() => self.clients.claim())
   )
 })
 
-// ── Fetch strategy ───────────────────────────────────────────────────────────
-self.addEventListener('fetch', (e) => {
-  const req = e.request
-  const url = req.url
+self.addEventListener('fetch', event => {
+  const req = event.request
+  const url = new URL(req.url)
 
-  // ① Solo interceptar GET — nunca POST/PUT/etc.
-  if (req.method !== 'GET') return
-
-  // ② Solo interceptar http/https — nunca chrome-extension:// etc.
-  if (!url.startsWith('http')) return
-
-  // ③ API Cloud Run y GAS: network-first
-  if (req.url.includes('forgeser-backend') || req.url.includes('run.app')) {
-    e.respondWith(fetch(req))
-    return
-  }
-  // API del GAS: network-first con respuesta offline si falla
-  if (url.includes(API_BASE)) {
-    e.respondWith(networkFirstAPI(req))
+  // SIEMPRE red para la API
+  if (API_HOSTS.some(h => url.hostname.includes(h))) {
+    event.respondWith(
+      fetch(req).catch(() =>
+        new Response(JSON.stringify({ ok: false, error: 'offline' }), {
+          status: 503,
+          headers: { 'Content-Type': 'application/json' }
+        })
+      )
+    )
     return
   }
 
-  // ④ Assets estáticos: cache-first con fallback a red y luego a /index.html
-  e.respondWith(
-    caches.match(req).then(cached => {
-      if (cached) return cached
-
-      return fetch(req)
-        .then(response => {
-          // Cachear solo respuestas válidas
-          if (response && response.status === 200 && response.type !== 'opaque') {
-            const clone = response.clone()
-            caches.open(CACHE_NAME).then(c => c.put(req, clone))
-          }
-          return response
-        })
-        .catch(() => {
-          // Sin red: para navegación devolver index.html; para assets, 503
-          if (req.mode === 'navigate') {
-            return caches.match('/index.html').then(r =>
-              r || new Response('Offline', { status: 503, statusText: 'Service Unavailable' })
-            )
-          }
-          return new Response('Offline', { status: 503, statusText: 'Service Unavailable' })
-        })
-    })
-  )
-})
-
-// ── Network first para API ────────────────────────────────────────────────────
-async function networkFirstAPI(request) {
-  try {
-    return await fetch(request)
-  } catch {
-    return new Response(JSON.stringify({
-      ok: false,
-      offline: true,
-      error: 'Sin conexión. Los datos se sincronizarán cuando se recupere la conexión.'
-    }), { headers: { 'Content-Type': 'application/json' } })
+  // SIEMPRE red para no-GET
+  if (req.method !== 'GET') {
+    event.respondWith(fetch(req))
+    return
   }
-}
 
-// ── Background Sync ──────────────────────────────────────────────────────────
-self.addEventListener('sync', (e) => {
-  if (e.tag === 'sync-pending') e.waitUntil(sincronizarPendientes())
-})
-
-async function sincronizarPendientes() {
-  try {
-    const db = await abrirDB()
-    const pending = await obtenerPendientes(db)
-    for (const accion of pending) {
-      try {
-        const response = await fetch(accion.url, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(accion.data)
+  // Navegaciones (HTML): network-first, fallback a index.html cacheado
+  if (req.mode === 'navigate') {
+    event.respondWith(
+      fetch(req)
+        .then(res => {
+          if (res.ok) {
+            const copy = res.clone()
+            caches.open(CACHE_NAME).then(c => c.put('/index.html', copy))
+          }
+          return res
         })
-        if (response.ok) {
-          await eliminarPendiente(db, accion.id)
-          const clients = await self.clients.matchAll()
-          clients.forEach(c => c.postMessage({ type: 'SYNC_OK', action: accion.accion }))
+        .catch(async () => {
+          const cached = await caches.match('/index.html')
+          return cached || new Response(
+            '<!doctype html><meta charset="utf-8"><title>Offline</title><body style="font-family:sans-serif;padding:2rem"><h1>Sin conexión</h1><p>Reintenta en unos segundos.</p></body>',
+            { status: 200, headers: { 'Content-Type': 'text/html; charset=utf-8' } }
+          )
+        })
+    )
+    return
+  }
+
+  // Assets estáticos: network-first con cache
+  event.respondWith(
+    fetch(req)
+      .then(response => {
+        if (response.ok && url.pathname.match(/\.(js|css|png|ico|svg|woff2?)$/)) {
+          const copy = response.clone()
+          caches.open(CACHE_NAME).then(c => c.put(req, copy))
         }
-      } catch { /* reintentar en la próxima sincronización */ }
-    }
-  } catch (e) { console.error('Sync error:', e) }
-}
-
-// ── IndexedDB helpers ─────────────────────────────────────────────────────────
-function abrirDB() {
-  return new Promise((resolve, reject) => {
-    const req = indexedDB.open('forgeser-offline', 1)
-    req.onupgradeneeded = (e) => {
-      const db = e.target.result
-      if (!db.objectStoreNames.contains('pending'))
-        db.createObjectStore('pending', { keyPath: 'id', autoIncrement: true })
-    }
-    req.onsuccess = (e) => resolve(e.target.result)
-    req.onerror   = reject
-  })
-}
-
-function obtenerPendientes(db) {
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction('pending', 'readonly')
-    const req = tx.objectStore('pending').getAll()
-    req.onsuccess = () => resolve(req.result)
-    req.onerror   = reject
-  })
-}
-
-function eliminarPendiente(db, id) {
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction('pending', 'readwrite')
-    const req = tx.objectStore('pending').delete(id)
-    req.onsuccess = resolve
-    req.onerror   = reject
-  })
-}
-
-// ── Push Notifications ───────────────────────────────────────────────────────
-self.addEventListener('push', (e) => {
-  if (!e.data) return
-  const data = e.data.json()
-  e.waitUntil(
-    self.registration.showNotification(data.title || 'Forgeser', {
-      body: data.body || '', icon: '/icon-192.png',
-      badge: '/icon-192.png', tag: data.tag || 'forgeser',
-      data: data.url || '/', actions: data.actions || []
-    })
-  )
-})
-
-self.addEventListener('notificationclick', (e) => {
-  e.notification.close()
-  const url = e.notification.data || '/'
-  e.waitUntil(
-    self.clients.matchAll({ type: 'window' }).then(clients => {
-      const client = clients.find(c => c.url === url && 'focus' in c)
-      if (client) return client.focus()
-      if (self.clients.openWindow) return self.clients.openWindow(url)
-    })
+        return response
+      })
+      .catch(async () => {
+        const cached = await caches.match(req)
+        if (cached) return cached
+        return new Response('', { status: 503, statusText: 'Offline' })
+      })
   )
 })

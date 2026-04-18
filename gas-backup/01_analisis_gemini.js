@@ -584,8 +584,8 @@ function obtenerAnalisisAPI_(oportunidadId) {
   return { existe: false };
 }
 function testAnalisis() {
-  var result = analizarPliegosOportunidad('OPO-20260323-074845-519');
-  Logger.log(JSON.stringify(result));
+  var result = analizarPliegosOportunidad('OPO-20260330-004511-222');
+  Logger.log(JSON.stringify(result).substring(0, 500));
 }
 
 // ════════════════════════════════════════════════════════════════
@@ -683,4 +683,13 @@ function extraerDatosPliego_(data) {
   } catch(e) {
     return { ok: false, error: 'Error: ' + e.message };
   }
+}
+
+function setGeminiKey() {
+  PropertiesService.getScriptProperties().setProperty(
+    'GEMINI_API_KEY', 
+    'AIzaSyAAAJfjZ_ptjOzE4GfzHZHHXMaSdpkQCRg'
+  );
+  Logger.log('OK: ' + PropertiesService.getScriptProperties()
+    .getProperty('GEMINI_API_KEY').substring(0,10) + '...');
 }

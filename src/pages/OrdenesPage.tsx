@@ -70,10 +70,14 @@ export default function OrdenesPage() {
   const cargar = async () => {
     setCargando(true)
     try {
-      const batch = await api.batchOrdenes()
-      setOrdenes(batch.ordenes?.ordenes || [])
-      setCentros(batch.centros?.centros || [])
-      setEmpleados(batch.empleados?.empleados || [])
+      const [oRes, cRes, eRes] = await Promise.allSettled([
+        api.batchOrdenes(),
+        api.centros(),
+        api.empleados()
+      ])
+      if (oRes.status === 'fulfilled') setOrdenes((oRes.value as any).ordenes || [])
+      if (cRes.status === 'fulfilled') setCentros((cRes.value as any).centros || [])
+      if (eRes.status === 'fulfilled') setEmpleados((eRes.value as any).empleados || [])
     } catch(e) { console.error(e) }
     finally { setCargando(false) }
   }

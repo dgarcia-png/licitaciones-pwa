@@ -344,15 +344,195 @@ export default function AnalisisPage() {
 
           {/* Personal */}
           <Section title="Personal requerido" icon={Users} defaultOpen={false}>
-            <DataRow label="Subrogación" value={ac.personal_requerido?.subrogacion} />
-            <DataRow label="Trabajadores a subrogar" value={ac.personal_requerido?.num_trabajadores_subrogar > 0 ? ac.personal_requerido.num_trabajadores_subrogar : undefined} />
-            <DataRow label="Convenio" value={ac.personal_requerido?.convenio_aplicable} />
-            <DataRow label="Categorías" value={ac.personal_requerido?.categorias_profesionales} />
+            <DataRow label="Subrogación" value={ac.personal_subrogacion?.aplica || ac.personal_requerido?.subrogacion} />
+            <DataRow label="Trabajadores a subrogar" value={(ac.personal_subrogacion?.num_trabajadores || ac.personal_requerido?.num_trabajadores_subrogar) > 0 ? (ac.personal_subrogacion?.num_trabajadores || ac.personal_requerido?.num_trabajadores_subrogar) : undefined} />
+            <DataRow label="Empresa saliente" value={ac.personal_subrogacion?.empresa_saliente} />
+            <DataRow label="Coste masa salarial estimado" value={ac.personal_subrogacion?.coste_masa_salarial_estimado > 0 ? ac.personal_subrogacion.coste_masa_salarial_estimado.toLocaleString('es-ES') + ' €/año' : undefined} />
+            <DataRow label="Convenio" value={ac.personal_subrogacion?.convenio_aplicable || ac.personal_requerido?.convenio_aplicable} />
+            <DataRow label="Categorías" value={ac.personal_subrogacion?.categorias_resumen || ac.personal_requerido?.categorias_profesionales} />
             <DataRow label="Dedicación mínima" value={ac.personal_requerido?.dedicacion_minima} />
             {ac.personal_requerido?.detalle && (
               <p className="text-sm text-slate-600 mt-2 p-3 bg-slate-50 rounded-xl">{ac.personal_requerido.detalle}</p>
             )}
+            {ac.personal_subrogacion?.trabajadores?.length > 0 && (
+              <div className="mt-3">
+                <h4 className="text-xs font-bold text-slate-500 uppercase mb-2">Trabajadores a subrogar ({ac.personal_subrogacion.trabajadores.length})</h4>
+                <div className="space-y-1 max-h-48 overflow-y-auto">
+                  {ac.personal_subrogacion.trabajadores.map((t: any, i: number) => (
+                    <div key={i} className="flex items-center justify-between py-1.5 border-b border-slate-50 last:border-0 text-xs">
+                      <span className="text-slate-700 font-medium">{t.nombre} {t.apellidos}</span>
+                      <span className="text-slate-500">{t.categoria}</span>
+                      <span className="text-slate-700 font-semibold">{t.salario_bruto_anual > 0 ? t.salario_bruto_anual.toLocaleString('es-ES') + ' €' : ''}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </Section>
+
+          {/* Servicios requeridos */}
+          {(ac.servicios_requeridos?.descripcion_general || ac.servicios_requeridos?.total_horas_contrato) && (
+            <Section title="Servicios a prestar" icon={FileText} defaultOpen={false}>
+              {ac.servicios_requeridos?.descripcion_general && (
+                <p className="text-sm text-slate-700 leading-relaxed mb-3 p-3 bg-slate-50 rounded-xl">{ac.servicios_requeridos.descripcion_general}</p>
+              )}
+              <DataRow label="Total horas contrato" value={ac.servicios_requeridos?.total_horas_contrato ? ac.servicios_requeridos.total_horas_contrato.toLocaleString('es-ES') + ' h' : undefined} />
+              <DataRow label="Bolsa horas emergencia" value={ac.servicios_requeridos?.bolsa_horas_emergencia ? ac.servicios_requeridos.bolsa_horas_emergencia.toLocaleString('es-ES') + ' h' : undefined} />
+              <DataRow label="Superficie total" value={ac.servicios_requeridos?.total_superficie_m2 ? ac.servicios_requeridos.total_superficie_m2.toLocaleString('es-ES') + ' m²' : undefined} />
+              <DataRow label="Uniformidad" value={ac.servicios_requeridos?.uniformidad_requerida} />
+              <DataRow label="Plan de trabajo" value={ac.servicios_requeridos?.plan_trabajo_requerido} />
+              <DataRow label="Informes" value={ac.servicios_requeridos?.informes_requeridos} />
+              {ac.servicios_requeridos?.tareas_principales?.length > 0 && (
+                <div className="mt-3">
+                  <h4 className="text-xs font-bold text-slate-500 uppercase mb-2">Tareas principales</h4>
+                  <div className="space-y-1">
+                    {ac.servicios_requeridos.tareas_principales.filter((t: any) => t.tarea).map((t: any, i: number) => (
+                      <div key={i} className="flex items-start gap-2 py-1.5 border-b border-slate-50 last:border-0">
+                        <span className="text-xs bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded shrink-0">{t.frecuencia}</span>
+                        <span className="text-sm text-slate-700">{t.tarea}</span>
+                        {t.espacios_afectados && <span className="text-xs text-slate-400 ml-auto shrink-0">{t.espacios_afectados}</span>}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {ac.servicios_requeridos?.centros_o_zonas?.length > 0 && ac.servicios_requeridos.centros_o_zonas[0]?.nombre && (
+                <div className="mt-3">
+                  <h4 className="text-xs font-bold text-slate-500 uppercase mb-2">Centros / zonas ({ac.servicios_requeridos.centros_o_zonas.length})</h4>
+                  <div className="space-y-2">
+                    {ac.servicios_requeridos.centros_o_zonas.slice(0,5).map((z: any, i: number) => (
+                      <div key={i} className="p-2 bg-slate-50 rounded-lg">
+                        <p className="text-sm font-medium text-slate-800">{z.nombre}</p>
+                        <div className="flex flex-wrap gap-3 mt-1">
+                          {z.superficie_m2 > 0 && <span className="text-xs text-slate-500">{z.superficie_m2.toLocaleString()} m²</span>}
+                          {z.horas_semana > 0 && <span className="text-xs text-slate-500">{z.horas_semana}h/sem</span>}
+                          {z.dias_servicio && <span className="text-xs text-slate-500">{z.dias_servicio}</span>}
+                          {z.horario_inicio && <span className="text-xs text-slate-500">{z.horario_inicio}–{z.horario_fin}</span>}
+                        </div>
+                      </div>
+                    ))}
+                    {ac.servicios_requeridos.centros_o_zonas.length > 5 && (
+                      <p className="text-xs text-slate-400">... y {ac.servicios_requeridos.centros_o_zonas.length - 5} más</p>
+                    )}
+                  </div>
+                </div>
+              )}
+            </Section>
+          )}
+
+          {/* Medios mínimos requeridos */}
+          {ac.medios_minimos_requeridos && (
+            <Section title="Medios mínimos exigidos" icon={Users} defaultOpen={false}>
+              {/* Personal mínimo */}
+              {ac.medios_minimos_requeridos?.personal?.length > 0 && ac.medios_minimos_requeridos.personal[0]?.categoria && (
+                <div className="mb-4">
+                  <h4 className="text-xs font-bold text-slate-500 uppercase mb-2">Personal mínimo</h4>
+                  <div className="space-y-2">
+                    {ac.medios_minimos_requeridos.personal.map((p: any, i: number) => (
+                      <div key={i} className="p-3 bg-blue-50 rounded-xl">
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-sm font-semibold text-blue-900">{p.categoria}</span>
+                          <span className="text-sm font-bold text-blue-700 bg-blue-100 px-2 py-0.5 rounded">{p.num_minimo} persona{p.num_minimo !== 1 ? 's' : ''}</span>
+                        </div>
+                        {p.jornada_horas_semana > 0 && <p className="text-xs text-slate-500">{p.jornada_horas_semana}h/semana</p>}
+                        {p.titulaciones_requeridas && <p className="text-xs text-blue-700 mt-1">📋 {p.titulaciones_requeridas}</p>}
+                        {p.requisitos_especificos && <p className="text-xs text-slate-600 mt-1">{p.requisitos_especificos}</p>}
+                        {p.anos_experiencia > 0 && <p className="text-xs text-slate-500 mt-1">{p.anos_experiencia} años de experiencia mínima</p>}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {/* Maquinaria */}
+              {ac.medios_minimos_requeridos?.maquinaria?.length > 0 && ac.medios_minimos_requeridos.maquinaria[0]?.tipo && (
+                <div className="mb-4">
+                  <h4 className="text-xs font-bold text-slate-500 uppercase mb-2">Maquinaria mínima</h4>
+                  <div className="space-y-1">
+                    {ac.medios_minimos_requeridos.maquinaria.map((m: any, i: number) => (
+                      <div key={i} className="flex items-start gap-2 py-2 border-b border-slate-50 last:border-0">
+                        <span className="text-sm font-bold text-slate-700 shrink-0 w-8 text-center bg-slate-100 rounded px-1">{m.unidades}</span>
+                        <div>
+                          <p className="text-sm text-slate-800">{m.tipo}</p>
+                          {m.especificaciones && <p className="text-xs text-slate-500">{m.especificaciones}</p>}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {/* Vehículos */}
+              {ac.medios_minimos_requeridos?.vehiculos?.length > 0 && ac.medios_minimos_requeridos.vehiculos[0]?.tipo && (
+                <div className="mb-4">
+                  <h4 className="text-xs font-bold text-slate-500 uppercase mb-2">Vehículos mínimos</h4>
+                  <div className="space-y-1">
+                    {ac.medios_minimos_requeridos.vehiculos.map((v: any, i: number) => (
+                      <div key={i} className="flex items-start gap-2 py-2 border-b border-slate-50 last:border-0">
+                        <span className="text-sm font-bold text-slate-700 shrink-0 w-8 text-center bg-slate-100 rounded px-1">{v.unidades}</span>
+                        <div>
+                          <p className="text-sm text-slate-800">{v.tipo}</p>
+                          {v.capacidad && <p className="text-xs text-slate-500">{v.capacidad}</p>}
+                          {v.especificaciones && <p className="text-xs text-slate-500">{v.especificaciones}</p>}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {/* Herramientas */}
+              {ac.medios_minimos_requeridos?.herramientas_especificas?.length > 0 && (
+                <div className="mb-3">
+                  <h4 className="text-xs font-bold text-slate-500 uppercase mb-2">Herramientas específicas</h4>
+                  <div className="flex flex-wrap gap-2">
+                    {(Array.isArray(ac.medios_minimos_requeridos.herramientas_especificas) 
+                      ? ac.medios_minimos_requeridos.herramientas_especificas 
+                      : [ac.medios_minimos_requeridos.herramientas_especificas]).filter(Boolean).map((h: string, i: number) => (
+                      <span key={i} className="text-xs bg-amber-100 text-amber-800 px-2 py-1 rounded-lg">{h}</span>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {/* EPIs */}
+              {ac.medios_minimos_requeridos?.epis_requeridos?.length > 0 && (
+                <div>
+                  <h4 className="text-xs font-bold text-slate-500 uppercase mb-2">EPIs requeridos</h4>
+                  <div className="flex flex-wrap gap-2">
+                    {ac.medios_minimos_requeridos.epis_requeridos.filter(Boolean).map((e: string, i: number) => (
+                      <span key={i} className="text-xs bg-orange-100 text-orange-800 px-2 py-1 rounded-lg">{e}</span>
+                    ))}
+                  </div>
+                </div>
+              )}
+              <DataRow label="Software gestión" value={ac.medios_minimos_requeridos?.software_gestion} />
+              {ac.medios_minimos_requeridos?.seguro_responsabilidad_minimo > 0 && (
+                <DataRow label="Seguro RC mínimo" value={ac.medios_minimos_requeridos.seguro_responsabilidad_minimo.toLocaleString('es-ES') + ' €'} />
+              )}
+            </Section>
+          )}
+
+          {/* Dimensionamiento */}
+          {ac.dimensionamiento_estimado?.total_personas > 0 && (
+            <Section title="Dimensionamiento estimado" icon={Users} defaultOpen={false}>
+              <div className="grid grid-cols-3 gap-3 mb-3">
+                <div className="bg-blue-50 rounded-xl p-3 text-center">
+                  <p className="text-2xl font-bold text-blue-700">{ac.dimensionamiento_estimado.operarios_estimados}</p>
+                  <p className="text-xs text-blue-600 mt-1">Operarios</p>
+                </div>
+                <div className="bg-blue-50 rounded-xl p-3 text-center">
+                  <p className="text-2xl font-bold text-blue-700">{ac.dimensionamiento_estimado.encargados_estimados}</p>
+                  <p className="text-xs text-blue-600 mt-1">Encargados</p>
+                </div>
+                <div className="bg-blue-700 rounded-xl p-3 text-center">
+                  <p className="text-2xl font-bold text-white">{ac.dimensionamiento_estimado.total_personas}</p>
+                  <p className="text-xs text-blue-200 mt-1">Total</p>
+                </div>
+              </div>
+              <DataRow label="Jornada tipo" value={ac.dimensionamiento_estimado?.jornada_tipo} />
+              <DataRow label="Turnos" value={ac.dimensionamiento_estimado?.turnos} />
+              {ac.dimensionamiento_estimado?.notas_dimensionamiento && (
+                <p className="text-xs text-slate-500 mt-2 p-2 bg-slate-50 rounded-lg">{ac.dimensionamiento_estimado.notas_dimensionamiento}</p>
+              )}
+            </Section>
+          )}
 
           {/* Garantías */}
           <Section title="Garantías" icon={Scale} defaultOpen={false}>

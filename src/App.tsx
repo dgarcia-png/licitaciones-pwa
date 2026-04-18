@@ -29,6 +29,7 @@ const UsuariosPage               = lazy(() => import('./pages/UsuariosPage'))
 const PlantillasPage             = lazy(() => import('./pages/PlantillasPage'))
 const PortalEmpleadoPage         = lazy(() => import('./pages/PortalEmpleadoPage'))
 const DashboardRRHHPage          = lazy(() => import('./pages/DashboardRRHHPage'))
+const AlertasPage                = lazy(() => import('./pages/AlertasPage'))
 const DashboardLicitacionesPage  = lazy(() => import('./pages/DashboardLicitacionesPage'))
 const DashboardTerritorioPage    = lazy(() => import('./pages/DashboardTerritorioPage'))
 const TerritorioPage             = lazy(() => import('./pages/TerritorioPage'))
@@ -132,6 +133,7 @@ function AppRoutes() {
 
           {/* RRHH */}
           <Route path="/dashboard-rrhh"     element={<RoleRoute clave="dashboard-rrhh"><DashboardRRHHPage /></RoleRoute>} />
+          <Route path="/alertas"              element={<AlertasPage />} />
           <Route path="/personal"           element={<RoleRoute clave="personal"><PersonalPage /></RoleRoute>} />
           <Route path="/subrogacion"        element={<RoleRoute clave="subrogacion"><SubrogacionPage /></RoleRoute>} />
           <Route path="/fichajes"           element={<RoleRoute clave="fichajes"><FichajesPage /></RoleRoute>} />

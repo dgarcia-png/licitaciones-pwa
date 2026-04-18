@@ -1,4 +1,4 @@
-import { Search, Filter, RefreshCw, ExternalLink, Plus, Loader2, FileText, Brain, Calendar, Building2, Archive, ArchiveRestore } from 'lucide-react'
+import { Search, Filter, RefreshCw, ExternalLink, Plus, Loader2, FileText, Brain, Calendar, Building2, Archive, ArchiveRestore, FileDown } from 'lucide-react'
 import { SkeletonList } from '../components/Skeleton'
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
@@ -79,16 +79,21 @@ export default function OportunidadesPage() {
   const buscarPLACSP = async () => {
     setBuscandoPLACSP(true); setMensaje('')
     try {
-      const r = await api.buscar()
-      const msg = []
-      if (r.nuevas > 0) msg.push(r.nuevas + ' nuevas oportunidades')
-      if (r.historico > 0) msg.push(r.historico + ' al histórico')
-      if (r.duplicadas > 0) msg.push(r.duplicadas + ' ya existentes')
-      setMensaje(msg.length > 0 ? 'Búsqueda completada: ' + msg.join(', ') : 'Búsqueda completada. No hay novedades.')
+      const r = await api.buscarNuevasLicitaciones()
+      if (!r.ok) { setMensaje('❌ Error: ' + (r.error || 'desconocido')); return }
+      if (r.msg) {
+        setMensaje((r.nuevas > 0 ? '✅ ' : 'ℹ️ ') + r.msg)
+      } else {
+        const partes = []
+        if (r.nuevas > 0)     partes.push(r.nuevas + ' nuevas')
+        if (r.duplicadas > 0) partes.push(r.duplicadas + ' ya existentes')
+        if (r.total_recibidas) partes.push('de ' + r.total_recibidas + ' revisadas')
+        setMensaje(partes.length > 0 ? '✅ ' + partes.join(' · ') : '✅ Sin novedades en PLACSP.')
+      }
       ;(api as any).invalidarCache?.()
       await cargar()
     } catch (e) {
-      setMensaje('Error al buscar. Revisa el log en Apps Script.')
+      setMensaje('❌ Error al conectar con PLACSP. Inténtalo de nuevo.')
     } finally { setBuscandoPLACSP(false) }
   }
 
@@ -100,6 +105,20 @@ export default function OportunidadesPage() {
         setMensaje('Oportunidad archivada correctamente')
         setTimeout(() => setMensaje(''), 3000)
       }
+    } catch (e) { console.error(e) }
+  }
+
+  const handleDescargarPliegos = async (o: any) => {
+    try {
+      setMensaje('Descargando pliegos...')
+      const r = await api.descargarPliegos(o.id)
+      if (r.ok) {
+        setOportunidades(prev => prev.map(x => x.id === o.id ? { ...x, estado: x.estado === 'nueva' ? 'en_analisis' : x.estado, pliegos_descargados: true } : x))
+        setMensaje(`✅ ${r.descargados || 0} documentos disponibles para análisis`)
+      } else {
+        setMensaje('⚠️ ' + (r.error || 'Sin documentos disponibles'))
+      }
+      setTimeout(() => setMensaje(''), 4000)
     } catch (e) { console.error(e) }
   }
 
@@ -304,12 +323,20 @@ export default function OportunidadesPage() {
                         <ArchiveRestore size={13} /> Restaurar
                       </button>
                     ) : (
-                      <button
-                        onClick={e => { e.stopPropagation(); setConfirmArchivar(lic) }}
-                        className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-500 bg-slate-50 hover:bg-slate-100 rounded-lg border border-slate-200 transition-colors opacity-0 group-hover:opacity-100"
-                        title="Archivar oportunidad">
-                        <Archive size={13} /> Archivar
-                      </button>
+                      <div className="flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button
+                          onClick={e => { e.stopPropagation(); handleDescargarPliegos(lic) }}
+                          className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-lg border border-blue-200 transition-colors"
+                          title="Descargar pliegos">
+                          <FileDown size={12} /> Pliegos
+                        </button>
+                        <button
+                          onClick={e => { e.stopPropagation(); setConfirmArchivar(lic) }}
+                          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-500 bg-slate-50 hover:bg-slate-100 rounded-lg border border-slate-200 transition-colors"
+                          title="Archivar oportunidad">
+                          <Archive size={13} /> Archivar
+                        </button>
+                      </div>
                     )}
                   </div>
                 </div>
@@ -325,3 +352,5 @@ export default function OportunidadesPage() {
     </div>
   )
 }
+
+

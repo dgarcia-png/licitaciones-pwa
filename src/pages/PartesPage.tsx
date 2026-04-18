@@ -66,11 +66,16 @@ export default function PartesPage() {
   const cargar = async () => {
     setCargando(true)
     try {
-      const batch = await api.batchPartes()
-      setPartes(batch.partes?.partes || [])
-      setIncidencias(batch.incidencias?.incidencias || [])
-      setCentros(batch.centros?.centros || [])
-      setEmpleados(batch.empleados?.empleados || [])
+      const [pRes, iRes, cRes, eRes] = await Promise.allSettled([
+        api.batchPartes(),
+        api.incidencias({}),
+        api.centros(),
+        api.empleados()
+      ])
+      if (pRes.status === 'fulfilled') setPartes((pRes.value as any).partes || [])
+      if (iRes.status === 'fulfilled') setIncidencias((iRes.value as any).incidencias || [])
+      if (cRes.status === 'fulfilled') setCentros((cRes.value as any).centros || [])
+      if (eRes.status === 'fulfilled') setEmpleados((eRes.value as any).empleados || [])
     } catch(e) { console.error(e) }
     finally { setCargando(false) }
   }

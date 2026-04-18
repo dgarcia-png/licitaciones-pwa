@@ -5,7 +5,7 @@ import { usePermisos, MENU_POR_ROL } from '../hooks/usePermisos'
 import OfflineBanner from './OfflineBanner'
 import BusquedaGlobal from './BusquedaGlobal'
 import {
-  LayoutDashboard, FileSearch, PlusCircle, BarChart3,
+  LayoutDashboard, Bell, FileSearch, PlusCircle, BarChart3,
   Calculator, Gavel, FileText, BookOpen, Settings, Users,
   LogOut, Menu, X, UserCheck, Shield, ClipboardList,
   Clock, CalendarDays, Map, Activity, Briefcase, CheckSquare,
@@ -26,7 +26,7 @@ const RUTA_A_CLAVE: Record<string, string> = {
   '/escaneo-documentos': 'escaneo-documentos', '/certificaciones': 'certificaciones',
   '/mapa-supervisor': 'mapa-supervisor', '/dashboard-territorio': 'dashboard-territorio',
   '/configuracion': 'configuracion', '/usuarios': 'usuarios', '/plantillas': 'plantillas',
-  '/portal': 'portal', '/dashboard-rrhh': 'dashboard-rrhh', '/licitaciones-dashboard': 'licitaciones-dashboard',
+  '/alertas': 'alertas', '/portal': 'portal', '/dashboard-rrhh': 'dashboard-rrhh', '/licitaciones-dashboard': 'licitaciones-dashboard',
 }
 
 const NAV = [
@@ -35,6 +35,7 @@ const NAV = [
   ]},
   { grupo: 'Principal', items: [
     { clave: 'informes', to: '/informes', label: 'Informes', icon: BarChart3 },
+    { clave: 'alertas', to: '/alertas', label: 'Alertas', icon: Bell },
   ]},
   { grupo: 'Licitaciones', items: [
     { clave: 'licitaciones-dashboard', to: '/licitaciones-dashboard', label: 'Dashboard', icon: BarChart3 },

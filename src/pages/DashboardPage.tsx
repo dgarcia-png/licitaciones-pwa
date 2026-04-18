@@ -40,17 +40,18 @@ export default function DashboardPage() {
     if (silencioso) setRecargando(true)
     else setCargando(true)
     try {
-      const [l, r, opos, terr] = await Promise.all([
+      const [lRes, rRes, oposRes, terrRes] = await Promise.allSettled([
         api.dashboard(),
         api.dashboardRRHH(),
         api.oportunidades(),
-        api.dashboardTerritorio().catch(() => null)
+        api.dashboardTerritorio()
       ])
-      setLicit(l); setRrhh(r)
-      setOportunidades(opos.oportunidades || [])
-      setTerritorio(terr)
+      if (lRes.status === 'fulfilled')    setLicit(lRes.value)
+      if (rRes.status === 'fulfilled')    setRrhh(rRes.value)
+      if (oposRes.status === 'fulfilled') setOportunidades((oposRes.value as any).oportunidades || [])
+      if (terrRes.status === 'fulfilled') setTerritorio(terrRes.value)
       setUltimaAct(new Date())
-    } catch (e) { console.error(e) }
+    } catch (e) { console.error('Dashboard error:', e) }
     finally { setCargando(false); setRecargando(false) }
   }
 

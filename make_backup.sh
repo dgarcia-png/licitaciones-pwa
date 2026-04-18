@@ -1,76 +1,37 @@
 #!/bin/bash
-# ============================================================================
-# make_backup.sh — Genera backup de GAS y Frontend en formato .txt
-# Uso: bash make_backup.sh
-# Genera: GAS_YYYYMMDD.txt y FRONTEND_YYYYMMDD.txt en ~/Desktop/licitaciones-pwa/
-# ============================================================================
+# make_backup.sh — Forgeser PWA Frontend
+# Genera un backup completo de todos los archivos fuente
 
-PROYECTO="$HOME/Desktop/licitaciones-pwa"
-FECHA=$(date +%Y%m%d)
-GAS_OUT="$PROYECTO/GAS_${FECHA}.txt"
-FRONTEND_OUT="$PROYECTO/FRONTEND_${FECHA}.txt"
+DATE=$(date +%Y%m%d)
+DEST=~/Desktop/FRONTEND_${DATE}.txt
+PROJECT_DIR=~/Desktop/licitaciones-pwa
 
-echo "🔄 Generando backup del proyecto Forgeser..."
-echo "   Fecha: $FECHA"
-echo "   Proyecto: $PROYECTO"
-echo ""
+echo "📦 Generando backup frontend → $DEST"
+> "$DEST"
 
-# ── GAS BACKUP ───────────────────────────────────────────────────────────────
-echo "📦 Generando GAS_${FECHA}.txt..."
-> "$GAS_OUT"  # vaciar o crear
-
-# Buscar archivos .gs y .js en gas-backup/, ordenados por nombre
-find "$PROYECTO/gas-backup" -type f \( -name "*.gs" -o -name "*.js" \) | sort | while read -r file; do
-  echo "ARCHIVO: $file" >> "$GAS_OUT"
-  echo "==========================================" >> "$GAS_OUT"
-  cat "$file" >> "$GAS_OUT"
-  echo "" >> "$GAS_OUT"
-  echo "==========================================" >> "$GAS_OUT"
+# src/ — todos los tsx, ts
+find "$PROJECT_DIR/src" -type f \( -name "*.tsx" -o -name "*.ts" \) | sort | while read f; do
+    echo "=== $f ===" >> "$DEST"
+    cat "$f" >> "$DEST"
+    echo "" >> "$DEST"
 done
 
-GAS_FILES=$(find "$PROYECTO/gas-backup" -type f \( -name "*.gs" -o -name "*.js" \) | wc -l | tr -d ' ')
-echo "   ✅ $GAS_FILES archivos GAS → GAS_${FECHA}.txt"
+# public/sw.js
+if [ -f "$PROJECT_DIR/public/sw.js" ]; then
+    echo "=== $PROJECT_DIR/public/sw.js ===" >> "$DEST"
+    cat "$PROJECT_DIR/public/sw.js" >> "$DEST"
+    echo "" >> "$DEST"
+fi
 
-# ── FRONTEND BACKUP ──────────────────────────────────────────────────────────
-echo "📦 Generando FRONTEND_${FECHA}.txt..."
-> "$FRONTEND_OUT"
-
-# Archivos relevantes del frontend (excluyendo node_modules, dist, .vite)
-find "$PROYECTO/src" -type f \( -name "*.tsx" -o -name "*.ts" -o -name "*.css" \) \
-  | grep -v "node_modules" \
-  | grep -v "\.d\.ts" \
-  | sort \
-  | while read -r file; do
-    # Ruta relativa desde el proyecto
-    rel="${file#$PROYECTO/}"
-    echo "ARCHIVO: $rel" >> "$FRONTEND_OUT"
-    echo "==========================================" >> "$FRONTEND_OUT"
-    cat "$file" >> "$FRONTEND_OUT"
-    echo "" >> "$FRONTEND_OUT"
-    echo "==========================================" >> "$FRONTEND_OUT"
-  done
-
-# Añadir también archivos de configuración raíz
-for conf in "vite.config.ts" "tsconfig.json" "package.json" "tailwind.config.js" "tailwind.config.ts" "index.html"; do
-  if [ -f "$PROYECTO/$conf" ]; then
-    echo "ARCHIVO: $conf" >> "$FRONTEND_OUT"
-    echo "==========================================" >> "$FRONTEND_OUT"
-    cat "$PROYECTO/$conf" >> "$FRONTEND_OUT"
-    echo "" >> "$FRONTEND_OUT"
-    echo "==========================================" >> "$FRONTEND_OUT"
-  fi
+# package.json y vite.config
+for f in package.json vite.config.ts vite.config.js tsconfig.json; do
+    if [ -f "$PROJECT_DIR/$f" ]; then
+        echo "=== $PROJECT_DIR/$f ===" >> "$DEST"
+        cat "$PROJECT_DIR/$f" >> "$DEST"
+        echo "" >> "$DEST"
+    fi
 done
 
-FRONTEND_FILES=$(find "$PROYECTO/src" -type f \( -name "*.tsx" -o -name "*.ts" -o -name "*.css" \) | grep -v "\.d\.ts" | wc -l | tr -d ' ')
-echo "   ✅ $FRONTEND_FILES archivos frontend → FRONTEND_${FECHA}.txt"
-
-# ── RESUMEN ──────────────────────────────────────────────────────────────────
-echo ""
-echo "✅ Backup completado:"
-GAS_SIZE=$(du -sh "$GAS_OUT" | cut -f1)
-FRONTEND_SIZE=$(du -sh "$FRONTEND_OUT" | cut -f1)
-echo "   GAS_${FECHA}.txt        → $GAS_SIZE"
-echo "   FRONTEND_${FECHA}.txt   → $FRONTEND_SIZE"
-echo ""
-echo "💡 Para subir a Claude como contexto del proyecto,"
-echo "   sube ambos archivos en la configuración del Project."
+LINES=$(wc -l < "$DEST")
+SIZE=$(du -sh "$DEST" | cut -f1)
+echo "✅ Frontend backup: $LINES líneas · $SIZE → $DEST"

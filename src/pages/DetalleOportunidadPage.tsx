@@ -169,6 +169,7 @@ export default function DetalleOportunidadPage() {
   const [lotes, setLotes] = useState<any[]>([])
   const [cargandoLotes, setCargandoLotes] = useState(false)
   const [configLicit, setConfigLicit] = useState<any>(null)
+  const [pliegosCloudRun, setPliegosCloudRun] = useState<any[]>([])
 
   const recargarLotes = async () => {
     if (!id) return
@@ -187,6 +188,28 @@ export default function DetalleOportunidadPage() {
     id_externo: '', fecha_deteccion: '',
   })
 
+  const parsearPliegosDescargados = (data: any) => {
+    // [7/04] Cloud Run guarda pliegos en docs_json (Firestore). Antes GAS los guardaba en notas como '📎 nombre: url'.
+    let pliegos: any[] = []
+    if (data.docs_json) {
+      try {
+        const arr = typeof data.docs_json === 'string' ? JSON.parse(data.docs_json) : data.docs_json
+        if (Array.isArray(arr)) {
+          // Deduplicar por drive_id (el GAS a veces devuelve duplicados de Anexos)
+          const vistos = new Set<string>()
+          pliegos = arr.filter((d: any) => {
+            const key = d.drive_id || d.drive_url || d.url || d.nombre
+            if (vistos.has(key)) return false
+            vistos.add(key)
+            return !!(d.drive_url || d.drive_id)
+          })
+        }
+      } catch (e) { console.warn('Error parseando docs_json', e) }
+    }
+    setPliegosCloudRun(pliegos)
+    return pliegos.length
+  }
+
   const recargarDatos = async () => {
     try {
       const data = await api.detalle(id || '')
@@ -194,7 +217,8 @@ export default function DetalleOportunidadPage() {
       const cpvRaw = String(data.cpv ?? '').replace(/\.0$/, '')
       setCpvOriginal(cpvRaw)
       setNumDocsDisponibles(data.num_docs_disponibles || 0)
-      setDocsDescargados(data.docs_descargados || 0)
+      const descargadosCR = parsearPliegosDescargados(data)
+      setDocsDescargados(descargadosCR > 0 ? descargadosCR : (data.docs_descargados || 0))
       setForm({
         titulo: String(data.titulo ?? ''),
         organismo: String(data.organismo ?? ''),
@@ -236,7 +260,8 @@ export default function DetalleOportunidadPage() {
         const cpvRaw = String(data.cpv ?? '').replace(/\.0$/, '')
         setCpvOriginal(cpvRaw)
         setNumDocsDisponibles(data.num_docs_disponibles || 0)
-        setDocsDescargados(data.docs_descargados || 0)
+        const descargadosCR = parsearPliegosDescargados(data)
+        setDocsDescargados(descargadosCR > 0 ? descargadosCR : (data.docs_descargados || 0))
         setForm({
           titulo: String(data.titulo ?? ''),
           organismo: String(data.organismo ?? ''),
@@ -357,7 +382,7 @@ export default function DetalleOportunidadPage() {
   let nextAction = ''
   let nextActionLabel = ''
   let NextActionIcon = Download
-  if (form.estado === 'nueva' && numDocsDisponibles > 0 && docsDescargados === 0) {
+  if (numDocsDisponibles > 0 && docsDescargados === 0) {
     nextAction = 'descargar'; nextActionLabel = 'Siguiente paso: Descargar pliegos'; NextActionIcon = Download
   } else if ((docsDescargados > 0 || numDocsDisponibles > 0) && !analisis?.existe) {
     nextAction = 'analizar'; nextActionLabel = 'Siguiente paso: Analizar con IA'; NextActionIcon = Brain
@@ -545,7 +570,22 @@ export default function DetalleOportunidadPage() {
           <h2 className="text-sm font-semibold text-slate-900">Documentos</h2>
           {numDocsDisponibles > 0 && <span className="text-xs bg-blue-50 text-blue-600 px-2 py-0.5 rounded font-medium">{numDocsDisponibles} en PLACSP</span>}
         </div>
-        {documentosExistentes.length > 0 && (
+        {pliegosCloudRun.length > 0 && (
+          <div className="space-y-2 mb-4">
+            {pliegosCloudRun.map((doc: any, i: number) => (
+              <div key={doc.drive_id || i} className="flex items-center justify-between p-3 bg-emerald-50 rounded-xl">
+                <div className="flex items-center gap-2 min-w-0">
+                  <FileText size={16} className="text-emerald-600 shrink-0" />
+                  <span className="text-sm text-slate-700 truncate">{doc.nombre || 'Documento'}</span>
+                  {doc.tipo && <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-1.5 py-0.5 rounded shrink-0">{doc.tipo}</span>}
+                  <CheckCircle2 size={12} className="text-emerald-500 shrink-0" />
+                </div>
+                {doc.drive_url && <a href={doc.drive_url} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 hover:underline font-medium shrink-0 ml-2">Abrir</a>}
+              </div>
+            ))}
+          </div>
+        )}
+        {pliegosCloudRun.length === 0 && documentosExistentes.length > 0 && (
           <div className="space-y-2 mb-4">
             {documentosExistentes.map((doc: string, i: number) => {
               const parts = doc.replace('📎 ', '').split(': ')
@@ -895,3 +935,4 @@ export default function DetalleOportunidadPage() {
     </div>
   )
 }
+

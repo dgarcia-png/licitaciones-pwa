@@ -23,3 +23,12 @@ dist-ssr
 *.sln
 *.sw?
 .vercel
+
+# Backups de sesión
+*.bak
+*.bak.*
+FRONTEND_*.txt
+GAS_*.txt
+
+# Scripts Python desechables
+fix_*.py

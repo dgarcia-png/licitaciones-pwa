@@ -103,13 +103,13 @@ export default function PersonalPage() {
         let emps = data.empleados || []
         if (!puedeVerTodaPlantilla && centrosAsignados.length > 0)
           emps = emps.filter((e: any) => centrosAsignados.includes(e.centro) || centrosAsignados.includes(e.zona))
-        setEmpleados(emps); setStats(data.stats || {})
+        const [statsData2, convData2] = await Promise.all([api.statsRRHH(), api.convenios().catch(() => ({ convenios: [] }))]); setEmpleados(emps); setStats(statsData2 || {}); setConvenios(convData2.convenios || [])
       } else {
         const data = await api.empleados()
         let emps = data.empleados || []
         if (!puedeVerTodaPlantilla && centrosAsignados.length > 0)
           emps = emps.filter((e: any) => centrosAsignados.includes(e.centro) || centrosAsignados.includes(e.zona))
-        setEmpleados(emps); setStats({}); setConvenios([])
+        const [statsData, convData] = await Promise.all([api.statsRRHH(), api.convenios().catch(() => ({ convenios: [] }))]); setEmpleados(emps); setStats(statsData || {}); setConvenios(convData.convenios || [])
       }
     } catch (e: any) { console.error(e) }
     finally { setCargando(false) }
@@ -297,7 +297,7 @@ export default function PersonalPage() {
           <div className="p-2.5 bg-gradient-to-br from-[#1a3c34] to-[#2d5a4e] rounded-xl shadow-lg shadow-emerald-200"><Users size={22} className="text-white" /></div>
           <div>
             <h1 className="text-2xl font-bold text-slate-900">Gestión de Personal</h1>
-            <p className="text-sm text-slate-500">{stats.activos || 0} en activo · {stats.baja || 0} baja · {stats.total || 0} total</p>
+            <p className="text-sm text-slate-500">{stats.activos || 0} en activo · {stats.bajas || 0} baja · {stats.total || 0} total</p>
           </div>
         </div>
         {vista === 'lista' ? (
@@ -658,7 +658,7 @@ export default function PersonalPage() {
                 </div>
                 {capacidad.proyectos?.length > 0 && (
                   <div className="flex flex-wrap gap-2 mt-2">
-                    {capacidad.proyectos.map((p: any, i: number) => {
+                    {(capacidad.proyectos || []).map((p: any, i: number) => {
                       const colors = ['text-blue-700 bg-blue-50', 'text-emerald-700 bg-emerald-50', 'text-amber-700 bg-amber-50', 'text-purple-700 bg-purple-50']
                       return <span key={i} className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${colors[i % colors.length]}`}>{p.nombre} ({p.porcentaje}%)</span>
                     })}
