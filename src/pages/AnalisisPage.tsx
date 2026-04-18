@@ -30,14 +30,14 @@ interface Analisis {
 }
 
 function ScoreBadge({ score }: { score: number }) {
-  const color = score >= 70 ? 'bg-emerald-100 text-emerald-700 ring-emerald-300'
-    : score >= 40 ? 'bg-amber-100 text-amber-700 ring-amber-300'
+  const color = score >= 7 ? 'bg-emerald-100 text-emerald-700 ring-emerald-300'
+    : score >= 4 ? 'bg-amber-100 text-amber-700 ring-amber-300'
     : score > 0 ? 'bg-red-100 text-red-700 ring-red-300'
     : 'bg-slate-100 text-slate-500 ring-slate-300'
   return (
     <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-bold ring-1 ${color}`}>
       <Target size={14} />
-      {score}/100
+      {score}/10
     </span>
   )
 }
@@ -260,17 +260,17 @@ export default function AnalisisPage() {
           {/* Puntuación justificada */}
           {ac.puntuacion_interes && (
             <div className={`border rounded-2xl p-5 mb-4 ${
-              ac.puntuacion_interes.valor >= 70 ? 'bg-emerald-50 border-emerald-200' :
-              ac.puntuacion_interes.valor >= 40 ? 'bg-amber-50 border-amber-200' :
+              ac.puntuacion_interes.valor >= 7 ? 'bg-emerald-50 border-emerald-200' :
+              ac.puntuacion_interes.valor >= 4 ? 'bg-amber-50 border-amber-200' :
               'bg-red-50 border-red-200'
             }`}>
               <div className="flex items-center gap-3 mb-2">
-                {ac.puntuacion_interes.valor >= 70 ? <CheckCircle2 size={20} className="text-emerald-600" /> :
-                 ac.puntuacion_interes.valor >= 40 ? <AlertTriangle size={20} className="text-amber-600" /> :
+                {ac.puntuacion_interes.valor >= 7 ? <CheckCircle2 size={20} className="text-emerald-600" /> :
+                 ac.puntuacion_interes.valor >= 4 ? <AlertTriangle size={20} className="text-amber-600" /> :
                  <XCircle size={20} className="text-red-600" />}
                 <h3 className="text-sm font-bold">
-                  {ac.puntuacion_interes.valor >= 70 ? 'RECOMENDADA' :
-                   ac.puntuacion_interes.valor >= 40 ? 'EVALUAR CON DETALLE' :
+                  {ac.puntuacion_interes.valor >= 7 ? 'RECOMENDADA' :
+                   ac.puntuacion_interes.valor >= 4 ? 'EVALUAR CON DETALLE' :
                    'NO RECOMENDADA'}
                 </h3>
               </div>

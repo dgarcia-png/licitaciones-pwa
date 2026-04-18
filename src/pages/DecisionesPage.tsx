@@ -208,9 +208,9 @@ export default function DecisionesPage() {
 
           {/* ═══ INDICADORES ═══ */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
-            <div className={`rounded-xl p-4 border ${puntIA !== null ? (puntIA >= 70 ? 'bg-emerald-50 border-emerald-200' : puntIA >= 40 ? 'bg-amber-50 border-amber-200' : 'bg-red-50 border-red-200') : 'bg-slate-50 border-slate-200'}`}>
+            <div className={`rounded-xl p-4 border ${puntIA !== null ? (puntIA >= 7 ? 'bg-emerald-50 border-emerald-200' : puntIA >= 4 ? 'bg-amber-50 border-amber-200' : 'bg-red-50 border-red-200') : 'bg-slate-50 border-slate-200'}`}>
               <div className="flex items-center gap-1 mb-1"><Brain size={14} className="text-slate-500" /><span className="text-[10px] text-slate-500 uppercase">IA</span></div>
-              <p className="text-2xl font-black">{puntIA !== null ? puntIA : '—'}<span className="text-sm font-normal text-slate-400">/100</span></p>
+              <p className="text-2xl font-black">{puntIA !== null ? puntIA : '—'}<span className="text-sm font-normal text-slate-400">/10</span></p>
             </div>
             <div className={`rounded-xl p-4 border ${res.esRentable ? 'bg-emerald-50 border-emerald-200' : res.totalSinIVA ? 'bg-red-50 border-red-200' : 'bg-slate-50 border-slate-200'}`}>
               <div className="flex items-center gap-1 mb-1"><TrendingUp size={14} className="text-slate-500" /><span className="text-[10px] text-slate-500 uppercase">Rentable</span></div>
@@ -725,7 +725,7 @@ export default function DecisionesPage() {
           {/* ═══ CHECKLIST ═══ */}
           <Bloque title="Checklist: ¿estamos preparados?" icon={ClipboardCheck} color="bg-emerald-100">
             <div className="space-y-2">
-              <CheckItem label="Análisis IA del pliego" ok={tieneAnalisis} detalle={tieneAnalisis ? `Puntuación ${puntIA}/100` : 'Pendiente de analizar'} />
+              <CheckItem label="Análisis IA del pliego" ok={tieneAnalisis} detalle={tieneAnalisis ? `Puntuación ${puntIA}/10` : 'Pendiente de analizar'} />
               <CheckItem label="Cálculo económico" ok={tieneCalculo} detalle={tieneCalculo ? `Oferta: ${fmt(ofertaSinIVA)} | Baja: ${fmtPct(res.baja||0)}` : 'Pendiente de calcular'} />
               <CheckItem label="Rentabilidad" ok={tieneCalculo ? res.esRentable : null} detalle={tieneCalculo ? (res.esRentable ? `Margen: ${fmtPct(res.margenReal||0)}` : 'No es rentable con esta estructura') : 'Depende del cálculo'} />
               <CheckItem label="Clasificación empresarial" ok={ac.clasificacion_empresarial?.requerida === 'No' || ac.clasificacion_empresarial?.requerida === 'Eximida' ? true : ac.clasificacion_empresarial?.requerida === 'Sí' ? null : null} detalle={ac.clasificacion_empresarial?.requerida === 'Sí' ? `Se requiere: ${ac.clasificacion_empresarial.grupo || '?'}` : ac.clasificacion_empresarial?.requerida || 'No especificado en el análisis'} />
@@ -764,7 +764,7 @@ export default function DecisionesPage() {
             <div className="grid grid-cols-2 gap-4 mb-5">
               <div className="space-y-1.5">
                 <p className="text-xs font-bold text-emerald-700 uppercase mb-2">A favor</p>
-                {puntIA !== null && puntIA >= 50 && <p className="text-xs text-emerald-700">✓ IA: {puntIA}/100</p>}
+                {puntIA !== null && puntIA >= 5 && <p className="text-xs text-emerald-700">✓ IA: {puntIA}/10</p>}
                 {res.esRentable && <p className="text-xs text-emerald-700">✓ Rentable (margen {fmtPct(res.margenReal||0)})</p>}
                 {res.baja > 5 && <p className="text-xs text-emerald-700">✓ Baja competitiva ({fmtPct(res.baja)})</p>}
                 {ac.oportunidades_detectadas?.length > 0 && <p className="text-xs text-emerald-700">✓ {ac.oportunidades_detectadas.length} oportunidades</p>}
@@ -776,7 +776,7 @@ export default function DecisionesPage() {
               </div>
               <div className="space-y-1.5">
                 <p className="text-xs font-bold text-red-700 uppercase mb-2">En contra</p>
-                {puntIA !== null && puntIA < 40 && <p className="text-xs text-red-700">✗ IA baja ({puntIA}/100)</p>}
+                {puntIA !== null && puntIA < 4 && <p className="text-xs text-red-700">✗ IA baja ({puntIA}/10)</p>}
                 {res.totalSinIVA > 0 && !res.esRentable && <p className="text-xs text-red-700">✗ No rentable</p>}
                 {res.baja < 0 && <p className="text-xs text-red-700">✗ Supera presupuesto</p>}
                 {(res.baja||0) > 0 && (res.baja||0) < 5 && <p className="text-xs text-amber-700">⚠ Baja ajustada ({fmtPct(res.baja)})</p>}

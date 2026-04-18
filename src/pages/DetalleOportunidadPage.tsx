@@ -244,8 +244,8 @@ export default function DetalleOportunidadPage() {
       if (data.existe) {
         setAnalisis(data)
         const puntIA = data.analisis_completo?.puntuacion_interes?.valor ?? data.puntuacion_interes ?? 0
-        if (puntIA < 30) setSugerenciaIA('La IA recomienda DESCARTAR esta oportunidad. No encaja con el perfil de la empresa.')
-        else if (puntIA >= 70) setSugerenciaIA('La IA considera esta oportunidad MUY INTERESANTE. Pendiente de cálculo económico para decisión GO.')
+        if (puntIA < 3) setSugerenciaIA('La IA recomienda DESCARTAR esta oportunidad. No encaja con el perfil de la empresa.')
+        else if (puntIA >= 7) setSugerenciaIA('La IA considera esta oportunidad MUY INTERESANTE. Pendiente de cálculo económico para decisión GO.')
         else setSugerenciaIA('La IA ve potencial pero con reservas. Revisa los riesgos antes de decidir.')
       }
     } catch (e) {}
@@ -341,12 +341,11 @@ export default function DetalleOportunidadPage() {
         await recargarAnalisis()
         await recargarDatos()
         const puntIA = result.puntuacion_interes || 0
-        if (puntIA < 30 && form.estado === 'en_analisis') {
-          await cambiarEstado('descartada')
-          setProgreso('')
-        } else {
-          setProgreso('')
+        // Escala IA: 0-10. No descartamos automaticamente; el usuario decide tras revisar.
+        if (puntIA < 3 && form.estado === 'nueva') {
+          await cambiarEstado('en_analisis')
         }
+        setProgreso('')
       } else { setError(result.error || 'Error en el análisis') }
     } catch (e) { setError('Error ejecutando análisis. Puede tardar hasta 2 minutos.') }
     finally { setAnalizando(false); setProgreso('') }
@@ -386,7 +385,7 @@ export default function DetalleOportunidadPage() {
     nextAction = 'descargar'; nextActionLabel = 'Siguiente paso: Descargar pliegos'; NextActionIcon = Download
   } else if ((docsDescargados > 0 || numDocsDisponibles > 0) && !analisis?.existe) {
     nextAction = 'analizar'; nextActionLabel = 'Siguiente paso: Analizar con IA'; NextActionIcon = Brain
-  } else if (analisis?.existe && puntIA !== null && puntIA >= 30 && !['go','no_go','descartada'].includes(form.estado)) {
+  } else if (analisis?.existe && puntIA !== null && puntIA >= 3 && !['go','no_go','descartada'].includes(form.estado)) {
     nextAction = 'calculo'; nextActionLabel = 'Siguiente paso: Cálculo económico'; NextActionIcon = Euro
   }
 
@@ -406,7 +405,7 @@ export default function DetalleOportunidadPage() {
         <div className="flex items-center gap-3 shrink-0">
           {puntIA !== null && (
             <div className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold ${
-              puntIA >= 70 ? 'bg-emerald-100 text-emerald-700' : puntIA >= 40 ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700'
+              puntIA >= 7 ? 'bg-emerald-100 text-emerald-700' : puntIA >= 4 ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700'
             }`}><Brain size={12} /> IA: {puntIA}</div>
           )}
           <div className="text-right">
@@ -452,11 +451,11 @@ export default function DetalleOportunidadPage() {
       {/* Sugerencia IA */}
       {sugerenciaIA && (
         <div className={`flex items-start gap-3 p-4 rounded-xl mb-4 ${
-          puntIA !== null && puntIA < 30 ? 'bg-red-50 border border-red-200' :
-          puntIA !== null && puntIA >= 70 ? 'bg-emerald-50 border border-emerald-200' :
+          puntIA !== null && puntIA < 3 ? 'bg-red-50 border border-red-200' :
+          puntIA !== null && puntIA >= 7 ? 'bg-emerald-50 border border-emerald-200' :
           'bg-amber-50 border border-amber-200'
         }`}>
-          <Brain size={18} className={puntIA !== null && puntIA < 30 ? 'text-red-600' : puntIA !== null && puntIA >= 70 ? 'text-emerald-600' : 'text-amber-600'} />
+          <Brain size={18} className={puntIA !== null && puntIA < 3 ? 'text-red-600' : puntIA !== null && puntIA >= 7 ? 'text-emerald-600' : 'text-amber-600'} />
           <p className="text-sm text-slate-700">{sugerenciaIA}</p>
         </div>
       )}
@@ -641,25 +640,25 @@ export default function DetalleOportunidadPage() {
             </div>
             {puntIA !== null && (
               <div className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-sm font-bold ring-1 ${
-                puntIA >= 70 ? 'bg-emerald-100 text-emerald-700 ring-emerald-300' :
-                puntIA >= 40 ? 'bg-amber-100 text-amber-700 ring-amber-300' :
+                puntIA >= 7 ? 'bg-emerald-100 text-emerald-700 ring-emerald-300' :
+                puntIA >= 4 ? 'bg-amber-100 text-amber-700 ring-amber-300' :
                 'bg-red-100 text-red-700 ring-red-300'
-              }`}><Target size={14} />{puntIA}/100</div>
+              }`}><Target size={14} />{puntIA}/10</div>
             )}
           </div>
 
           {ac.puntuacion_interes && (
             <div className={`rounded-xl p-4 mb-4 ${
-              ac.puntuacion_interes.valor >= 70 ? 'bg-emerald-50 border border-emerald-200' :
-              ac.puntuacion_interes.valor >= 40 ? 'bg-amber-50 border border-amber-200' :
+              ac.puntuacion_interes.valor >= 7 ? 'bg-emerald-50 border border-emerald-200' :
+              ac.puntuacion_interes.valor >= 4 ? 'bg-amber-50 border border-amber-200' :
               'bg-red-50 border border-red-200'
             }`}>
               <div className="flex items-center gap-2 mb-1">
-                {ac.puntuacion_interes.valor >= 70 ? <CheckCircle2 size={16} className="text-emerald-600" /> :
-                 ac.puntuacion_interes.valor >= 40 ? <AlertTriangle size={16} className="text-amber-600" /> :
+                {ac.puntuacion_interes.valor >= 7 ? <CheckCircle2 size={16} className="text-emerald-600" /> :
+                 ac.puntuacion_interes.valor >= 4 ? <AlertTriangle size={16} className="text-amber-600" /> :
                  <XCircle size={16} className="text-red-600" />}
                 <span className="text-sm font-bold">
-                  {ac.puntuacion_interes.valor >= 70 ? 'RECOMENDADA' : ac.puntuacion_interes.valor >= 40 ? 'EVALUAR' : 'NO RECOMENDADA'}
+                  {ac.puntuacion_interes.valor >= 7 ? 'RECOMENDADA' : ac.puntuacion_interes.valor >= 4 ? 'EVALUAR' : 'NO RECOMENDADA'}
                 </span>
               </div>
               <p className="text-sm text-slate-700">{ac.puntuacion_interes.justificacion}</p>
