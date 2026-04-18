@@ -132,7 +132,7 @@ function SidebarContent({ collapsed, onToggle, onClose, onBuscar }: {
     return menu.includes('*') || menu.includes(clave)
   }
 
-  const handleLogout = () => { logout(); navigate('/login') }
+  const handleLogout = async () => { await logout(); navigate('/login') }
   const rolInfo = ROL_BADGE[rol || ''] || { label: rol || '', color: 'bg-slate-500/20 text-slate-300' }
 
   return (
@@ -197,23 +197,34 @@ function SidebarContent({ collapsed, onToggle, onClose, onBuscar }: {
         })}
       </nav>
 
-      {/* Perfil */}
-      <div className="p-3 border-t border-white/10">
+      {/* Perfil + Cerrar sesión */}
+      <div className="p-3 border-t border-white/10 space-y-2">
         {!collapsed ? (
-          <div className="flex items-center gap-3 px-2 py-2 rounded-xl hover:bg-white/10 transition-colors">
-            <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
-              {usuario?.nombre?.[0]?.toUpperCase() || '?'}
+          <>
+            <div className="flex items-center gap-3 px-2 py-2 rounded-xl">
+              <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
+                {usuario?.nombre?.[0]?.toUpperCase() || '?'}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-white truncate">{usuario?.nombre}</p>
+                <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${rolInfo.color}`}>{rolInfo.label}</span>
+              </div>
             </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-white truncate">{usuario?.nombre}</p>
-              <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${rolInfo.color}`}>{rolInfo.label}</span>
-            </div>
-            <button onClick={handleLogout} title="Cerrar sesión" className="text-white/40 hover:text-white p-1">
-              <LogOut size={15} />
+            <button
+              onClick={handleLogout}
+              className="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-sm text-white/80 hover:text-white hover:bg-red-500/20 transition-colors"
+              title="Cerrar sesión"
+            >
+              <LogOut size={17} className="flex-shrink-0" />
+              <span>Cerrar sesión</span>
             </button>
-          </div>
+          </>
         ) : (
-          <button onClick={handleLogout} className="w-full flex justify-center p-2 text-white/40 hover:text-white rounded-xl hover:bg-white/10">
+          <button
+            onClick={handleLogout}
+            className="w-full flex justify-center p-2 text-white/70 hover:text-white rounded-xl hover:bg-red-500/20 transition-colors"
+            title="Cerrar sesión"
+          >
             <LogOut size={18} />
           </button>
         )}

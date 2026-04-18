@@ -221,6 +221,7 @@ export const api = {
   // AUTH
   // ═══════════════════════════════════════════════════════════════════════════
   login: (email: string, password: string) => postFAST('/auth/login', { email, password }),
+  logout: () => postFAST('/auth/logout', {}),
 
   // ═══════════════════════════════════════════════════════════════════════════
   // LICITACIONES — Cloud Run

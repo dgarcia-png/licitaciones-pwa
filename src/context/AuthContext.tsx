@@ -17,7 +17,7 @@ export interface Usuario {
 interface AuthContextType {
   usuario: Usuario | null
   login: (email: string, password: string) => Promise<boolean>
-  logout: () => void
+  logout: () => Promise<void>
   cargando: boolean
 }
 
@@ -57,7 +57,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
-  const logout = () => {
+  const logout = async (): Promise<void> => {
+    // 1. Intenta invalidar la sesión en el backend (cierra token server-side)
+    //    Si falla (red caída, etc.), seguimos cerrando en cliente.
+    try {
+      await api.logout()
+    } catch (e) {
+      console.warn('Logout backend falló, cerrando solo cliente:', e)
+    }
+    // 2. Limpia siempre estado cliente
     setUsuario(null)
     localStorage.removeItem('usuario')
     localStorage.removeItem('auth_token')
