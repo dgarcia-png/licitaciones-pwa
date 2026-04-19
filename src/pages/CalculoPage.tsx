@@ -263,7 +263,11 @@ export default function CalculoPage() {
   const baja = presSinIVA > 0 ? ((presSinIVA - totalSinIVA) / presSinIVA * 100) : 0
   const margenReal = presSinIVA > 0 ? ((presSinIVA - costesDirectos - costesIndirectos - importeGG) / presSinIVA * 100) : 0
   const esRentable = totalSinIVA < presSinIVA && presSinIVA > 0
-  const haySubrogacion = analisis?.existe && /^s[ií]$/i.test(analisis?.analisis_completo?.personal_requerido?.subrogacion || '') || /^s[ií]$/i.test(analisis?.analisis_completo?.personal_subrogacion?.aplica || '')
+  // [M-LIC-2] Regex robusta: reconoce "Si", "Sí", "SI", "SÍ", "si.", "sí ", "yes"
+  const _subr1 = (analisis?.analisis_completo?.personal_requerido?.subrogacion || '').toString().trim()
+  const _subr2 = (analisis?.analisis_completo?.personal_subrogacion?.aplica || '').toString().trim()
+  const _esSi = (v: string) => /^s[ií][^n]?$/i.test(v) || /^yes$/i.test(v) || v === '1' || v === 'true'
+  const haySubrogacion = analisis?.existe && (_esSi(_subr1) || _esSi(_subr2))
 
   const escenarios = useMemo(() => [
     { nombre: 'Conservador', gg: pctGG+2, bi: pctBI+1 },
@@ -769,3 +773,4 @@ export default function CalculoPage() {
     </div>
   )
 }
+
