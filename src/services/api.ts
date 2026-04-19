@@ -258,7 +258,21 @@ export const api = {
   registrarSeguimiento:(data: any) => postFAST('/licitaciones/seguimiento', data),
   plContrato:       (id: string, meses?: number) => fetchFAST('/licitaciones/pl-contrato/' + id, meses ? { meses: String(meses) } : {}),
   plMesActual:      (id: string) => fetchFAST('/licitaciones/pl-mes-actual/' + id),
-  buscarNuevasLicitaciones: () => postFAST('/licitaciones/buscar-nuevas', {}),
+  buscarNuevasLicitaciones: async () => {
+    // Timeout extendido a 180s — GAS puede tardar hasta 2 minutos
+    const controller = new AbortController()
+    const tid = setTimeout(() => controller.abort(), 180000)
+    try {
+      const r = await fetch(`${API_FAST}/licitaciones/buscar-nuevas`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-token': getToken() },
+        body: JSON.stringify({}),
+        signal: controller.signal
+      })
+      if (!r.ok) throw new Error('HTTP ' + r.status)
+      return sanitize(await r.json())
+    } finally { clearTimeout(tid) }
+  },
   recalcularScoring:        () => postFAST('/licitaciones/recalcular-scoring', {}),
   buscarConvenioInternet:(data: any) => postFAST('/licitaciones/buscar-convenio', data),
   archivarOportunidad:  (id: string) => postFAST('/licitaciones/oportunidades/' + id + '/archivar', {}),
