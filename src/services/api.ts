@@ -1,4 +1,4 @@
-// src/services/api.ts — ACTUALIZADO 19/04/2026
+// src/services/api.ts — ACTUALIZADO 20/04/2026
 // [6/04] AUDITORÍA COMPLETA: corregido API_BASE, migradas 11 llamadas GAS→CR
 // [4/04] Bloques 6-11: validarMasivo, vehículos/calidad/portal/planificación/informes → Cloud Run
 
@@ -352,9 +352,19 @@ export const api = {
   // USUARIOS — Cloud Run
   // ═══════════════════════════════════════════════════════════════════════════
   usuarios:         () => fetchFAST('/usuarios'),
-  addUsuario:       (data: any) => postFAST('/usuarios', data),
-  updateUsuario:    (data: any) => putFAST('/usuarios/' + data.email.replace(/[^a-zA-Z0-9]/g, '_'), data),
-  deleteUsuario:    (email: string) => deleteFAST('/usuarios/' + email.replace(/[^a-zA-Z0-9]/g, '_')),
+  usuario:          (id: string) => fetchFAST('/usuarios/' + id),
+  addUsuario:       (data: any) => { cacheInvalidate('usuarios'); return postFAST('/usuarios', data) },
+  updateUsuario:    (data: any) => { cacheInvalidate('usuarios'); return putFAST('/usuarios/' + data.email.replace(/[^a-zA-Z0-9]/g, '_'), data) },
+  deleteUsuario:    (email: string) => { cacheInvalidate('usuarios'); return deleteFAST('/usuarios/' + email.replace(/[^a-zA-Z0-9]/g, '_')) },
+  // [B-NEW-1] Endpoints específicos de rol/nivel/activo
+  cambiarRol:       (id: string, rol: string) => { cacheInvalidate('usuarios'); return putFAST('/usuarios/' + id + '/rol', { rol }) },
+  cambiarNivel:     (id: string, nivel: number) => { cacheInvalidate('usuarios'); return putFAST('/usuarios/' + id + '/nivel', { nivel }) },
+  cambiarActivo:    (id: string, activo: boolean) => { cacheInvalidate('usuarios'); return putFAST('/usuarios/' + id + '/activo', { activo }) },
+  // [B-NEW-2] Roles config
+  rolesConfig:      () => fetchFAST('/usuarios/roles/config'),
+  updateRolConfig:  (nombre: string, data: any) => putFAST('/usuarios/roles/' + nombre, data),
+  // [B-NEW-4] Backfill
+  backfillNivel:    () => postFAST('/usuarios/backfill-nivel', {}),
 
   // ═══════════════════════════════════════════════════════════════════════════
   // FICHAJES — Cloud Run
@@ -636,4 +646,5 @@ export const api = {
   guardarPlantillaCPV:(data: any) => postAPI({ action: 'guardar_plantilla_cpv', ...data }),
   eliminarPlantillaCPV:(id: string) => postAPI({ action: 'eliminar_plantilla_cpv', id }),
 }
+
 
