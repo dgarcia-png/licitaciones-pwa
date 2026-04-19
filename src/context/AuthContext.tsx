@@ -26,9 +26,21 @@ const AuthContext = createContext<AuthContextType | null>(null)
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [usuario, setUsuario] = useState<Usuario | null>(() => {
     const saved = localStorage.getItem('usuario')
-    if (saved) {
-      // Ya logueado → precarga datos en segundo plano
+    const token = localStorage.getItem('auth_token')
+    if (saved && token) {
       setTimeout(() => api.prefetch(), 500)
+      // [C32] Verificar token en background — si ha expirado, cerrar sesión
+      setTimeout(async () => {
+        try {
+          const r = await api.usuarios()
+          if (r && (r.ok === false && (r.code === 401 || r.code === 403))) {
+            setUsuario(null)
+            localStorage.removeItem('usuario')
+            localStorage.removeItem('auth_token')
+            window.location.href = '/login'
+          }
+        } catch {}
+      }, 2000)
       return JSON.parse(saved)
     }
     return null
@@ -43,17 +55,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUsuario(result.usuario)
         localStorage.setItem('usuario', JSON.stringify(result.usuario))
         localStorage.setItem('auth_token', result.token)
-        // Precarga datos comunes en segundo plano
         setTimeout(() => api.prefetch(), 200)
         setCargando(false)
         return true
       }
       setCargando(false)
-      return false
-    } catch (e) {
+      // [C31] Propagar mensaje de error del backend para mostrarlo en LoginPage
+      const msg = result.error || 'Credenciales incorrectas'
+      throw new Error(msg)
+    } catch (e: any) {
       console.error('Login error:', e)
       setCargando(false)
-      return false
+      throw e  // [C31] Re-lanzar para que LoginPage muestre el mensaje real
     }
   }
 
@@ -83,3 +96,4 @@ export function useAuth() {
   if (!ctx) throw new Error('useAuth debe usarse dentro de AuthProvider')
   return ctx
 }
+
