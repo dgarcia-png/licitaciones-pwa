@@ -14,7 +14,7 @@ if (isProd) {
   Sentry.init({
     dsn: 'https://1251dc1c702e57374ba15032a5f21f68@o4511242871242752.ingest.de.sentry.io/4511242878910544',
     environment: import.meta.env.MODE || 'production',
-    release: 'forgeser-frontend@2026.04.18',  // actualizar manualmente en cada deploy importante
+    release: 'forgeser-frontend@' + (import.meta.env.VITE_APP_VERSION || new Date().toISOString().slice(0,10)),
 
     // No enviamos PII por defecto — proteger emails, IPs, datos de empleados
     sendDefaultPii: false,
@@ -111,3 +111,4 @@ if ('serviceWorker' in navigator) {
     })
   })
 }
+
