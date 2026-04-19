@@ -1,8 +1,22 @@
 // src/utils/exportInformes.ts
-// Exportación Excel (SheetJS) y PDF (print) para todos los tabs de Informes
-// Requiere: npm install xlsx
+// Exportación Excel (exceljs) y PDF (print) para todos los tabs de Informes
+// exceljs se carga de forma dinámica (lazy) para no inflar el bundle principal
 
-import * as XLSX from 'xlsx'
+import type ExcelJS from 'exceljs'
+
+async function getExcelJS() {
+  const mod = await import('exceljs')
+  return mod.default
+}
+
+// Helper: guardar workbook exceljs en browser
+async function xlsxSave(wb: ExcelJS.Workbook, filename: string) {
+  const buf = await wb.xlsx.writeBuffer()
+  const blob = new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a'); a.href = url; a.download = filename
+  a.click(); URL.revokeObjectURL(url)
+}
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 
@@ -11,14 +25,15 @@ function fmt(n: number | undefined | null): string {
   return Number(n).toFixed(2)
 }
 
-function descargar(wb: XLSX.WorkBook, nombre: string) {
-  XLSX.writeFile(wb, `${nombre}_${new Date().toISOString().slice(0,10)}.xlsx`)
+async function descargar(wb: ExcelJS.Workbook, nombre: string) {
+  await xlsxSave(wb, `${nombre}_${new Date().toISOString().slice(0,10)}.xlsx`)
 }
 
 // ─── Tab Económico / P&L ────────────────────────────────────────────────────
 
-export function exportarEconomicoExcel(informeEco: any) {
-  const wb = XLSX.utils.book_new()
+export async function exportarEconomicoExcel(informeEco: any) {
+  const ExcelJS = await getExcelJS()
+  const wb = new ExcelJS.Workbook()
 
   // Hoja 1: Resumen contratos
   const contratos = (informeEco?.contratos || []).map((c: any) => ({
@@ -31,8 +46,8 @@ export function exportarEconomicoExcel(informeEco: any) {
     'Meses':            c.meses_registrados || 0,
     'Alerta margen':    c.alerta_margen ? 'Sí' : 'No',
   }))
-  const ws1 = XLSX.utils.json_to_sheet(contratos)
-  XLSX.utils.book_append_sheet(wb, ws1, 'Contratos P&L')
+  const ws1 = wb.addWorksheet('Contratos P&L')
+  ws1.addRows(contratos)
 
   // Hoja 2: KPIs globales
   const g = informeEco?.global || {}
@@ -43,16 +58,17 @@ export function exportarEconomicoExcel(informeEco: any) {
     { 'KPI': 'Margen global (%)',    'Valor': fmt(g.margen_global_pct) },
     { 'KPI': 'Contratos en alerta',  'Valor': g.contratos_alerta || 0 },
   ]
-  const ws2 = XLSX.utils.json_to_sheet(kpis)
-  XLSX.utils.book_append_sheet(wb, ws2, 'KPIs globales')
+  const ws2 = wb.addWorksheet('KPIs globales')
+  ws2.addRows(kpis)
 
-  descargar(wb, 'informe_economico')
+  await descargar(wb, 'informe_economico')
 }
 
 // ─── Tab Licitaciones ───────────────────────────────────────────────────────
 
-export function exportarLicitacionesExcel(informeLic: any) {
-  const wb = XLSX.utils.book_new()
+export async function exportarLicitacionesExcel(informeLic: any) {
+  const ExcelJS = await getExcelJS()
+  const wb = new ExcelJS.Workbook()
 
   const ops = (informeLic?.ultimas_oportunidades || []).map((o: any) => ({
     'Título':           o.titulo || '',
@@ -63,8 +79,8 @@ export function exportarLicitacionesExcel(informeLic: any) {
     'Fecha límite':     o.fecha_limite || '',
     'CPV':              o.cpv || '',
   }))
-  const ws1 = XLSX.utils.json_to_sheet(ops)
-  XLSX.utils.book_append_sheet(wb, ws1, 'Oportunidades')
+  const ws1 = wb.addWorksheet('Oportunidades')
+  ws1.addRows(ops)
 
   const k = informeLic?.kpis || {}
   const kpis = [
@@ -75,16 +91,17 @@ export function exportarLicitacionesExcel(informeLic: any) {
     { 'KPI': 'Scoring medio',           'Valor': k.scoring_medio || 0 },
     { 'KPI': 'Contratos activos',       'Valor': k.contratos_activos || 0 },
   ]
-  const ws2 = XLSX.utils.json_to_sheet(kpis)
-  XLSX.utils.book_append_sheet(wb, ws2, 'KPIs')
+  const ws2 = wb.addWorksheet('KPIs')
+  ws2.addRows(kpis)
 
-  descargar(wb, 'informe_licitaciones')
+  await descargar(wb, 'informe_licitaciones')
 }
 
 // ─── Tab RRHH ───────────────────────────────────────────────────────────────
 
-export function exportarRRHHExcel(informeRRHH: any) {
-  const wb = XLSX.utils.book_new()
+export async function exportarRRHHExcel(informeRRHH: any) {
+  const ExcelJS = await getExcelJS()
+  const wb = new ExcelJS.Workbook()
 
   const empleados = (informeRRHH?.empleados_detalle || []).map((e: any) => ({
     'Nombre':          `${e.nombre || ''} ${e.apellidos || ''}`.trim(),
@@ -95,8 +112,8 @@ export function exportarRRHHExcel(informeRRHH: any) {
     'Estado':          e.estado || '',
     'Contrato':        e.tipo_contrato || '',
   }))
-  const ws1 = XLSX.utils.json_to_sheet(empleados)
-  XLSX.utils.book_append_sheet(wb, ws1, 'Plantilla')
+  const ws1 = wb.addWorksheet('Plantilla')
+  ws1.addRows(empleados)
 
   const p = informeRRHH?.plantilla || {}
   const f = informeRRHH?.fichajes || {}
@@ -111,16 +128,17 @@ export function exportarRRHHExcel(informeRRHH: any) {
     { 'KPI': 'Coste nómina est. (€)',      'Valor': fmt(informeRRHH?.coste_nomina_estimado) },
     { 'KPI': 'Contratos a vencer 30d',     'Valor': p.contratos_vencer_30d || 0 },
   ]
-  const ws2 = XLSX.utils.json_to_sheet(kpis)
-  XLSX.utils.book_append_sheet(wb, ws2, 'KPIs')
+  const ws2 = wb.addWorksheet('KPIs')
+  ws2.addRows(kpis)
 
-  descargar(wb, 'informe_rrhh')
+  await descargar(wb, 'informe_rrhh')
 }
 
 // ─── Tab Territorio ─────────────────────────────────────────────────────────
 
-export function exportarTerritorioExcel(informeTerr: any) {
-  const wb = XLSX.utils.book_new()
+export async function exportarTerritorioExcel(informeTerr: any) {
+  const ExcelJS = await getExcelJS()
+  const wb = new ExcelJS.Workbook()
 
   const c = informeTerr?.centros || {}
   const o = informeTerr?.operativo || {}
@@ -141,16 +159,17 @@ export function exportarTerritorioExcel(informeTerr: any) {
     { 'Concepto': 'Calidad media (sobre 5)',   'Valor': q.media_mes || 0 },
     { 'Concepto': 'Inspecciones mes',          'Valor': q.num_inspecciones || 0 },
   ]
-  const ws = XLSX.utils.json_to_sheet(resumen)
-  XLSX.utils.book_append_sheet(wb, ws, 'Territorio')
+  const ws = wb.addWorksheet('Territorio')
+  ws.addRows(resumen)
 
-  descargar(wb, 'informe_territorio')
+  await descargar(wb, 'informe_territorio')
 }
 
 // ─── Tab Rendimiento ────────────────────────────────────────────────────────
 
-export function exportarRendimientoExcel(infRend: any) {
-  const wb = XLSX.utils.book_new()
+export async function exportarRendimientoExcel(infRend: any) {
+  const ExcelJS = await getExcelJS()
+  const wb = new ExcelJS.Workbook()
 
   // Hoja 1: Resumen proyectos
   const proyectos = (infRend?.proyectos || []).map((p: any) => ({
@@ -176,8 +195,8 @@ export function exportarRendimientoExcel(infRend: any) {
     'IPC (índice coste)':         fmt(p.indice_coste),
     'Alertas':                    (p.alertas || []).map((a: any) => a.msg).join(' | '),
   }))
-  const ws1 = XLSX.utils.json_to_sheet(proyectos)
-  XLSX.utils.book_append_sheet(wb, ws1, 'Proyectos')
+  const ws1 = wb.addWorksheet('Proyectos')
+  ws1.addRows(proyectos)
 
   // Hoja 2: Resumen global
   const r = infRend?.resumen || {}
@@ -191,8 +210,8 @@ export function exportarRendimientoExcel(infRend: any) {
     { 'KPI': 'Total beneficio (€)',       'Valor': fmt(r.total_beneficio) },
     { 'KPI': 'Margen global (%)',         'Valor': fmt(r.margen_global) },
   ]
-  const ws2 = XLSX.utils.json_to_sheet(resumen)
-  XLSX.utils.book_append_sheet(wb, ws2, 'Resumen global')
+  const ws2 = wb.addWorksheet('Resumen global')
+  ws2.addRows(resumen)
 
   // Hoja 3 por proyecto: evolución mensual (todos concatenados)
   const evolucion: any[] = []
@@ -215,11 +234,11 @@ export function exportarRendimientoExcel(infRend: any) {
     }
   }
   if (evolucion.length > 0) {
-    const ws3 = XLSX.utils.json_to_sheet(evolucion)
-    XLSX.utils.book_append_sheet(wb, ws3, 'Evolución mensual')
+    const ws3 = wb.addWorksheet('Evolución mensual')
+    ws3.addRows(evolucion)
   }
 
-  descargar(wb, 'informe_rendimiento')
+  await descargar(wb, 'informe_rendimiento')
 }
 
 // ─── PDF genérico (print ventana) ───────────────────────────────────────────
@@ -294,3 +313,4 @@ export function imprimirInformeRendimiento(infRend: any) {
     w.onload = () => w.print()
   }
 }
+

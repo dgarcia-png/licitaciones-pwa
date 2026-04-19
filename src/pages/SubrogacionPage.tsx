@@ -87,8 +87,8 @@ function Countdown({ fecha }: { fecha: string }) {
 
 // [6/04] Excel export via SheetJS
 async function exportarExcel(personal: any[], subTitulo: string) {
-  const XLSX = await import('xlsx')
-  const wb = XLSX.utils.book_new()
+  const ExcelJS = (await import('exceljs')).default
+  const wb = new ExcelJS.Workbook()
   const datos = personal.map(p => ({
     'Nombre': p.nombre || '', 'Apellidos': p.apellidos || '', 'DNI': p.dni || '',
     'Teléfono': p.telefono || '', 'Email': p.email || '', 'Categoría': p.categoria || '',
@@ -97,10 +97,9 @@ async function exportarExcel(personal: any[], subTitulo: string) {
     'Estado': getPaso(p.estado).label, 'NSS': p.nss || '', 'IBAN': p.cuenta_bancaria || '',
     'Dirección': p.direccion || '', 'Fecha nac.': p.fecha_nacimiento || '',
   }))
-  const ws = XLSX.utils.json_to_sheet(datos)
-  ws['!cols'] = [{ wch: 16 }, { wch: 20 }, { wch: 12 }, { wch: 12 }, { wch: 22 }, { wch: 20 }, { wch: 10 }, { wch: 12 }, { wch: 12 }, { wch: 16 }, { wch: 16 }, { wch: 16 }, { wch: 24 }, { wch: 28 }, { wch: 12 }]
-  XLSX.utils.book_append_sheet(wb, ws, 'Personal')
-  XLSX.writeFile(wb, `Subrogacion_${(subTitulo || 'listado').replace(/[^a-zA-Z0-9]/g, '_').substring(0, 40)}.xlsx`)
+  const ws = wb.addWorksheet('Personal')
+  ws.addRows(datos)
+  await xlsxSave(wb, `Subrogacion_${(subTitulo || 'listado').replace(/[^a-zA-Z0-9]/g, '_').substring(0, 40)}.xlsx`)
 }
 
 export default function SubrogacionPage() {
@@ -768,3 +767,4 @@ export default function SubrogacionPage() {
     </div>
   )
 }
+

@@ -59,10 +59,19 @@ function circuloDia(d: any) {
   return <div className="w-10 h-10 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 bg-slate-100 text-slate-400">{dia}</div>
 }
 
+// Helper: guardar workbook exceljs en browser
+async function xlsxSave(wb: ExcelJS.Workbook, filename: string) {
+  const buf = await wb.xlsx.writeBuffer()
+  const blob = new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a'); a.href = url; a.download = filename
+  a.click(); URL.revokeObjectURL(url)
+}
+
 // ─── Excel export helper ─────────────────────────────────────────────────────
 async function exportarExcel(resumenMensual: any, mesLabel: string) {
-  const XLSX = await import('xlsx')
-  const wb = XLSX.utils.book_new()
+  const ExcelJS = (await import('exceljs')).default
+  const wb = new ExcelJS.Workbook()
 
   // Hoja 1: Resumen por empleado
   const datosResumen = (resumenMensual.resumen || []).map((r: any) => ({
@@ -77,9 +86,8 @@ async function exportarExcel(resumenMensual: any, mesLabel: string) {
     'Horas extra': r.horas_extra || r.total_extra_horas || 0,
     'Pend. validar': r.pendientes_validar || 0,
   }))
-  const ws1 = XLSX.utils.json_to_sheet(datosResumen)
-  ws1['!cols'] = [{ wch: 28 }, { wch: 20 }, { wch: 18 }, { wch: 14 }, { wch: 14 }, { wch: 14 }, { wch: 12 }, { wch: 14 }, { wch: 12 }, { wch: 14 }]
-  XLSX.utils.book_append_sheet(wb, ws1, 'Resumen')
+  const ws1 = wb.addWorksheet('Resumen')
+  ws1.addRows(datosResumen)
 
   // Hoja 2: Detalle fichajes
   const allFichajes: any[] = []
@@ -98,11 +106,10 @@ async function exportarExcel(resumenMensual: any, mesLabel: string) {
     }
   }
   allFichajes.sort((a, b) => (a.Fecha || '').localeCompare(b.Fecha || ''))
-  const ws2 = XLSX.utils.json_to_sheet(allFichajes)
-  ws2['!cols'] = [{ wch: 28 }, { wch: 12 }, { wch: 10 }, { wch: 10 }, { wch: 8 }, { wch: 8 }, { wch: 20 }, { wch: 10 }]
-  XLSX.utils.book_append_sheet(wb, ws2, 'Fichajes')
+  const ws2 = wb.addWorksheet('Fichajes')
+  ws2.addRows(allFichajes)
 
-  XLSX.writeFile(wb, `Fichajes_${mesLabel.replace(' ', '_')}.xlsx`)
+  await xlsxSave(wb, `Fichajes_${mesLabel.replace(' ', '_')}.xlsx`)
 }
 
 export default function FichajesPage() {
@@ -961,3 +968,4 @@ export default function FichajesPage() {
     </div>
   )
 }
+

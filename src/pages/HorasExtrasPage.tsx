@@ -54,10 +54,19 @@ function BarraLimite({ horas, max = LIMITE_ANUAL }: { horas: number; max?: numbe
   )
 }
 
+// Helper: guardar workbook exceljs en browser
+async function xlsxSave(wb: ExcelJS.Workbook, filename: string) {
+  const buf = await wb.xlsx.writeBuffer()
+  const blob = new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a'); a.href = url; a.download = filename
+  a.click(); URL.revokeObjectURL(url)
+}
+
 // ─── Excel export ────────────────────────────────────────────────────────────
 async function exportarExcel(filtradas: any[], mesStr: string) {
-  const XLSX = await import('xlsx')
-  const wb = XLSX.utils.book_new()
+  const ExcelJS = (await import('exceljs')).default
+  const wb = new ExcelJS.Workbook()
   const datos = filtradas.map(he => ({
     'Empleado': he.nombre || he.nombre_empleado || '',
     'Fecha': he.fecha,
@@ -67,10 +76,9 @@ async function exportarExcel(filtradas: any[], mesStr: string) {
     'Motivo': he.motivo_he || '',
     'Aprobado por': he.aprobado_por_he || he.aprobado_por || '',
   }))
-  const ws = XLSX.utils.json_to_sheet(datos)
-  ws['!cols'] = [{ wch: 28 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 14 }, { wch: 30 }, { wch: 20 }]
-  XLSX.utils.book_append_sheet(wb, ws, 'Horas Extra')
-  XLSX.writeFile(wb, `Horas_Extra_${mesStr}.xlsx`)
+  const ws = wb.addWorksheet('Horas Extra')
+  ws.addRows(datos)
+  await xlsxSave(wb, `Horas_Extra_${mesStr}.xlsx`)
 }
 
 export default function HorasExtrasPage() {
@@ -713,3 +721,4 @@ export default function HorasExtrasPage() {
     </div>
   )
 }
+
