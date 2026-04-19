@@ -68,11 +68,13 @@ export default function LotesPanel({
       const todosNoGO = lotesActualizados.every(l => l.decision === 'no_go')
       const algunoGO = lotesActualizados.some(l => l.decision === 'go')
 
+      // [I-LIC-15] Solo marca go si TODOS los lotes son go — no si alguno lo es
       if (todosNoGO) {
         await api.actualizar(oportunidadId, { estado: 'no_go' })
-      } else if (todosGO || algunoGO) {
+      } else if (todosGO) {
         await api.actualizar(oportunidadId, { estado: 'go' })
       }
+      // Si hay mezcla (algunos go, algunos no_go) se mantiene el estado actual
     } catch { showMsg('❌ Error') }
   }
 

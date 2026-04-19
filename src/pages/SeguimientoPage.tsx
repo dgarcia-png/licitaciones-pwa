@@ -69,19 +69,18 @@ export default function SeguimientoPage() {
       if (r.ok) {
         let msg = r.resultado === 'ganada' ? '🏆 ¡CONTRATO ADJUDICADO! ' : r.resultado === 'perdida' ? '❌ Resultado registrado: perdida' : '⚪ Contrato desierto'
         // Mostrar triggers ejecutados
-        if (r.triggers) {
-          if (r.triggers.subrogacion?.ok && !r.triggers.subrogacion?.skipped) {
-            msg += ' · ✅ Subrogación creada en RRHH'
-          }
-          if (r.triggers.conocimiento?.ok) {
-            msg += ' · ✅ Guardado en base de conocimiento'
-          }
-          if (r.triggers.territorio?.ok) {
-            msg += ` · 🗺️ ${r.triggers.territorio.centros_creados || 0} centros creados en Territorio`
-          }
-          if (r.triggers.errores?.length > 0) {
-            msg += ' · ⚠️ Algunos triggers fallaron'
-          }
+        // [I-LIC-12] triggers opcionales — backend puede no devolverlos
+        if (r.triggers?.subrogacion?.ok && !r.triggers?.subrogacion?.skipped) {
+          msg += ' · ✅ Subrogación creada en RRHH'
+        }
+        if (r.triggers?.conocimiento?.ok) {
+          msg += ' · ✅ Guardado en base de conocimiento'
+        }
+        if (r.triggers?.territorio?.ok) {
+          msg += ` · 🗺️ ${r.triggers.territorio.centros_creados || 0} centros creados en Territorio`
+        }
+        if (r.triggers?.errores?.length > 0) {
+          msg += ' · ⚠️ Algunos triggers fallaron'
         }
         setMensaje(msg)
         setFormResultado(null)

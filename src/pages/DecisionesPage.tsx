@@ -130,6 +130,12 @@ export default function DecisionesPage() {
 
   const handleAprobacion = async (estado: 'aprobado' | 'rechazado' | 'condicionado') => {
     if (!selectedId) return
+    // [I-LIC-9] Validación de rol — solo SUPER_ADMIN y ADMIN pueden aprobar
+    const rolesPermitidos = ['SUPER_ADMIN', 'ADMIN', 'RESPONSABLE_LICITACIONES']
+    if (!rolesPermitidos.includes(usuario?.rol || '')) {
+      setMsgAprobacion('❌ Sin permisos para aprobar/rechazar. Contacta con un administrador.')
+      return
+    }
     setAprobando(true); setMsgAprobacion('')
     try {
       const result = await api.aprobarDireccion({
