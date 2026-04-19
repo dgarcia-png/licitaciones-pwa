@@ -318,7 +318,7 @@ export default function LotesPanel({
 
                   {/* Ir a cálculo de este lote */}
                   {modo !== 'calculo' && lote.decision !== 'no_go' && (
-                    <button onClick={() => navigate(`/calculo?opo=${oportunidadId}&lote=${lote.id}`)}
+                    <button onClick={() => navigate(`/calculo?opo=${oportunidadId}`)}
                       className="flex items-center gap-1 text-[10px] font-bold px-2.5 py-1.5 bg-[#1a3c34] hover:bg-[#2d5a4e] text-white rounded-lg">
                       <Calculator size={11} /> Calcular
                     </button>
@@ -340,3 +340,4 @@ export default function LotesPanel({
     </div>
   )
 }
+
