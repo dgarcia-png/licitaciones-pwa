@@ -136,7 +136,7 @@ export default function DecisionesPage() {
         oportunidad_id: selectedId,
         estado,
         aprobado_por: usuario?.nombre || usuario?.email || '',
-        precio_aprobado: precioAprobado ? parseFloat(precioAprobado) : (res.precioObjetivo || res.totalSinIVA || 0),
+        precio_aprobado: (precioAprobado && !isNaN(parseFloat(precioAprobado))) ? parseFloat(precioAprobado) : (res.precioObjetivo || res.totalSinIVA || 0),
         escenario_elegido: escenarioElegido || 'objetivo',
         condiciones: condiciones,
         observaciones: observacionesDir
@@ -945,3 +945,4 @@ export default function DecisionesPage() {
     </div>
   )
 }
+

@@ -1,4 +1,4 @@
-// src/services/api.ts — ACTUALIZADO 4/04/2026
+// src/services/api.ts — ACTUALIZADO 19/04/2026
 // [6/04] AUDITORÍA COMPLETA: corregido API_BASE, migradas 11 llamadas GAS→CR
 // [4/04] Bloques 6-11: validarMasivo, vehículos/calidad/portal/planificación/informes → Cloud Run
 
@@ -291,7 +291,7 @@ export const api = {
   detectarConvenio: (provincia: string, sector?: string) => fetchFAST('/convenios/detectar/' + provincia, sector ? { sector } : {}),
   alertasConvenios: () => fetchFAST('/convenios/alertas/vencimientos'),
   mapaConvenios:    () => fetchFAST('/convenios/mapa/provincias'),
-  buscarConvenioAuto:(provincia: string, sector: string) => postFAST('/convenios/detectar/' + provincia, { sector }),
+  buscarConvenioAuto:(provincia: string, sector: string) => fetchFAST('/convenios/detectar/' + provincia, { sector }),  // [C-LIC-4] era postFAST, backend define GET
   subirConvenio:    async (file: File) => { const b = await fileToBase64(file); return postAPI({ action: 'upload_convenio', filename: file.name, base64: b, mime_type: file.type||'application/pdf' }) },
   eliminarConvenio: async (id: string) => { const r = await deleteFAST('/convenios/' + id); cacheInvalidate('convenios'); cacheInvalidate('categorias_convenio'); return r },
   costesReferencia: () => fetchFAST('/convenios/costes/referencia'),
@@ -636,3 +636,4 @@ export const api = {
   guardarPlantillaCPV:(data: any) => postAPI({ action: 'guardar_plantilla_cpv', ...data }),
   eliminarPlantillaCPV:(id: string) => postAPI({ action: 'eliminar_plantilla_cpv', id }),
 }
+

@@ -19,6 +19,8 @@ const ESTADO_BADGE: Record<string, { label: string; className: string }> = {
   descartada:  { label: 'Descartada',  className: 'bg-gray-100 text-gray-700' },
   adjudicada:  { label: 'Adjudicada',  className: 'bg-violet-100 text-violet-700' },
   perdida:     { label: 'Perdida',     className: 'bg-rose-100 text-rose-700' },
+  go_aprobado: { label: 'GO Aprobado', className: 'bg-violet-100 text-violet-700' },
+  archivada:   { label: 'Archivada',   className: 'bg-slate-100 text-slate-500' },
 }
 
 // Skeleton loading

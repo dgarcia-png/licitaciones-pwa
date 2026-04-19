@@ -15,6 +15,7 @@ const ESTADO_BADGE: Record<string, { label: string; className: string }> = {
   descartada:  { label: 'Descartada',   className: 'bg-gray-100 text-gray-700' },
   adjudicada:  { label: 'Adjudicada',   className: 'bg-purple-100 text-purple-700' },
   perdida:     { label: 'Perdida',      className: 'bg-rose-100 text-rose-700' },
+  go_aprobado: { label: 'GO Aprobado',  className: 'bg-violet-100 text-violet-700' },
   archivada:   { label: 'Archivada',    className: 'bg-slate-100 text-slate-500' },
 }
 
@@ -307,8 +308,8 @@ export default function OportunidadesPage() {
                           (lic.scoring || 0) >= 70 ? 'bg-emerald-50 text-emerald-600' :
                           (lic.scoring || 0) >= 50 ? 'bg-amber-50 text-amber-600' : 'bg-red-50 text-red-600'
                         }`}>{lic.scoring || 0}</span>
-                        {lic.url && (
-                          <a href={lic.url} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()}>
+                        {(lic.url_detalle || lic.url) && (
+                          <a href={lic.url_detalle || lic.url} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()}>
                             <ExternalLink size={14} className="text-slate-400 hover:text-blue-500" />
                           </a>
                         )}
@@ -352,5 +353,6 @@ export default function OportunidadesPage() {
     </div>
   )
 }
+
 
 

@@ -49,7 +49,8 @@ export default function LotesPanel({
     try {
       const r = await api.crearLotesDesdeAnalisis(oportunidadId)
       if (r.ok) {
-        showMsg(`✅ ${r.lotes_creados} lote${r.lotes_creados !== 1 ? 's' : ''} creado${r.lotes_creados !== 1 ? 's' : ''}`)
+        const n = r.total ?? r.lotes_creados ?? 0
+        showMsg(`✅ ${n} lote${n !== 1 ? 's' : ''} creado${n !== 1 ? 's' : ''}`)
         onRecargar()
       } else showMsg('❌ ' + (r.error || 'Error'))
     } catch { showMsg('❌ Error de conexión') }

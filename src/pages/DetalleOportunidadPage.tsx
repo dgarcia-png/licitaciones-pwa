@@ -361,11 +361,14 @@ export default function DetalleOportunidadPage() {
         estado: form.estado, descripcion: form.descripcion,
       })
       if (archivosNuevos.length > 0) {
+        let erroresSubida = 0
         for (let i = 0; i < archivosNuevos.length; i++) {
           setProgreso(`Subiendo ${i+1}/${archivosNuevos.length}: ${archivosNuevos[i].name}`)
-          try { await api.subirArchivo(archivosNuevos[i], id || '') } catch (e) { console.error(e) }
+          try { await api.subirArchivo(archivosNuevos[i], id || '') }
+          catch (e) { console.error('subirArchivo error:', e); erroresSubida++ }
         }
         setArchivosNuevos([])
+        if (erroresSubida > 0) setError(`${erroresSubida} archivo(s) no se pudieron subir. Inténtalo de nuevo.`)
       }
       setProgreso(''); setGuardado(true); setTimeout(() => setGuardado(false), 3000)
     } catch (e) { setError('Error al guardar'); setProgreso('') }
@@ -934,4 +937,5 @@ export default function DetalleOportunidadPage() {
     </div>
   )
 }
+
 
